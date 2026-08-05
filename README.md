@@ -9,8 +9,8 @@ source chains. У live package був старий heartbeat entity ID
 `sensor.victron_multiplus_ii_6k5_last_ingest`, якого більше немає. Фактичний
 entity — `sensor.victron_multiplus_ii_last_ingest`.
 
-Package тепер також має fail-closed battery-cost logic і guard для battery
-ledger за свіжими CerboGX charge/discharge inputs. MQTT transport noise не
+Package також має fail-closed battery-cost logic і guard для battery ledger за
+свіжими CerboGX charge/discharge inputs. MQTT transport noise не
 використовується як blocker, якщо CerboGX power sensors і freshness gate
 оновлюються.
 
@@ -26,49 +26,46 @@ ledger за свіжими CerboGX charge/discharge inputs. MQTT transport noise
 `custom:energy-split-historical-cost` resource/card відсутній.
 
 Спільний модуль `frontend/energy-split-history-report.js` перевіряє schema,
-timezone/day boundaries, sorted hourly rows, обидві дозволені cost-серії,
-coverage і total equality. Застосування дозволене лише для exact local day
-`2026-08-05` у `Europe/Kyiv`. Некоректний або частковий target-day report
+DST-safe exact local-day boundaries, strict JSON numbers, finalized-as-of and
+immutable revision, sorted/in-period hourly rows, обидві дозволені cost-серії,
+coverage і total equality. Некоректний або частковий target-day report
 fail-closed; новіші async selections не можуть бути перезаписані старим
 результатом.
 
 ## Recorder reconstruction за 2026-08-05
 
 ```text
-small home:         21.966854606273966 UAH
-parents home:       24.965222317567065 UAH
-known total:        46.93207692384103 UAH
-coverage:           60,180 / 78,427.611835 seconds = 76.7332%
-valid samples:      1,014 / 1,308
-unpriced charge:    1.0830000000000268 kWh
-unpriced discharge: 0.7199999999999989 kWh
+small home:         27.508121299942783 UAH
+parents home:       27.151157569360638 UAH
+known total:        54.65927886930342 UAH
+coverage:           65,940 / 84,301.785704 seconds = 78.2190%
+valid samples:      1,111 / 1,406
+unpriced charge:    1.0840000000000316 kWh
+unpriced discharge: 0.7280000000000086 kWh
+report revision:    027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b30b10
 ```
 
 Картка показує після округлення компонентів:
 
 ```text
-21.97 + 24.97 = 46.94 грн
+27.51 + 27.15 = 54.66 UAH
 ```
 
 Це відома підтверджена сума за валідними Recorder-інтервалами, а не оцінка
-невідомих періодів. Report має schema `1`, створений
-`2026-08-05T18:47:07.759465Z`, і не змінює Recorder або live sensor states.
+невідомих періодів. Report не змінює Recorder або live sensor states.
 
 ## Фінальна live-перевірка
 
 ```text
-binary_sensor.energy_data_fresh = on
-CerboGX battery power          = -52.0 W, age 0 s
-CerboGX PV power               = 0.0 W, age 7 s
-small-home power               = 707 W, age 6 s
-parents-home power             = 512.1 W, age 7 s
-battery ledger                 = active
-ledger stock / cost            = 0.079 kWh / 0.2319877326 грн
-weighted battery cost          = 2.9366 грн/kWh
-battery cost rate              = 0.0 грн/h
-small live cumulative cost     = 47.63 грн
-parents live cumulative cost   = 24.28 грн
-combined live cumulative cost  = 71.91 грн
+binary_sensor.energy_victron_data_fresh = on
+binary_sensor.energy_data_fresh         = on
+last ingest                          = 2026-08-05T20:30:39+00:00
+battery ledger                      = active
+ledger stock / cost                 = 0.228 kWh / 0.5189724013 UAH
+small live cumulative cost          = 48.84 UAH
+parents live cumulative cost        = 24.83 UAH
+combined live cumulative cost       = 73.67 UAH
+household consumption               = 7894.75 kWh
 ```
 
 Historical selected-day report і live cumulative accounting epoch навмисно
@@ -78,50 +75,51 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 
 Пройдено:
 
-- `python3 -m unittest discover -s tests -v` — 8/8;
+- `python3 -m unittest discover -s tests -v` — 9/9;
 - `node tests/historical_frontend_behavior.mjs`;
 - JavaScript syntax checks для shared report, bridge і summary;
+- Python compilation check для reconstruction tool;
 - JSON/YAML validation;
 - `git diff --check`;
 - value-free secret scan;
-- local/staged/live SHA-256 correspondence;
-- remote JSON validation;
-- `ha core check` до і після rollout;
-- Home Assistant restart і HTTP readiness `200`;
+- forbidden-path scan;
+- local/live SHA-256 correspondence;
+- remote JSON/resource validation;
+- `ha core check`;
 - HTTP `200` для report, shared module, bridge і summary;
-- live Lovelace contract: дві references до report URL, resources присутні,
-  standalone card відсутня.
+- live Lovelace contract: дві references до report URL, cache-busted resources присутні,
+  standalone card відсутня;
+- regression tests для DST boundaries, strict/fail-closed validation, coverage,
+  report revision, ABA/config races і incomplete battery ledger.
 
-Після restart у логах не було `energy_split` або frontend bridge/summary
-помилок. Окремо залишилися unrelated entries: помилка додавання сенсора
-`energy_bounded_executor` і Victron MQTT broker connection failure. Вони не
-стосуються цієї read-only presentation зміни; CerboGX sources і freshness gate
-після restart здорові.
+У targeted post-deploy log search не було записів `energy_split`,
+`energy-split`, history bridge або summary card. Окремо залишилися unrelated
+entries від Victron MQTT та Energy Bounded Executor; вони не стосуються цієї
+read-only presentation зміни.
 
 Фізичні service calls не виконувалися: inverter, ESS, battery, relay і load
 states не змінювалися.
 
-Візуальний pixel-level screenshot не підтверджений: Chrome window існує, але
-background CUA capture повернув порожню поверхню `0x0`. Live storage, resources,
-HTTP endpoints, isolated behavioral harness і post-restart states підтверджені.
+Візуальний pixel-level screenshot і browser console не підтверджені: background
+CUA capture повернув порожню поверхню `0x0`. HTTP endpoints, live storage,
+resources, isolated behavior harness і post-deploy states підтверджені.
 
 ## Rollback
 
-Pre-change backup для останнього presentation rollout:
+Pre-change backup для follow-up presentation rollout:
 
 ```text
-/config/backups/energy_split_dashboard_20260805T195228Z/
+/config/backups/energy_split_dashboard_followup_20260805T203000Z/
 ```
 
-У backup є `SHA256SUMS` для попередніх bridge/report/summary/dashboard/resource
-файлів.
+У backup є `SHA256SUMS` для попередніх frontend/report/resource файлів.
 
 ## Проєкт
 
 - `home_assistant/packages/energy_split.yaml` — heartbeat, fail-closed cost і
   ledger guards;
 - `home_assistant/lovelace/energy_split.storage.json` — existing dashboard;
-- `home_assistant/lovelace/resources.storage.json` — registered frontend modules;
+- `home_assistant/lovelace/resources.storage.json` — registered/cache-busted frontend modules;
 - `frontend/energy-split-history-report.js` — shared report contract;
 - `frontend/energy-split-history-bridge.js` — existing graph adapter;
 - `frontend/energy-split-period-summary.js` — existing summary card;

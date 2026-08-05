@@ -2,13 +2,13 @@
 
 ## Final status
 
-- Historical diagnosis: `PASS`
-- Local candidate and staged tree: `PASS`
-- Canonical package versus live package: `PASS` (byte-identical SHA-256)
-- Dashboard/frontend/report rollout: `PASS`
-- Post-restart read-only runtime validation: `PASS`
+- Root-cause diagnosis: `PASS`
+- Adversarial hardening and regression tests: `PASS` (9 Python tests + Node behavior harness)
+- Canonical package versus live package: `PASS` (the package was unchanged by the follow-up presentation rollout and remains byte-identical)
+- Follow-up dashboard/frontend/report rollout: `PASS` (backup, cache-busted resources, SHA-256 and HTTP readback verified)
+- Post-rollout read-only runtime validation: `PASS`
 - Physical service calls: none
-- Remaining repository action: commit and push the verified tree
+- Browser pixel/console validation: not confirmed; isolated behavioral tests and HTTP/runtime gates passed
 
 ## Read-only root-cause evidence
 
@@ -40,55 +40,81 @@ The package now uses only:
 sensor.victron_multiplus_ii_last_ingest
 ```
 
-It also fails closed when a positive battery-to-loads flow has no valid battery cost rate; unavailable pricing is never converted to numeric zero. The live package is byte-identical to the current local candidate, so both the heartbeat repair and package hardening are installed.
+It also fails closed when a positive battery-to-loads flow has no valid battery cost rate; unavailable pricing is never converted to numeric zero. The immutable pre-fix copy remains in `live_snapshot/energy_split.yaml`.
 
-The immutable pre-fix copy remains in `live_snapshot/energy_split.yaml`.
+The follow-up hardening added:
 
-## Presentation rollout
+- exact local-day validation as `local midnight -> next local midnight`, including DST 23/25-hour days and the documented inclusive-end `+1 ms` representation;
+- strict JSON-number validation (`null`, strings and booleans are rejected);
+- `report_revision`, `generated_at_utc` and `finalized_at_utc` contract checks;
+- `[period_start, period_end)` row bounds and coverage/total consistency checks;
+- monotonic generation tokens for the existing graph bridge, including config/disconnect invalidation;
+- summary-card invalidation on config changes, invalid selection and disconnect;
+- fail-closed trusted battery stock/cost normalization in the Recorder reconstruction tool.
 
-The existing dashboard graph and period-summary card now use the shared validated report path for the configured exact local day. The rollout included the importing shared module, bridge, summary card, dashboard storage, resource registry and report JSON. No standalone historical card or new graph was added.
+Both graph and summary outputs retain the same immutable report revision.
 
-The local candidate report for `2026-08-05` is:
+## Presentation report
 
-- generated: `2026-08-05T18:47:07.759465+00:00`;
-- coverage: `60,180 / 78,427.611835 seconds = 0.7673317928717187`;
-- valid samples: `1,014 / 1,308`;
-- small-home known cost: `21.966854606273966 UAH`;
-- parents-home known cost: `24.965222317567065 UAH`;
-- known total: `46.93207692384103 UAH`;
-- unpriced charge: `1.0830000000000268 kWh`;
-- unpriced discharge: `0.7199999999999989 kWh`.
+The current report for `2026-08-05` is an additive Recorder artifact:
+
+- generated: `2026-08-05T20:25:02.401245+00:00`;
+- finalized-as-of: `2026-08-05T20:25:02.401245+00:00`;
+- report revision: `027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b30b10`;
+- coverage: `65,940 / 84,301.785704 seconds = 0.7821898367800699` (`78.2190%`);
+- valid samples: `1,111 / 1,406`;
+- small-home known cost: `27.508121299942783 UAH`;
+- parents-home known cost: `27.151157569360638 UAH`;
+- known total: `54.65927886930342 UAH`;
+- unpriced charge: `1.0840000000000316 kWh`;
+- unpriced discharge: `0.7280000000000086 kWh`.
 
 Unknown, stale or unpriced intervals remain uncertainty; they are not converted to zero or extrapolated.
 
 ## Deployment evidence
 
-- Backup: `/config/backups/energy_split_dashboard_20260805T195228Z/`
-- Backup manifest: `SHA256SUMS`, verified successfully
-- Restart boundary: Home Assistant Core stopped cleanly at `2026-08-05T19:54:00Z` and started again
-- `ha core check`: passed before and after rollout
-- HTTP readiness: `200`
-- Report, shared module, bridge and summary-card URLs: all `200`
-- Live dashboard JSON: valid; exactly two report URL references; standalone historical card absent
-- Live resource registry: shared module, bridge and summary card present; standalone historical resource absent
-- Local/live SHA-256 correspondence: passed for the package and all presentation artifacts
+Follow-up commits:
 
-Post-restart logs contain unrelated warnings/errors from other integrations, including `energy_bounded_executor` entity setup and `victron_mqtt` broker connection attempts. No `energy_split`, history-bridge or summary-card errors were found in the inspected log window. Relevant freshness and cost entities remained healthy.
+- `9105b4f` — validator, race, ledger hardening and regenerated report;
+- `0e6a555` — cache-busted frontend resource URLs.
+
+Both commits are pushed; `HEAD = origin/main = 0e6a555a4ac90cc72d9e376a5dc73f313e3a575b`.
+
+Backup before the follow-up presentation rollout:
+
+```text
+/config/backups/energy_split_dashboard_followup_20260805T203000Z/
+```
+
+The backup `SHA256SUMS` manifest was verified successfully. Updated live files were the shared report module, graph bridge, summary card, report JSON and Lovelace resource registry. The package and dashboard storage were not changed by this follow-up.
+
+Post-rollout evidence:
+
+- local/live SHA-256 correspondence: passed for all updated artifacts;
+- cache-busted resource URLs: report/bridge `v=20260805-3`, summary `v=1.0.4`;
+- live dashboard/resources/report JSON: valid;
+- exactly two report URL references remain; standalone historical card/resource remains absent;
+- `ha core check`: passed;
+- all four updated HTTP endpoints: `200`;
+- targeted log search for `energy_split`, `energy-split`, history bridge and summary card: zero matching lines in the inspected 500-line window.
+
+Unrelated warnings/errors remain from other integrations, including Victron MQTT broker connection attempts and Energy Bounded Executor freshness messages. They were not attributed to this read-only presentation rollout.
 
 ## Current live readback
 
-Read-only states around `2026-08-05T19:59:54Z–20:01:43Z`:
+Latest read-only states around `2026-08-05T20:30:39Z–20:31:02Z`:
 
-- `binary_sensor.energy_victron_data_fresh = on`
-- `binary_sensor.energy_data_fresh = on`
-- heartbeat: `sensor.victron_multiplus_ii_last_ingest = 2026-08-05T20:01:39+00:00`
-- small-home cost: `47.94 UAH`
-- parents-home cost: `24.39 UAH`
-- battery ledger: `active`
-- household consumption: `7894.13 kWh`
+- `binary_sensor.energy_victron_data_fresh = on`;
+- `binary_sensor.energy_data_fresh = on`;
+- heartbeat: `sensor.victron_multiplus_ii_last_ingest = 2026-08-05T20:30:39+00:00`;
+- small-home cost: `48.84 UAH`;
+- parents-home cost: `24.83 UAH`;
+- battery ledger: `active`;
+- ledger stock/cost: `0.228 kWh / 0.5189724013 UAH`;
+- household consumption: `7894.75 kWh`.
 
 These cumulative live values are intentionally separate from the selected-day historical report.
 
 ## Remaining gap
 
-A visual pixel-level browser screenshot was not confirmed because the available background browser capture returned an empty `0x0` surface. All non-visual gates—files, hashes, JSON, resources, HTTP endpoints, dashboard references, isolated frontend behavior, `ha core check`, restart readiness and entity readback—passed.
+A visual pixel-level browser screenshot and browser console capture were not confirmed because the available background browser capture returned an empty `0x0` surface. The isolated Node harness, artifact hashes, JSON/resources, HTTP, configuration and entity gates are confirmed.

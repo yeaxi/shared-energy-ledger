@@ -11,18 +11,22 @@ For `energy_cost_2026-08-05.json`:
 - source: Recorder state history for CerboGX/power and allocation inputs
 - integration: one-minute trapezoidal integration with the package formula
 - schema: `1`
-- generated: `2026-08-05T18:47:07.759465Z`
-- coverage: `60,180 / 78,427.611835 seconds = 0.7673317928717187` (`76.7332%`)
-- valid samples: `1,014 / 1,308`
-- known small-home cost: `21.966854606273966 UAH`
-- known parents-home cost: `24.965222317567065 UAH`
-- known combined cost: `46.93207692384103 UAH`
-- unpriced charge: `1.0830000000000268 kWh`
-- unpriced discharge: `0.7199999999999989 kWh`
+- generated/finalized: `2026-08-05T20:25:02.401245Z`
+- report revision: `027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b30b10`
+- coverage: `65,940 / 84,301.785704 seconds = 0.7821898367800699` (`78.2190%`)
+- valid samples: `1,111 / 1,406`
+- known small-home cost: `27.508121299942783 UAH`
+- known parents-home cost: `27.151157569360638 UAH`
+- known combined cost: `54.65927886930342 UAH`
+- unpriced charge: `1.0840000000000316 kWh`
+- unpriced discharge: `0.7280000000000086 kWh`
+- trusted ledger pair: valid (`0.0310000000000058 kWh`, `0.11103194563932 UAH`)
 - unpriced or unavailable intervals: retained explicitly as uncertainty
 
 Unavailable, stale, or unpriced intervals are never filled with zero or
-extrapolated into a fabricated total.
+extrapolated into a fabricated total. An incomplete or inconsistent trusted
+battery stock/cost pair disables battery pricing rather than treating it as
+free.
 
 The existing dashboard graph and existing period-summary card consume the report
 through `/local/energy-split/energy_cost_2026-08-05.json` only for today's exact
