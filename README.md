@@ -2,56 +2,131 @@
 
 Окремий проєкт для підтримки Home Assistant Energy Split Dashboard.
 
-## Поточна причина
+## Що виправлено
 
-Вартість зникла не через Lovelace layout. Споживання і вартість мають різні source chains. У live package був старий heartbeat entity ID `sensor.victron_multiplus_ii_6k5_last_ingest`, якого більше немає. Фактичний entity — `sensor.victron_multiplus_ii_last_ingest`.
+Вартість зникала не через Lovelace layout. Споживання і вартість мають різні
+source chains. У live package був старий heartbeat entity ID
+`sensor.victron_multiplus_ii_6k5_last_ingest`, якого більше немає. Фактичний
+entity — `sensor.victron_multiplus_ii_last_ingest`.
 
-Через відсутній heartbeat `binary_sensor.energy_data_fresh` став `off`. Усі cost/allocation sensors мають цю binary sensor в `availability`, тому cost totals стали `unavailable`, тоді як старі consumption entities продовжили показувати дані. Повний доказ: `docs/root-cause-2026-08-05.md`.
+Package тепер також має fail-closed battery-cost logic і guard для battery
+ledger за свіжими CerboGX charge/discharge inputs. MQTT transport noise не
+використовується як blocker, якщо CerboGX power sensors і freshness gate
+оновлюються.
 
-## Що підготовлено
+## Presentation target
 
-- `home_assistant/packages/energy_split.yaml` — canonical local candidate: heartbeat repair plus fail-closed battery-cost hardening. The heartbeat portion is live; the battery hardening awaits a separate approval after the MQTT source is healthy.
-- `home_assistant/lovelace/energy_split.storage.json` — live storage snapshot dashboard.
-- `home_assistant/lovelace/dashboards.storage.json` і `resources.storage.json` — registry/resource snapshots.
-- `frontend/` — live custom-card artifacts, зняті read-only.
-- `live_snapshot/` — immutable pre-fix evidence.
-- `AGENTS.md` — правила роботи, safety boundary, live contract і verification gates.
-- `tests/test_energy_split_contract.py` — regression tests, які ловлять повернення старого entity ID.
+Історичні дані інтегровані лише у вже існуючі presentation targets:
 
-## Local verification
+- `custom:energy-custom-graph-card` — через
+  `frontend/energy-split-history-bridge.js`;
+- `custom:energy-split-period-summary` — через validated report path.
 
-```bash
-python3 -m unittest discover -s tests -v
-python3 - <<'PY'
-from pathlib import Path
-import json
-for path in Path('home_assistant/lovelace').glob('*.json'):
-    json.loads(path.read_text())
-print('JSON validation: ok')
-PY
+Новий графік або окрема historical-картка не створювалися. Попередній
+`custom:energy-split-historical-cost` resource/card відсутній.
+
+Спільний модуль `frontend/energy-split-history-report.js` перевіряє schema,
+timezone/day boundaries, sorted hourly rows, обидві дозволені cost-серії,
+coverage і total equality. Застосування дозволене лише для exact local day
+`2026-08-05` у `Europe/Kyiv`. Некоректний або частковий target-day report
+fail-closed; новіші async selections не можуть бути перезаписані старим
+результатом.
+
+## Recorder reconstruction за 2026-08-05
+
+```text
+small home:         21.966854606273966 UAH
+parents home:       24.965222317567065 UAH
+known total:        46.93207692384103 UAH
+coverage:           60,180 / 78,427.611835 seconds = 76.7332%
+valid samples:      1,014 / 1,308
+unpriced charge:    1.0830000000000268 kWh
+unpriced discharge: 0.7199999999999989 kWh
 ```
 
-За наявності PyYAML:
+Картка показує після округлення компонентів:
 
-```bash
-python3 - <<'PY'
-from pathlib import Path
-import yaml
-yaml.safe_load(Path('home_assistant/packages/energy_split.yaml').read_text())
-print('YAML validation: ok')
-PY
+```text
+21.97 + 24.97 = 46.94 грн
 ```
 
-## Live rollout status
+Це відома підтверджена сума за валідними Recorder-інтервалами, а не оцінка
+невідомих періодів. Report має schema `1`, створений
+`2026-08-05T18:47:07.759465Z`, і не змінює Recorder або live sensor states.
 
-Heartbeat candidate застосовано після explicit approval із timestamped backup, SHA-256 correspondence, `ha core check` і restart. `binary_sensor.energy_victron_data_fresh` тепер `on` і використовує актуальний heartbeat entity. Повна cost chain поки не відновилася: після restart `victron_mqtt` не підключився до `192.168.1.115:1883`, через що `binary_sensor.energy_data_fresh` і cost totals залишаються unavailable. Це незалежний upstream/MQTT blocker; fail-closed gate навмисно не обходиться.
+## Фінальна live-перевірка
 
-Поточний локальний candidate додатково містить fail-closed battery-cost hardening для випадку `battery-to-loads > 0` без priced ledger. Ця окрема зміна ще не застосована до live; після відновлення MQTT потрібні окремі approval, `ha core check`, activation і перевірка.
+```text
+binary_sensor.energy_data_fresh = on
+CerboGX battery power          = -52.0 W, age 0 s
+CerboGX PV power               = 0.0 W, age 7 s
+small-home power               = 707 W, age 6 s
+parents-home power             = 512.1 W, age 7 s
+battery ledger                 = active
+ledger stock / cost            = 0.079 kWh / 0.2319877326 грн
+weighted battery cost          = 2.9366 грн/kWh
+battery cost rate              = 0.0 грн/h
+small live cumulative cost     = 47.63 грн
+parents live cumulative cost   = 24.28 грн
+combined live cumulative cost  = 71.91 грн
+```
 
-Live edits, reload/restart та будь-які HA service calls залишаються окремими approval gates для майбутніх змін. Перед кожною live зміною потрібні backup, hash correspondence, `ha core check`, readiness/log/entity readback і чіткий rollback.
+Historical selected-day report і live cumulative accounting epoch навмисно
+залишаються окремими величинами.
 
-## GitHub
+## Перевірки
+
+Пройдено:
+
+- `python3 -m unittest discover -s tests -v` — 8/8;
+- `node tests/historical_frontend_behavior.mjs`;
+- JavaScript syntax checks для shared report, bridge і summary;
+- JSON/YAML validation;
+- `git diff --check`;
+- value-free secret scan;
+- local/staged/live SHA-256 correspondence;
+- remote JSON validation;
+- `ha core check` до і після rollout;
+- Home Assistant restart і HTTP readiness `200`;
+- HTTP `200` для report, shared module, bridge і summary;
+- live Lovelace contract: дві references до report URL, resources присутні,
+  standalone card відсутня.
+
+Після restart у логах не було `energy_split` або frontend bridge/summary
+помилок. Окремо залишилися unrelated entries: помилка додавання сенсора
+`energy_bounded_executor` і Victron MQTT broker connection failure. Вони не
+стосуються цієї read-only presentation зміни; CerboGX sources і freshness gate
+після restart здорові.
+
+Фізичні service calls не виконувалися: inverter, ESS, battery, relay і load
+states не змінювалися.
+
+Візуальний pixel-level screenshot не підтверджений: Chrome window існує, але
+background CUA capture повернув порожню поверхню `0x0`. Live storage, resources,
+HTTP endpoints, isolated behavioral harness і post-restart states підтверджені.
+
+## Rollback
+
+Pre-change backup для останнього presentation rollout:
+
+```text
+/config/backups/energy_split_dashboard_20260805T195228Z/
+```
+
+У backup є `SHA256SUMS` для попередніх bridge/report/summary/dashboard/resource
+файлів.
+
+## Проєкт
+
+- `home_assistant/packages/energy_split.yaml` — heartbeat, fail-closed cost і
+  ledger guards;
+- `home_assistant/lovelace/energy_split.storage.json` — existing dashboard;
+- `home_assistant/lovelace/resources.storage.json` — registered frontend modules;
+- `frontend/energy-split-history-report.js` — shared report contract;
+- `frontend/energy-split-history-bridge.js` — existing graph adapter;
+- `frontend/energy-split-period-summary.js` — existing summary card;
+- `tools/reconstruct_today_cost.py` — deterministic read-only reconstruction;
+- `reports/energy_cost_2026-08-05.json` — current report;
+- `tests/` — contract and behavioral regression tests.
 
 Private repository: [`yeaxi/energy-split-dashboard`](https://github.com/yeaxi/energy-split-dashboard).
-
-`main` is pushed at the verified local/remote commit SHA `9973b7c68adedb78023161624baeca8bc1b95783`.

@@ -51,7 +51,6 @@ input_number:
     step: 0.001
     unit_of_measurement: kWh
     mode: box
-    initial: 0
   energy_battery_ledger_stock_cost:
     name: Battery ledger priced stock cost
     min: 0
@@ -59,7 +58,6 @@ input_number:
     step: 0.01
     unit_of_measurement: UAH
     mode: box
-    initial: 0
   energy_battery_ledger_charge_efficiency:
     name: Battery ledger charge efficiency
     min: 50
@@ -1229,6 +1227,9 @@ automation:
           {{ states('sensor.cerbo_gx_dc_battery_charge_energy') not in ['unknown','unavailable','none']
              and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none']
              and states('select.energy_grid_day_night') in ['day','night'] }}
+      - condition: state
+        entity_id: binary_sensor.energy_data_fresh
+        state: "on"
     action:
       - variables:
           charge_now: "{{ states('sensor.cerbo_gx_dc_battery_charge_energy') | float(0) }}"
@@ -1300,7 +1301,11 @@ automation:
     trigger:
       - platform: homeassistant
         event: start
-    condition: []
+    condition:
+      - condition: template
+        value_template: >-
+          {{ states('sensor.cerbo_gx_dc_battery_charge_energy') not in ['unknown','unavailable','none']
+             and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none'] }}
     action:
       - action: input_number.set_value
         target: {entity_id: input_number.energy_battery_ledger_last_charge}

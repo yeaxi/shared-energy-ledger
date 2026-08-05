@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -52,6 +53,24 @@ class EnergySplitContractTests(unittest.TestCase):
             2,
         )
 
+    def test_ledger_updates_only_with_fresh_accounting_inputs(self) -> None:
+        text = PACKAGE.read_text()
+        self.assertIn(
+            "entity_id: binary_sensor.energy_data_fresh\n        state: \"on\"",
+            text,
+        )
+        self.assertIn(
+            "alias: Energy battery ledger initialize readings\n"
+            "    mode: single\n"
+            "    trigger:",
+            text,
+        )
+        self.assertIn(
+            "and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none'] }}\n"
+            "    action:",
+            text,
+        )
+
     def test_dashboard_keeps_consumption_and_cost_sources_distinct(self) -> None:
         dashboard = json.loads(DASHBOARD.read_text())
         serialized = json.dumps(dashboard, ensure_ascii=False)
@@ -65,6 +84,34 @@ class EnergySplitContractTests(unittest.TestCase):
         serialized = json.dumps(dashboard, ensure_ascii=False)
         self.assertIn("sensor.energy_small_home_total_cost_consistent", serialized)
         self.assertIn("sensor.energy_parents_home_total_cost_consistent", serialized)
+        self.assertIn("historical_data_url", serialized)
+        self.assertIn("historical_series", serialized)
+
+    def test_historical_cost_is_integrated_into_existing_cards(self) -> None:
+        dashboard = json.loads(DASHBOARD.read_text())
+        serialized = json.dumps(dashboard, ensure_ascii=False)
+        self.assertNotIn("custom:energy-split-historical-cost", serialized)
+        self.assertEqual(serialized.count("energy_cost_2026-08-05.json"), 2)
+        resources = json.loads(
+            (ROOT / "home_assistant" / "lovelace" / "resources.storage.json").read_text()
+        )
+        resource_text = json.dumps(resources, ensure_ascii=False)
+        self.assertIn("energy-split-history-report.js", resource_text)
+        self.assertIn("energy-split-history-bridge.js", resource_text)
+        self.assertIn("energy-split-period-summary.js", resource_text)
+        self.assertNotIn("energy-split-historical-cost.js", resource_text)
+        self.assertIn("historical_data_url", (ROOT / "frontend" / "energy-split-period-summary.js").read_text())
+
+    def test_historical_frontend_behavior_harness(self) -> None:
+        result = subprocess.run(
+            ["node", str(ROOT / "tests" / "historical_frontend_behavior.mjs")],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("historical_frontend_behavior=ok", result.stdout)
 
 
 if __name__ == "__main__":

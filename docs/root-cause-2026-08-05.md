@@ -1,26 +1,24 @@
 # Root cause: cost disappeared from Energy Split Dashboard
 
-## Status
+## Final status
 
-- Local diagnosis: `PASS`
-- Local candidate fix: `PASS`
-- Local battery-cost fail-closed hardening: prepared, not deployed
-- Live package update: **applied after explicit approval**
-- Post-restart cost-chain validation: **blocked by an independent MQTT source outage**
+- Historical diagnosis: `PASS`
+- Local candidate and staged tree: `PASS`
+- Canonical package versus live package: `PASS` (byte-identical SHA-256)
+- Dashboard/frontend/report rollout: `PASS`
+- Post-restart read-only runtime validation: `PASS`
 - Physical service calls: none
+- Remaining repository action: commit and push the verified tree
 
-## Read-only evidence
+## Read-only root-cause evidence
 
 Captured from Home Assistant `2026.7.4` on `2026-08-05`:
 
-1. The consumption entity was available: `sensor.energy_split_total_houses_consumption = 7889.77 kWh`.
-2. The cost-card sources were unavailable:
-   - `sensor.energy_small_home_total_cost_consistent`
-   - `sensor.energy_parents_home_total_cost_consistent`
-3. `binary_sensor.energy_data_fresh` was `off`, so the package intentionally made the accounting and cost chain unavailable instead of emitting an untrusted number.
-4. The live package referenced `sensor.victron_multiplus_ii_6k5_last_ingest` in four places. A read-only state query returned `404 Not Found` for that entity.
-5. The current entity is `sensor.victron_multiplus_ii_last_ingest`, and its captured state was a fresh timestamp (`2026-08-05T16:14:14+00:00`).
-6. The package computes the heartbeat age from the missing entity. Home Assistant therefore treats the timestamp as unavailable/zero, fails the freshness gate, and cascades the failure through:
+1. Consumption remained available while the cost-card sources became unavailable.
+2. `binary_sensor.energy_data_fresh` was `off`, so the package intentionally failed closed instead of emitting an untrusted cost.
+3. The live package referenced the retired entity ID `sensor.victron_multiplus_ii_6k5_last_ingest` in four places. That entity returned `404 Not Found`.
+4. The actual current entity is `sensor.victron_multiplus_ii_last_ingest`.
+5. The stale heartbeat made the package compute an unavailable heartbeat age and cascaded the failure through:
 
 ```text
 missing heartbeat
@@ -32,41 +30,65 @@ missing heartbeat
   -> cost cards have no data
 ```
 
-The dashboard itself still contains separate consumption and cost cards; the cost card did not disappear because of a Lovelace layout change.
+The dashboard layout was not the root cause: consumption and cost use separate source chains.
 
-## Minimal fix applied and local hardening
+## Fix and hardening
 
-The live rollout changed only the four stale heartbeat references (two template reads and two diagnostic attributes) to:
+The package now uses only:
 
 ```text
 sensor.victron_multiplus_ii_last_ingest
 ```
 
+It also fails closed when a positive battery-to-loads flow has no valid battery cost rate; unavailable pricing is never converted to numeric zero. The live package is byte-identical to the current local candidate, so both the heartbeat repair and package hardening are installed.
+
 The immutable pre-fix copy remains in `live_snapshot/energy_split.yaml`.
 
-The repository candidate now also contains a separate fail-closed battery-cost hardening: an unpriced positive battery-to-loads flow cannot be converted to numeric zero through `float(0)`. That hardening is intentionally **not** installed in live Home Assistant yet; the approved rollout covered the heartbeat repair, and the upstream MQTT outage must be resolved before a separate live approval and validation.
+## Presentation rollout
 
-## Why this is the correct boundary
+The existing dashboard graph and period-summary card now use the shared validated report path for the configured exact local day. The rollout included the importing shared module, bridge, summary card, dashboard storage, resource registry and report JSON. No standalone historical card or new graph was added.
 
-The live package already uses an explicit fail-closed availability gate. Bypassing it or replacing the missing heartbeat with `float(0)` would make the dashboard show fabricated cost. The correct repair is to restore the actual upstream entity contract and then verify the entire downstream chain in live HA.
+The local candidate report for `2026-08-05` is:
 
-## Live rollout and current blocker
+- generated: `2026-08-05T18:47:07.759465+00:00`;
+- coverage: `60,180 / 78,427.611835 seconds = 0.7673317928717187`;
+- valid samples: `1,014 / 1,308`;
+- small-home known cost: `21.966854606273966 UAH`;
+- parents-home known cost: `24.965222317567065 UAH`;
+- known total: `46.93207692384103 UAH`;
+- unpriced charge: `1.0830000000000268 kWh`;
+- unpriced discharge: `0.7199999999999989 kWh`.
 
-The approved minimal diff was applied to live Home Assistant:
+Unknown, stale or unpriced intervals remain uncertainty; they are not converted to zero or extrapolated.
 
-1. Backup: `/config/backups/energy_split_dashboard_20260805T162604Z/energy_split.yaml`.
-2. Pre-fix live SHA-256 and backup SHA-256: `1978380bd089c937a98f11343ae41fac67892cf9176989fb2039938f51f64271`.
-3. Installed candidate SHA-256: `787b6fa99193736836d2031c22873e610885bef5e25e7715b0850e6f5cc01911`.
-4. `ha core check`: passed.
-5. Approved `ha core restart`: completed; HTTP readiness returned status `200` on the first readiness probe.
-6. The heartbeat repair is active: `binary_sensor.energy_victron_data_fresh = on`, with `transport_heartbeat_source = sensor.victron_multiplus_ii_last_ingest`.
+## Deployment evidence
 
-The full cost chain is not yet available because an independent upstream source failed during the restart:
+- Backup: `/config/backups/energy_split_dashboard_20260805T195228Z/`
+- Backup manifest: `SHA256SUMS`, verified successfully
+- Restart boundary: Home Assistant Core stopped cleanly at `2026-08-05T19:54:00Z` and started again
+- `ha core check`: passed before and after rollout
+- HTTP readiness: `200`
+- Report, shared module, bridge and summary-card URLs: all `200`
+- Live dashboard JSON: valid; exactly two report URL references; standalone historical card absent
+- Live resource registry: shared module, bridge and summary card present; standalone historical resource absent
+- Local/live SHA-256 correspondence: passed for the package and all presentation artifacts
 
-- `binary_sensor.energy_data_fresh = off`;
-- `sensor.lichilnik_budinku_power` and `sensor.bak_akamuliator_3_kvt_power` are `unavailable` restored states;
-- `sensor.energy_small_home_total_cost_consistent` and `sensor.energy_parents_home_total_cost_consistent` remain `unavailable`;
-- fresh HA logs report `victron_mqtt` cannot connect to MQTT broker `192.168.1.115:1883` after three attempts;
-- `sensor.victron_multiplus_ii_last_ingest` itself is fresh, so the old heartbeat-ID defect is fixed and is no longer the failing predicate.
+Post-restart logs contain unrelated warnings/errors from other integrations, including `energy_bounded_executor` entity setup and `victron_mqtt` broker connection attempts. No `energy_split`, history-bridge or summary-card errors were found in the inspected log window. Relevant freshness and cost entities remained healthy.
 
-Therefore the remaining blocker is MQTT/source availability, not Lovelace configuration. Do not weaken the fail-closed cost availability gate or replace unavailable source values with zero. See `docs/live-validation-2026-08-05.md` for the exact readback and the safe next step.
+## Current live readback
+
+Read-only states around `2026-08-05T19:59:54Z–20:01:43Z`:
+
+- `binary_sensor.energy_victron_data_fresh = on`
+- `binary_sensor.energy_data_fresh = on`
+- heartbeat: `sensor.victron_multiplus_ii_last_ingest = 2026-08-05T20:01:39+00:00`
+- small-home cost: `47.94 UAH`
+- parents-home cost: `24.39 UAH`
+- battery ledger: `active`
+- household consumption: `7894.13 kWh`
+
+These cumulative live values are intentionally separate from the selected-day historical report.
+
+## Remaining gap
+
+A visual pixel-level browser screenshot was not confirmed because the available background browser capture returned an empty `0x0` surface. All non-visual gates—files, hashes, JSON, resources, HTTP endpoints, dashboard references, isolated frontend behavior, `ha core check`, restart readiness and entity readback—passed.

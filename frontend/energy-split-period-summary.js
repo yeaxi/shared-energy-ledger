@@ -4,6 +4,8 @@
  * statistics for the selected Energy Dashboard period. It never reads the
  * presentation aggregate entities and never calls a Home Assistant service.
  */
+import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/energy-split-history-report.js';
+
 (() => {
   const TAG = 'energy-split-period-summary';
   const EPSILON = 1e-9;
@@ -14,18 +16,6 @@
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-
-  const asDate = (value) => {
-    if (value instanceof Date) return new Date(value.getTime());
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return new Date(value < 1e12 ? value * 1000 : value);
-    }
-    if (typeof value === 'string') {
-      const parsed = new Date(value);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-    return null;
-  };
 
   class EnergySplitPeriodSummary extends HTMLElement {
     constructor() {
@@ -64,6 +54,18 @@
         expected_unit_class: config.expected_unit_class,
         display_unit: config.display_unit || config.expected_unit,
         decimals: Number.isInteger(config.decimals) ? config.decimals : 2,
+        historical_data_url: typeof config.historical_data_url === 'string'
+          && config.historical_data_url.trim()
+          ? config.historical_data_url.trim()
+          : null,
+        historical_target_date: typeof config.historical_target_date === 'string'
+          && /^\d{4}-\d{2}-\d{2}$/.test(config.historical_target_date)
+          ? config.historical_target_date
+          : null,
+        historical_timezone: typeof config.historical_timezone === 'string'
+          && config.historical_timezone.trim()
+          ? config.historical_timezone.trim()
+          : null,
       };
       if (this._config.decimals < 0 || this._config.decimals > 4) {
         throw new Error(`${TAG}: decimals must be between 0 and 4`);
@@ -128,12 +130,12 @@
     }
 
     _onSelection(selection) {
-      if (!selection || !asDate(selection.start)) {
+      if (!selection || !parseDate(selection.start)) {
         this._renderError('Вибраний період недоступний.');
         return;
       }
-      const start = asDate(selection.start);
-      const selectedEnd = asDate(selection.end);
+      const start = parseDate(selection.start);
+      const selectedEnd = parseDate(selection.end);
       // HA's date selector exposes the end of a selected day. The recorder
       // period is end-exclusive, so advance it by 1 ms, matching core cards.
       const end = selectedEnd ? new Date(selectedEnd.getTime() + 1) : new Date();
@@ -145,9 +147,59 @@
       this._loadPeriod(start, end);
     }
 
+    async _loadHistoricalPeriod(start, end) {
+      const url = this._config?.historical_data_url;
+      if (!url) return null;
+      const configuredTarget = this._config?.historical_target_date;
+      const configuredTimezone = this._config?.historical_timezone;
+      const configuredTargetSelected = Boolean(configuredTarget && configuredTimezone
+        && isExactLocalDay(start, end, configuredTarget, configuredTimezone));
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const validation = validateReport(await response.json());
+        if (!validation.ok) throw new Error(validation.error);
+        const { report, reportEnd, total } = validation;
+        if (configuredTarget && configuredTimezone
+          && (report.today_local !== configuredTarget || report.timezone !== configuredTimezone)) {
+          throw new Error('звіт не відповідає налаштованому локальному дню');
+        }
+        if (!isExactLocalDay(start, end, report.today_local, report.timezone)) return null;
+        const unitScale = 10 ** this._config.decimals;
+        const values = [total.small_known_uah, total.parents_known_uah]
+          .map((value) => Math.round(value * unitScale) / unitScale);
+        return {
+          values,
+          total: values[0] + values[1],
+          start,
+          end,
+          coverage: total.coverage_fraction,
+          reportEnd,
+        };
+      } catch (error) {
+        console.warn(`[${TAG}] historical report unavailable`, error);
+        if (configuredTargetSelected) {
+          return { error: `не вдалося перевірити звіт (${error.message || error})` };
+        }
+        return null;
+      }
+    }
+
     async _loadPeriod(start, end) {
       const generation = ++this._requestGeneration;
       this._renderLoading('Завантажую статистику вибраного періоду…');
+      const historical = await this._loadHistoricalPeriod(start, end);
+      if (generation !== this._requestGeneration) return;
+      if (historical?.error) {
+        this._view = null;
+        this._renderError(`Історичні дані недоступні: ${historical.error}`);
+        return;
+      }
+      if (historical) {
+        this._view = { ...historical, historical: true };
+        this._renderValue();
+        return;
+      }
       const ids = [this._config.entities.small, this._config.entities.large];
       try {
         const metadataResponse = await this._hass.callWS({
@@ -213,6 +265,7 @@
         .label { color:var(--secondary-text-color); font-size:.78rem; white-space:nowrap; }
         .value { color:var(--primary-text-color); font-size:1.35rem; font-weight:650; line-height:1.25; overflow-wrap:anywhere; }
         .unit { color:var(--secondary-text-color); font-size:.72rem; }
+        .quality { padding:0 16px 14px; color:var(--secondary-text-color); font-size:.74rem; line-height:1.35; }
         .error { color:var(--error-color); padding:16px; line-height:1.4; }
         .loading { color:var(--secondary-text-color); padding:16px; }
         @media (max-width: 520px) { .grid { gap:5px; padding-left:8px; padding-right:8px; } .value { font-size:1.08rem; } .label { font-size:.7rem; } }
@@ -235,11 +288,14 @@
       const total = this._view.total;
       const format = (value) => value.toFixed(this._config.decimals);
       const period = `${this._view.start.toLocaleString('uk-UA')} — ${this._view.end.toLocaleString('uk-UA')}`;
+      const quality = this._view.historical
+        ? `<div class="quality">Історично відновлено з Recorder; відомі інтервали до ${escapeHtml(this._view.reportEnd.toLocaleString('uk-UA'))}. Покриття: ${Number.isFinite(this._view.coverage) ? `${(this._view.coverage * 100).toFixed(2)}%` : 'часткове'}. Пропущені інтервали не оцінені.</div>`
+        : '';
       const content = `<div class="period">${escapeHtml(period)}</div><div class="grid">
         <div class="tile"><div class="label">Малий</div><div class="value">${format(small)}</div><div class="unit">${escapeHtml(this._config.display_unit)}</div></div>
         <div class="tile"><div class="label">Великий</div><div class="value">${format(large)}</div><div class="unit">${escapeHtml(this._config.display_unit)}</div></div>
         <div class="tile"><div class="label">Разом</div><div class="value">${format(total)}</div><div class="unit">${escapeHtml(this._config.display_unit)}</div></div>
-      </div>`;
+      </div>${quality}`;
       this.shadowRoot.innerHTML = this._cardShell(content);
     }
   }
