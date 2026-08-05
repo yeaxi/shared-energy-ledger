@@ -10,7 +10,7 @@
 
 ## Що підготовлено
 
-- `home_assistant/packages/energy_split.yaml` — локальний кандидат з чотирма виправленими heartbeat references.
+- `home_assistant/packages/energy_split.yaml` — canonical local candidate: heartbeat repair plus fail-closed battery-cost hardening. The heartbeat portion is live; the battery hardening awaits a separate approval after the MQTT source is healthy.
 - `home_assistant/lovelace/energy_split.storage.json` — live storage snapshot dashboard.
 - `home_assistant/lovelace/dashboards.storage.json` і `resources.storage.json` — registry/resource snapshots.
 - `frontend/` — live custom-card artifacts, зняті read-only.
@@ -42,12 +42,16 @@ print('YAML validation: ok')
 PY
 ```
 
-## Live-change boundary
+## Live rollout status
 
-Кандидат ще не записаний у Home Assistant у цій стадії. Live edit, reload/restart та будь-які HA service calls залишаються окремими approval gates. Перед live зміною потрібні backup, hash correspondence, `ha core check`, readiness/log/entity readback і чіткий rollback.
+Heartbeat candidate застосовано після explicit approval із timestamped backup, SHA-256 correspondence, `ha core check` і restart. `binary_sensor.energy_victron_data_fresh` тепер `on` і використовує актуальний heartbeat entity. Повна cost chain поки не відновилася: після restart `victron_mqtt` не підключився до `192.168.1.115:1883`, через що `binary_sensor.energy_data_fresh` і cost totals залишаються unavailable. Це незалежний upstream/MQTT blocker; fail-closed gate навмисно не обходиться.
+
+Поточний локальний candidate додатково містить fail-closed battery-cost hardening для випадку `battery-to-loads > 0` без priced ledger. Ця окрема зміна ще не застосована до live; після відновлення MQTT потрібні окремі approval, `ha core check`, activation і перевірка.
+
+Live edits, reload/restart та будь-які HA service calls залишаються окремими approval gates для майбутніх змін. Перед кожною live зміною потрібні backup, hash correspondence, `ha core check`, readiness/log/entity readback і чіткий rollback.
 
 ## GitHub
 
-Repository name: `energy-split-dashboard`.
+Private repository: [`yeaxi/energy-split-dashboard`](https://github.com/yeaxi/energy-split-dashboard).
 
-Remote має бути private і належати автентифікованому GitHub account, але remote create/push виконується тільки після перевірки staged tree та secret scan.
+`main` is pushed at the verified local/remote commit SHA `9973b7c68adedb78023161624baeca8bc1b95783`.

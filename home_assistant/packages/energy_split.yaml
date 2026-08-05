@@ -729,14 +729,24 @@ template:
         unique_id: energy_battery_cost_rate
         unit_of_measurement: UAH/h
         state_class: measurement
-        availability: "{{ is_state('binary_sensor.energy_data_fresh','on') and states('sensor.energy_battery_weighted_cost') not in ['unknown','unavailable','none'] }}"
+        availability: >-
+          {% set battery_power = states('sensor.energy_battery_to_loads_power') %}
+          {% set weighted_cost = states('sensor.energy_battery_weighted_cost') %}
+          {{ is_state('binary_sensor.energy_data_fresh','on')
+             and battery_power not in ['unknown','unavailable','none']
+             and (weighted_cost not in ['unknown','unavailable','none']
+                  or battery_power|float(0) <= 0.5) }}
         state: >-
           {{ states('sensor.energy_battery_to_loads_power')|float(0) / 1000 * states('sensor.energy_battery_weighted_cost')|float(0) }}
+        attributes:
+          fallback_policy: zero is allowed only when battery-to-loads power is <= 0.5 W; positive unpriced discharge stays unavailable
       - name: Energy small home battery cost rate
         unique_id: energy_small_home_battery_cost_rate
         unit_of_measurement: UAH/h
         state_class: measurement
-        availability: "{{ is_state('binary_sensor.energy_data_fresh','on') }}"
+        availability: >-
+          {{ is_state('binary_sensor.energy_data_fresh','on')
+             and states('sensor.energy_battery_cost_rate') not in ['unknown','unavailable','none'] }}
         state: >-
           {{ states('sensor.energy_battery_cost_rate')|float(0)
              * states('sensor.energy_small_home_accounting_share')|float(0) / 100 }}
@@ -744,7 +754,9 @@ template:
         unique_id: energy_parents_home_battery_cost_rate
         unit_of_measurement: UAH/h
         state_class: measurement
-        availability: "{{ is_state('binary_sensor.energy_data_fresh','on') }}"
+        availability: >-
+          {{ is_state('binary_sensor.energy_data_fresh','on')
+             and states('sensor.energy_battery_cost_rate') not in ['unknown','unavailable','none'] }}
         state: >-
           {{ states('sensor.energy_battery_cost_rate')|float(0)
              * states('sensor.energy_parents_home_accounting_share')|float(0) / 100 }}

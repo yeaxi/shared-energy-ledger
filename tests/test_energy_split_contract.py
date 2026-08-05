@@ -32,6 +32,25 @@ class EnergySplitContractTests(unittest.TestCase):
         contract = json.loads(CONTRACT.read_text())
         self.assertIn(CURRENT_HEARTBEAT, contract["available_entities"])
         self.assertIn(STALE_HEARTBEAT, contract["missing_entities"])
+        snapshot = (ROOT / "live_snapshot" / "energy_split.yaml").read_text()
+        self.assertEqual(snapshot.count(STALE_HEARTBEAT), 4)
+
+    def test_unpriced_positive_battery_flow_fails_closed(self) -> None:
+        text = PACKAGE.read_text()
+        self.assertIn(
+            "battery_power = states('sensor.energy_battery_to_loads_power')",
+            text,
+        )
+        self.assertIn(
+            "or battery_power|float(0) <= 0.5",
+            text,
+        )
+        self.assertEqual(
+            text.count(
+                "states('sensor.energy_battery_cost_rate') not in ['unknown','unavailable','none']"
+            ),
+            2,
+        )
 
     def test_dashboard_keeps_consumption_and_cost_sources_distinct(self) -> None:
         dashboard = json.loads(DASHBOARD.read_text())
