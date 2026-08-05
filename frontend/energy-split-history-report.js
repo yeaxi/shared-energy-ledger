@@ -5,8 +5,8 @@ export const HISTORICAL_SERIES = Object.freeze({
 
 const REQUIRED_SCHEMA_VERSION = 1;
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 const EPSILON = 1e-7;
+const REPORT_REVISION_RE = /^[a-f0-9]{64}$/;
 
 export const parseDate = (value) => {
   if (value instanceof Date) {
@@ -66,33 +66,40 @@ const nextDateKey = (dateKey) => {
   return date.toISOString().slice(0, 10);
 };
 
+const isMidnight = (parts, date) => parts?.hour === '00'
+  && parts.minute === '00'
+  && parts.second === '00'
+  && date.getMilliseconds() === 0;
+
+const isInclusiveMidnight = (parts, date) => parts?.hour === '00'
+  && parts.minute === '00'
+  && parts.second === '00'
+  && date.getMilliseconds() <= 1;
+
 export const isExactLocalDay = (startValue, endValue, targetDate, timezone) => {
   const start = parseDate(startValue);
   const end = parseDate(endValue);
   if (!start || !end || end <= start || typeof targetDate !== 'string'
     || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return false;
   const startParts = timezoneParts(start, timezone);
-  const endMinusOneParts = timezoneParts(new Date(end.getTime() - 1), timezone);
   const endParts = timezoneParts(end, timezone);
-  if (!startParts || !endMinusOneParts || !endParts) return false;
-  if (startParts.hour !== '00' || startParts.minute !== '00' || startParts.second !== '00'
-    || start.getMilliseconds() !== 0) return false;
+  if (!startParts || !endParts || !isMidnight(startParts, start)) return false;
   const startKey = `${startParts.year}-${startParts.month}-${startParts.day}`;
-  const endMinusOneKey = `${endMinusOneParts.year}-${endMinusOneParts.month}-${endMinusOneParts.day}`;
   const endKey = `${endParts.year}-${endParts.month}-${endParts.day}`;
-  const normalEnd = endMinusOneKey === targetDate;
-  // The summary card normalizes an inclusive selector end by adding 1 ms. Also
-  // accept that representation when it lands exactly at next local midnight.
-  const inclusiveEndAdjustment = endKey === nextDateKey(targetDate)
-    && endParts.hour === '00' && endParts.minute === '00' && endParts.second === '00'
-    && end.getMilliseconds() <= 1;
-  return startKey === targetDate && (normalEnd || inclusiveEndAdjustment)
-    && end.getTime() - start.getTime() <= 25 * HOUR_MS
-    && end.getTime() - start.getTime() >= 23 * HOUR_MS;
+  const nextKey = nextDateKey(targetDate);
+  const exactEnd = endKey === nextKey && isMidnight(endParts, end);
+  const inclusiveEndAdjustment = endKey === nextKey && isInclusiveMidnight(endParts, end);
+  const duration = end.getTime() - start.getTime();
+  return startKey === targetDate
+    && (exactEnd || inclusiveEndAdjustment)
+    && duration >= 23 * HOUR_MS
+    && duration <= 25 * HOUR_MS + 1;
 };
 
-const finiteNonnegative = (value) => Number.isFinite(Number(value)) && Number(value) >= -EPSILON;
+const strictFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+const strictNonnegative = (value) => strictFiniteNumber(value) && value >= -EPSILON;
 const closeEnough = (left, right) => Math.abs(left - right) <= Math.max(EPSILON, Math.abs(right) * 1e-8);
+const normalizedNonnegative = (value) => value < 0 ? 0 : value;
 const invalid = (message) => ({ ok: false, error: message });
 
 export const validateReport = (report) => {
@@ -102,50 +109,92 @@ export const validateReport = (report) => {
   if (typeof report.today_local !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(report.today_local)) {
     return invalid('у звіті відсутня коректна today_local');
   }
+  if (typeof report.report_revision !== 'string' || !REPORT_REVISION_RE.test(report.report_revision)) {
+    return invalid('у звіті відсутня immutable report_revision');
+  }
   const reportStart = parseDate(report.period_start_utc);
   const reportEnd = parseDate(report.period_end_utc);
-  if (!reportStart || !reportEnd || reportEnd <= reportStart) return invalid('некоректні межі звіту');
-  if (localDateKey(reportStart, report.timezone) !== report.today_local
-    || localDateKey(new Date(reportEnd.getTime() - 1), report.timezone) !== report.today_local) {
-    return invalid('межі звіту не відповідають today_local');
+  const generatedAt = parseDate(report.generated_at_utc);
+  const finalizedAt = parseDate(report.finalized_at_utc);
+  if (typeof report.generated_at_utc !== 'string' || typeof report.finalized_at_utc !== 'string'
+    || !reportStart || !reportEnd || reportEnd <= reportStart || !generatedAt || !finalizedAt) {
+    return invalid('некоректні часові межі або finalized-as-of звіту');
   }
+  const reportStartParts = timezoneParts(reportStart, report.timezone);
+  const reportEndParts = timezoneParts(reportEnd, report.timezone);
+  const reportEndMinusOneKey = localDateKey(new Date(reportEnd.getTime() - 1), report.timezone);
+  const reportEndKey = localDateKey(reportEnd, report.timezone);
+  const reportNextKey = nextDateKey(report.today_local);
+  const reportEndAtNextMidnight = reportEndKey === reportNextKey
+    && reportEndParts?.hour === '00'
+    && reportEndParts.minute === '00'
+    && reportEndParts.second === '00'
+    && reportEnd.getMilliseconds() === 0;
+  if (!reportStartParts || !isMidnight(reportStartParts, reportStart)
+    || localDateKey(reportStart, report.timezone) !== report.today_local
+    || (reportEndMinusOneKey !== report.today_local && !reportEndAtNextMidnight)
+    || generatedAt.getTime() < reportEnd.getTime()
+    || finalizedAt.getTime() < generatedAt.getTime()) {
+    return invalid('межі або finalized-as-of звіту не відповідають today_local');
+  }
+
+  const reportDuration = reportEnd.getTime() - reportStart.getTime();
+  const reportDurationSeconds = reportDuration / 1000;
   const rows = Array.isArray(report.hourly) ? report.hourly : [];
   if (!rows.length) return invalid('у звіті немає погодинних рядків');
   const seen = new Set();
   let previousStart = -Infinity;
+  let rowCoverageSeconds = 0;
   let small = 0;
   let parents = 0;
   for (const row of rows) {
-    if (!row || typeof row !== 'object') return invalid('погодинний рядок має бути обʼєктом');
+    if (!row || typeof row !== 'object' || typeof row.hour_local !== 'string') {
+      return invalid('погодинний рядок має бути обʼєктом');
+    }
     const start = parseDate(row.hour_local);
     const startMs = start?.getTime();
-    if (!Number.isFinite(startMs) || startMs < previousStart) return invalid('погодинні рядки не відсортовані');
+    if (!Number.isFinite(startMs) || startMs < reportStart.getTime()
+      || startMs >= reportEnd.getTime() || startMs < previousStart) {
+      return invalid('погодинний рядок виходить за межі звіту');
+    }
     const key = start.toISOString();
     if (seen.has(key) || localDateKey(start, report.timezone) !== report.today_local) {
       return invalid('погодинні рядки мають дублікати або іншу дату');
     }
     seen.add(key);
     previousStart = startMs;
-    for (const field of ['small_known_uah', 'parents_known_uah', 'known_uah', 'coverage_fraction']) {
-      if (!finiteNonnegative(row[field])) return invalid(`некоректне поле ${field}`);
+    for (const field of ['small_known_uah', 'parents_known_uah', 'known_uah', 'coverage_seconds', 'coverage_fraction']) {
+      if (!strictNonnegative(row[field])) return invalid(`некоректне поле ${field}`);
     }
-    if (Number(row.coverage_fraction) > 1 + EPSILON) return invalid('coverage_fraction поза межами 0..1');
-    const rowSmall = Math.max(0, Number(row.small_known_uah));
-    const rowParents = Math.max(0, Number(row.parents_known_uah));
-    const rowKnown = Math.max(0, Number(row.known_uah));
+    if (row.coverage_seconds > 3600 + EPSILON || row.coverage_fraction > 1 + EPSILON
+      || !closeEnough(row.coverage_fraction, row.coverage_seconds / 3600)) {
+      return invalid('некоректне погодинне coverage');
+    }
+    const rowSmall = normalizedNonnegative(row.small_known_uah);
+    const rowParents = normalizedNonnegative(row.parents_known_uah);
+    const rowKnown = normalizedNonnegative(row.known_uah);
     if (!closeEnough(rowSmall + rowParents, rowKnown)) return invalid('погодинний total не дорівнює сумі будинків');
+    rowCoverageSeconds += row.coverage_seconds;
     small += rowSmall;
     parents += rowParents;
   }
+
   const total = report.total;
-  if (!total || !finiteNonnegative(total.small_known_uah)
-    || !finiteNonnegative(total.parents_known_uah) || !finiteNonnegative(total.known_uah)
-    || !finiteNonnegative(total.coverage_fraction) || Number(total.coverage_fraction) > 1 + EPSILON) {
-    return invalid('некоректний total звіту');
+  if (!total || !strictNonnegative(total.small_known_uah)
+    || !strictNonnegative(total.parents_known_uah) || !strictNonnegative(total.known_uah)
+    || !strictNonnegative(total.coverage_seconds) || !strictNonnegative(total.coverage_fraction)
+    || !Number.isInteger(total.valid_sample_count) || !Number.isInteger(total.sample_count)
+    || total.valid_sample_count < 0 || total.sample_count < 1
+    || total.valid_sample_count > total.sample_count
+    || total.coverage_seconds > reportDurationSeconds + EPSILON
+    || total.coverage_fraction > 1 + EPSILON
+    || !closeEnough(rowCoverageSeconds, total.coverage_seconds)
+    || !closeEnough(total.coverage_fraction, total.coverage_seconds / reportDurationSeconds)) {
+    return invalid('некоректний або неузгоджений total звіту');
   }
-  const totalSmall = Math.max(0, Number(total.small_known_uah));
-  const totalParents = Math.max(0, Number(total.parents_known_uah));
-  const totalKnown = Math.max(0, Number(total.known_uah));
+  const totalSmall = normalizedNonnegative(total.small_known_uah);
+  const totalParents = normalizedNonnegative(total.parents_known_uah);
+  const totalKnown = normalizedNonnegative(total.known_uah);
   if (!closeEnough(small, totalSmall) || !closeEnough(parents, totalParents)
     || !closeEnough(totalSmall + totalParents, totalKnown)) {
     return invalid('total звіту не відповідає погодинним рядкам');
@@ -155,12 +204,15 @@ export const validateReport = (report) => {
     report,
     reportStart,
     reportEnd,
+    generatedAt,
+    finalizedAt,
     rows,
+    report_revision: report.report_revision,
     total: {
       small_known_uah: totalSmall,
       parents_known_uah: totalParents,
       known_uah: totalKnown,
-      coverage_fraction: Math.max(0, Math.min(1, Number(total.coverage_fraction))),
+      coverage_fraction: normalizedNonnegative(Math.min(1, total.coverage_fraction)),
     },
   };
 };
@@ -177,7 +229,10 @@ export const buildHistoricalStatistics = (validated, mapping, startValue, endVal
   }
   const start = parseDate(startValue)?.getTime();
   const end = parseDate(endValue)?.getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return invalid('некоректний період серій');
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start
+    || !isExactLocalDay(start, end, validated.report.today_local, validated.report.timezone)) {
+    return invalid('некоректний або не exact-local-day період серій');
+  }
   const result = {};
   const startsById = [];
   for (const id of ids) {
@@ -189,12 +244,12 @@ export const buildHistoricalStatistics = (validated, mapping, startValue, endVal
     if (!rows.length) return invalid(`немає рядків для ${id}`);
     const stats = rows.map((row) => {
       const rowStart = parseDate(row.hour_local).getTime();
-      const value = Number(row[field]);
-      if (!Number.isFinite(value) || value < -EPSILON) return null;
+      const value = row[field];
+      if (!strictFiniteNumber(value) || value < -EPSILON) return null;
       return {
         start: rowStart,
         end: rowStart + HOUR_MS,
-        change: Math.max(0, value),
+        change: normalizedNonnegative(value),
         sum: null,
         mean: null,
         min: null,
@@ -207,5 +262,5 @@ export const buildHistoricalStatistics = (validated, mapping, startValue, endVal
     startsById.push(stats.map((row) => row.start).join(','));
   }
   if (startsById[0] !== startsById[1]) return invalid('серії мають різні часові рядки');
-  return { ok: true, statistics: result };
+  return { ok: true, statistics: result, report_revision: validated.report_revision };
 };

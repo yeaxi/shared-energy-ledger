@@ -11,7 +11,8 @@ import {
  */
 (() => {
   const TAG = 'energy-custom-graph-card';
-  const INSTALL_FLAG = '__energySplitHistoricalBridgeInstalledV2';
+  const INSTALL_FLAG = '__energySplitHistoricalBridgeInstalledV3';
+  const GENERATION_KEY = '__energySplitHistoricalGeneration';
 
   const graphConfigIsExact = (instance) => {
     const config = instance._config;
@@ -45,7 +46,17 @@ import {
       && after.rangeEnd === before.rangeEnd;
   };
 
+  const nextGeneration = (instance) => {
+    const current = Number.isInteger(instance[GENERATION_KEY]) ? instance[GENERATION_KEY] : 0;
+    const generation = current + 1;
+    instance[GENERATION_KEY] = generation;
+    return generation;
+  };
+
+  const isCurrentGeneration = (instance, generation) => instance[GENERATION_KEY] === generation;
+
   const clearError = (instance) => {
+    instance.__energySplitHistoricalReportRevision = undefined;
     if (!instance.__energySplitHistoricalError) return;
     instance.__energySplitHistoricalError = false;
     instance._disabledMessage = undefined;
@@ -53,6 +64,7 @@ import {
 
   const failClosed = (instance, message) => {
     instance.__energySplitHistoricalError = true;
+    instance.__energySplitHistoricalReportRevision = undefined;
     instance._disabledMessage = `Історичні дані недоступні: ${message}`;
     // _statistics is reactive in the existing bundle. Clearing only this field
     // makes the existing graph show its disabled message without touching the
@@ -68,8 +80,8 @@ import {
     return validation;
   };
 
-  const applyReport = async (instance) => {
-    if (!graphConfigIsExact(instance)) return;
+  const applyReport = async (instance, generation) => {
+    if (!isCurrentGeneration(instance, generation) || !graphConfigIsExact(instance)) return;
     const config = instance._config;
     const before = snapshot(instance);
     const start = instance._periodStart?.getTime?.();
@@ -83,21 +95,23 @@ import {
 
     try {
       const validated = await fetchValidatedReport(config.historical_data_url.trim());
-      if (validated.report.today_local !== config.historical_target_date
+      if (!isCurrentGeneration(instance, generation)
+        || validated.report.today_local !== config.historical_target_date
         || validated.report.timezone !== config.historical_timezone
         || !isExactLocalDay(start, end, validated.report.today_local, validated.report.timezone)) {
-        throw new Error('звіт не відповідає вибраному локальному дню');
+        return;
       }
       const built = buildHistoricalStatistics(validated, config.historical_series, start, end);
       if (!built.ok) throw new Error(built.error);
-      if (!sameSnapshot(instance, before)) return;
+      if (!isCurrentGeneration(instance, generation) || !sameSnapshot(instance, before)) return;
 
       clearError(instance);
+      instance.__energySplitHistoricalReportRevision = built.report_revision;
       // Atomic reactive replacement. Keep the card's native metadata and all
       // native period/aggregation fields untouched.
       instance._statistics = { ...(instance._statistics || {}), ...built.statistics };
     } catch (error) {
-      if (!sameSnapshot(instance, before)) return;
+      if (!isCurrentGeneration(instance, generation) || !sameSnapshot(instance, before)) return;
       failClosed(instance, error instanceof Error ? error.message : String(error));
     }
   };
@@ -108,9 +122,27 @@ import {
     const originalLoad = Card.prototype._loadStatistics;
     if (typeof originalLoad !== 'function') return false;
     Card.prototype[INSTALL_FLAG] = true;
+
+    const originalSetConfig = Card.prototype.setConfig;
+    if (typeof originalSetConfig === 'function') {
+      Card.prototype.setConfig = function historicalAwareSetConfig(...args) {
+        nextGeneration(this);
+        return originalSetConfig.apply(this, args);
+      };
+    }
+    const originalDisconnected = Card.prototype.disconnectedCallback;
+    if (typeof originalDisconnected === 'function') {
+      Card.prototype.disconnectedCallback = function historicalAwareDisconnect(...args) {
+        nextGeneration(this);
+        return originalDisconnected.apply(this, args);
+      };
+    }
     Card.prototype._loadStatistics = async function historicalAwareLoad(...args) {
+      const generation = nextGeneration(this);
       const result = await originalLoad.apply(this, args);
-      if ((args[0] || 'main') === 'main') await applyReport(this);
+      if ((args[0] || 'main') === 'main' && isCurrentGeneration(this, generation)) {
+        await applyReport(this, generation);
+      }
       return result;
     };
     return true;

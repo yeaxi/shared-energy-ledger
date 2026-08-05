@@ -1,11 +1,12 @@
 {
+  "finalized_at_utc": "2026-08-05T20:25:02.401245+00:00",
   "freshness_policy": {
     "heartbeat_s": 900,
     "pv_battery_ac_s": 180,
     "shelter_accumulator_s": 600,
     "small_parents_s": 1800
   },
-  "generated_at_utc": "2026-08-05T18:47:07.759465+00:00",
+  "generated_at_utc": "2026-08-05T20:25:02.401245+00:00",
   "hourly": [
     {
       "coverage_fraction": 0.6166666666666667,
@@ -348,126 +349,161 @@
       "unpriced_discharge_kwh": 0.0
     },
     {
-      "coverage_fraction": 0.6166666666666667,
-      "coverage_seconds": 2220.0,
+      "coverage_fraction": 0.8333333333333334,
+      "coverage_seconds": 3000.0,
       "hour_local": "2026-08-05T21:00:00+0300",
-      "known_uah": 4.446432392007939,
-      "parents_battery_uah": 0.0030825715025920965,
-      "parents_consumption_kwh": 0.20256999999999994,
-      "parents_grid_uah": 0.8643911858095588,
-      "parents_known_uah": 0.8674737573121508,
-      "small_battery_uah": 0.010079420505346501,
-      "small_consumption_kwh": 0.8351333333333334,
-      "small_grid_uah": 3.5688792141904413,
-      "small_known_uah": 3.578958634695788,
-      "unpriced_battery_seconds": 1860.0,
+      "known_uah": 5.838720305652193,
+      "parents_battery_uah": 0.004125833034683536,
+      "parents_consumption_kwh": 0.24324482499999994,
+      "parents_grid_uah": 1.0382669652789203,
+      "parents_known_uah": 1.0423927983136039,
+      "small_battery_uah": 0.014100072617508912,
+      "small_consumption_kwh": 1.1179401750000004,
+      "small_grid_uah": 4.782227434721079,
+      "small_known_uah": 4.796327507338589,
+      "unpriced_battery_seconds": 2460.0,
+      "unpriced_charge_kwh": 0.0,
+      "unpriced_discharge_kwh": 0.0
+    },
+    {
+      "coverage_fraction": 0.9666666666666667,
+      "coverage_seconds": 3480.0,
+      "hour_local": "2026-08-05T22:00:00+0300",
+      "known_uah": 5.21738327016047,
+      "parents_battery_uah": 0.006250904617887019,
+      "parents_consumption_kwh": 0.37770765833333336,
+      "parents_grid_uah": 1.6068763369537071,
+      "parents_known_uah": 1.613127241571594,
+      "small_battery_uah": 0.016706765542582627,
+      "small_consumption_kwh": 0.8402673416666667,
+      "small_grid_uah": 3.5875492630462933,
+      "small_known_uah": 3.604256028588876,
+      "unpriced_battery_seconds": 2220.0,
+      "unpriced_charge_kwh": 0.0,
+      "unpriced_discharge_kwh": 0.0
+    },
+    {
+      "coverage_fraction": 0.4166666666666667,
+      "coverage_seconds": 1500.0,
+      "hour_local": "2026-08-05T23:00:00+0300",
+      "known_uah": 1.117530761657665,
+      "parents_battery_uah": 0.0008245615084635878,
+      "parents_consumption_kwh": 0.18938401666666665,
+      "parents_grid_uah": 0.39706440771206264,
+      "parents_known_uah": 0.39788896922052625,
+      "small_battery_uah": 0.0019320001492014308,
+      "small_consumption_kwh": 0.3319751500000001,
+      "small_grid_uah": 0.7177097922879373,
+      "small_known_uah": 0.7196417924371388,
+      "unpriced_battery_seconds": 1380.0,
       "unpriced_charge_kwh": 0.0,
       "unpriced_discharge_kwh": 0.0
     }
   ],
   "ledger_reconstruction": {
-    "ending_stock_cost_uah_simulated": 0.544073753405817,
-    "ending_stock_kwh_simulated": 0.15099999999995362,
-    "policy": "carry the last snapshot while freshness was on; skip cumulative charge/discharge during invalid intervals rather than price with zero",
+    "ending_stock_cost_uah_simulated": 0.402690774307946,
+    "ending_stock_kwh_simulated": 0.17099999999996385,
+    "policy": "carry the last valid snapshot while freshness was on; when the trusted stock/cost pair is invalid, leave battery pricing unknown and skip cumulative charge/discharge pricing rather than price with zero",
     "starting_stock_cost_uah": 0.11103194563932,
     "starting_stock_kwh": 0.0310000000000058
   },
   "method": "read-only Recorder state reconstruction; package allocation formula; trapezoidal one-minute integration",
-  "period_end_local": "2026-08-05T21:47:07.611835+03:00",
-  "period_end_utc": "2026-08-05T18:47:07.611835+00:00",
+  "period_end_local": "2026-08-05T23:25:01.785704+03:00",
+  "period_end_utc": "2026-08-05T20:25:01.785704+00:00",
   "period_start_utc": "2026-08-04T21:00:00+00:00",
   "raw_sample_tail": [
     {
       "fresh": true,
-      "local": "2026-08-05T21:38:00+03:00",
-      "parents_age_s": 8.2,
-      "small_age_s": 14.8,
-      "stock_cost_uah": 0.5762063495892785,
+      "local": "2026-08-05T23:16:00+03:00",
+      "parents_age_s": 49.3,
+      "small_age_s": 128.4,
+      "stock_cost_uah": 0.3413489697228297,
+      "stock_kwh": 0.1449999999999534,
+      "ts": "2026-08-05T20:16:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:17:00+03:00",
+      "parents_age_s": 109.3,
+      "small_age_s": 27.2,
+      "stock_cost_uah": 0.33873326880540006,
+      "stock_kwh": 0.1439999999999486,
+      "ts": "2026-08-05T20:17:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:18:00+03:00",
+      "parents_age_s": 169.3,
+      "small_age_s": 87.2,
+      "stock_cost_uah": 0.33611958617578963,
+      "stock_kwh": 0.14299999999997226,
+      "ts": "2026-08-05T20:18:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:19:00+03:00",
+      "parents_age_s": 229.3,
+      "small_age_s": 147.2,
+      "stock_cost_uah": 0.33611958617578963,
+      "stock_kwh": 0.14299999999997226,
+      "ts": "2026-08-05T20:19:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:20:00+03:00",
+      "parents_age_s": 289.3,
+      "small_age_s": 7.0,
+      "stock_cost_uah": 0.33350793437953896,
+      "stock_kwh": 0.14199999999996749,
+      "ts": "2026-08-05T20:20:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:21:00+03:00",
+      "parents_age_s": 349.3,
+      "small_age_s": 20.9,
+      "stock_cost_uah": 0.33089832612929476,
+      "stock_kwh": 0.1409999999999627,
+      "ts": "2026-08-05T20:21:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:22:00+03:00",
+      "parents_age_s": 409.3,
+      "small_age_s": 80.9,
+      "stock_cost_uah": 0.33089832612929476,
+      "stock_kwh": 0.1409999999999627,
+      "ts": "2026-08-05T20:22:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:23:00+03:00",
+      "parents_age_s": 43.7,
+      "small_age_s": 140.9,
+      "stock_cost_uah": 0.34749077430788705,
+      "stock_kwh": 0.1479999999999393,
+      "ts": "2026-08-05T20:23:00+00:00"
+    },
+    {
+      "fresh": true,
+      "local": "2026-08-05T23:24:00+03:00",
+      "parents_age_s": 103.7,
+      "small_age_s": 200.9,
+      "stock_cost_uah": 0.3738907743079449,
       "stock_kwh": 0.1589999999999634,
-      "ts": "2026-08-05T18:38:00+00:00"
+      "ts": "2026-08-05T20:24:00+00:00"
     },
     {
       "fresh": true,
-      "local": "2026-08-05T21:39:00+03:00",
-      "parents_age_s": 68.2,
-      "small_age_s": 74.8,
-      "stock_cost_uah": 0.5721797503608218,
-      "stock_kwh": 0.15799999999995862,
-      "ts": "2026-08-05T18:39:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:40:00+03:00",
-      "parents_age_s": 128.2,
-      "small_age_s": 49.7,
-      "stock_cost_uah": 0.5681559827773921,
-      "stock_kwh": 0.15699999999995384,
-      "ts": "2026-08-05T18:40:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:41:00+03:00",
-      "parents_age_s": 188.2,
-      "small_age_s": 16.7,
-      "stock_cost_uah": 0.5641350628709499,
-      "stock_kwh": 0.15599999999994907,
-      "ts": "2026-08-05T18:41:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:42:00+03:00",
-      "parents_age_s": 248.2,
-      "small_age_s": 6.7,
-      "stock_cost_uah": 0.5601170068675752,
-      "stock_kwh": 0.1549999999999443,
-      "ts": "2026-08-05T18:42:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:43:00+03:00",
-      "parents_age_s": 32.8,
-      "small_age_s": 53.6,
-      "stock_cost_uah": 0.5561018311910845,
-      "stock_kwh": 0.15399999999993952,
-      "ts": "2026-08-05T18:43:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:44:00+03:00",
-      "parents_age_s": 27.8,
-      "small_age_s": 13.5,
-      "stock_cost_uah": 0.5520895524668554,
-      "stock_kwh": 0.15299999999996317,
-      "ts": "2026-08-05T18:44:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:45:00+03:00",
-      "parents_age_s": 87.8,
-      "small_age_s": 14.5,
-      "stock_cost_uah": 0.5520895524668554,
-      "stock_kwh": 0.15299999999996317,
-      "ts": "2026-08-05T18:45:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:46:00+03:00",
-      "parents_age_s": 147.8,
-      "small_age_s": 74.5,
-      "stock_cost_uah": 0.5480801875251733,
-      "stock_kwh": 0.1519999999999584,
-      "ts": "2026-08-05T18:46:00+00:00"
-    },
-    {
-      "fresh": true,
-      "local": "2026-08-05T21:47:00+03:00",
-      "parents_age_s": 207.8,
-      "small_age_s": 134.5,
-      "stock_cost_uah": 0.544073753405817,
-      "stock_kwh": 0.15099999999995362,
-      "ts": "2026-08-05T18:47:00+00:00"
+      "local": "2026-08-05T23:25:00+03:00",
+      "parents_age_s": 163.7,
+      "small_age_s": 260.9,
+      "stock_cost_uah": 0.402690774307946,
+      "stock_kwh": 0.17099999999996385,
+      "ts": "2026-08-05T20:25:00+00:00"
     }
   ],
+  "report_revision": "027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b30b10",
   "schema_version": 1,
   "tariffs_uah_per_kwh": {
     "day": 4.32,
@@ -476,22 +512,22 @@
   "timezone": "Europe/Kyiv",
   "today_local": "2026-08-05",
   "total": {
-    "coverage_fraction": 0.7673317928717187,
-    "coverage_seconds": 60180.0,
-    "known_uah": 46.93207692384103,
-    "parents_battery_uah": 3.542551430231252,
-    "parents_consumption_kwh": 16.824334166666667,
-    "parents_grid_uah": 21.422670887335812,
-    "parents_known_uah": 24.965222317567065,
-    "sample_count": 1308,
-    "small_battery_uah": 1.5454294936097768,
-    "small_consumption_kwh": 11.570122483333334,
-    "small_grid_uah": 20.42142511266419,
-    "small_known_uah": 21.966854606273966,
-    "unknown_battery_seconds": 40500.0,
-    "unpriced_charge_kwh": 1.0830000000000268,
-    "unpriced_discharge_kwh": 0.7199999999999989,
-    "valid_sample_count": 1014
+    "coverage_fraction": 0.7821898367800699,
+    "coverage_seconds": 65940.0,
+    "known_uah": 54.65927886930342,
+    "parents_battery_uah": 3.550670157889694,
+    "parents_consumption_kwh": 17.432100666666667,
+    "parents_grid_uah": 23.600487411470944,
+    "parents_known_uah": 27.151157569360638,
+    "sample_count": 1406,
+    "small_battery_uah": 1.5680889114137233,
+    "small_consumption_kwh": 13.025171816666667,
+    "small_grid_uah": 25.94003238852906,
+    "small_known_uah": 27.508121299942783,
+    "unknown_battery_seconds": 44700.0,
+    "unpriced_charge_kwh": 1.0840000000000316,
+    "unpriced_discharge_kwh": 0.7280000000000086,
+    "valid_sample_count": 1111
   },
   "trusted_ledger_snapshot": {
     "input_number.energy_battery_ledger_stock_cost": {
@@ -503,5 +539,11 @@
       "updated": "2026-08-04T13:17:00.385763+00:00"
     }
   },
-  "trusted_ledger_snapshot_cutoff_utc": "2026-08-04T13:17:50+00:00"
+  "trusted_ledger_snapshot_cutoff_utc": "2026-08-04T13:17:50+00:00",
+  "trusted_ledger_validation": {
+    "reason": null,
+    "stock_cost_uah": 0.11103194563932,
+    "stock_kwh": 0.0310000000000058,
+    "valid": true
+  }
 }

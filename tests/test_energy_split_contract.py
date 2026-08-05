@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import unittest
@@ -112,6 +113,37 @@ class EnergySplitContractTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("historical_frontend_behavior=ok", result.stdout)
+
+    def test_reconstruction_ledger_missing_pair_fails_closed(self) -> None:
+        path = ROOT / "tools" / "reconstruct_today_cost.py"
+        spec = importlib.util.spec_from_file_location("reconstruct_today_cost", path)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        valid = module.normalize_trusted_ledger({
+            module.ENTITY["stock_kwh"]: {"state": "12.5"},
+            module.ENTITY["stock_cost"]: {"state": "37.5"},
+        })
+        self.assertTrue(valid["valid"])
+        self.assertEqual(valid["stock_kwh"], 12.5)
+        invalid = module.normalize_trusted_ledger({
+            module.ENTITY["stock_kwh"]: {"state": "12.5"},
+            module.ENTITY["stock_cost"]: {"state": "unavailable"},
+        })
+        self.assertFalse(invalid["valid"])
+        self.assertIsNone(invalid["stock_kwh"])
+        self.assertIsNone(invalid["stock_cost_uah"])
+        negative = module.normalize_trusted_ledger({
+            module.ENTITY["stock_kwh"]: {"state": "-1"},
+            module.ENTITY["stock_cost"]: {"state": "2"},
+        })
+        self.assertFalse(negative["valid"])
+        inconsistent = module.normalize_trusted_ledger({
+            module.ENTITY["stock_kwh"]: {"state": "0"},
+            module.ENTITY["stock_cost"]: {"state": "2"},
+        })
+        self.assertFalse(inconsistent["valid"])
 
 
 if __name__ == "__main__":

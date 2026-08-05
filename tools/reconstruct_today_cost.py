@@ -9,6 +9,7 @@ uses the configured freshness policy, and reports coverage/uncertainty explicitl
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from bisect import bisect_right
@@ -235,6 +236,31 @@ def trusted_snapshot(con: sqlite3.Connection, cutoff: float):
     return result
 
 
+def normalize_trusted_ledger(snapshot):
+    stock = parse_float(snapshot.get(ENTITY["stock_kwh"], {}).get("state"))
+    cost = parse_float(snapshot.get(ENTITY["stock_cost"], {}).get("state"))
+    if stock is None or cost is None:
+        return {
+            "valid": False,
+            "reason": "trusted stock/cost pair is incomplete or non-numeric",
+            "stock_kwh": None,
+            "stock_cost_uah": None,
+        }
+    if stock < 0 or cost < 0 or (stock <= 0.01 and cost > 0.01):
+        return {
+            "valid": False,
+            "reason": "trusted stock/cost pair is negative or inconsistent",
+            "stock_kwh": None,
+            "stock_cost_uah": None,
+        }
+    return {
+        "valid": True,
+        "reason": None,
+        "stock_kwh": stock,
+        "stock_cost_uah": cost,
+    }
+
+
 def main():
     con = sqlite3.connect("file:/config/home-assistant_v2.db?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
@@ -248,6 +274,10 @@ def main():
     # are deliberately not used as a pricing source.
     trusted_cutoff = datetime(2026, 8, 4, 13, 17, 50, tzinfo=UTC).timestamp()
     trusted = trusted_snapshot(con, trusted_cutoff)
+    ledger = normalize_trusted_ledger(trusted)
+    ledger_valid = ledger["valid"]
+    trusted_stock = ledger["stock_kwh"]
+    trusted_cost = ledger["stock_cost_uah"]
     entity_ids = list(ENTITY.values())
     series = load_series(con, entity_ids, start_ts, now_ts)
     # Include the last state before the local-day boundary for forward filling.
@@ -257,14 +287,12 @@ def main():
             series[entity_id].insert(0, prior)
     forward = {name: Forward(series[entity_id]) for name, entity_id in ENTITY.items()}
 
-    trusted_stock = parse_float(trusted[ENTITY["stock_kwh"]]["state"]) or 0.0
-    trusted_cost = parse_float(trusted[ENTITY["stock_cost"]]["state"]) or 0.0
     first_charge = forward["charge_total"].at(start_ts)
     first_discharge = forward["discharge_total"].at(start_ts)
     previous_charge = parse_float(first_charge[1]) if first_charge else None
     previous_discharge = parse_float(first_discharge[1]) if first_discharge else None
-    stock = trusted_stock
-    stock_cost = trusted_cost
+    stock = trusted_stock if ledger_valid else None
+    stock_cost = trusted_cost if ledger_valid else None
     previous_rate = None
     previous_valid = False
     previous_allocation = None
@@ -309,11 +337,11 @@ def main():
         discharge_now = parse_float(values["discharge_total"][0])
         delta_charge = max(charge_now - previous_charge, 0.0) if charge_now is not None and previous_charge is not None else 0.0
         delta_discharge = max(discharge_now - previous_discharge, 0.0) if discharge_now is not None and previous_discharge is not None else 0.0
-        if sample["ok"] and alloc is not None:
+        if sample["ok"] and alloc is not None and ledger_valid and stock is not None and stock_cost is not None:
             charge_power = alloc["battery_charge_power"]
             share = max(min(alloc["grid_to_battery_power"] / charge_power, 1.0), 0.0) if charge_power > 0 else 0.0
             charge_cost = delta_charge * share * alloc["tariff"] / CHARGE_EFFICIENCY
-            discharge_cost = (stock_cost / stock * delta_discharge / DISCHARGE_EFFICIENCY) if stock > 0.01 else 0.0
+            discharge_cost = stock_cost / stock * delta_discharge / DISCHARGE_EFFICIENCY if stock > 0.01 else 0.0
             stock = max(stock + delta_charge - delta_discharge, 0.0)
             stock_cost = max(stock_cost + charge_cost - discharge_cost, 0.0)
         else:
@@ -325,7 +353,7 @@ def main():
             previous_discharge = discharge_now
 
         rate = None
-        if alloc is not None:
+        if alloc is not None and ledger_valid and stock is not None and stock_cost is not None:
             weighted = stock_cost / stock if stock > 0.01 else None
             if weighted is not None and alloc["battery_to_loads_power"] > 0:
                 rate = {
@@ -397,9 +425,11 @@ def main():
         row["parents_known_uah"]=row["parents_grid_uah"]+row["parents_battery_uah"]
         row["known_uah"]=row["small_known_uah"]+row["parents_known_uah"]
         hourly_out.append(row)
+    generated_at = datetime.now(UTC).isoformat()
     result={
         "schema_version": 1,
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": generated_at,
+        "finalized_at_utc": generated_at,
         "timezone": "Europe/Kyiv",
         "today_local": str(start_local.date()),
         "period_start_utc": iso(start_ts),
@@ -410,17 +440,21 @@ def main():
         "freshness_policy": {"pv_battery_ac_s": 180, "small_parents_s": 1800, "shelter_accumulator_s": 600, "heartbeat_s": 900},
         "trusted_ledger_snapshot_cutoff_utc": iso(trusted_cutoff),
         "trusted_ledger_snapshot": trusted,
+        "trusted_ledger_validation": ledger,
         "ledger_reconstruction": {
             "starting_stock_kwh": trusted_stock,
             "starting_stock_cost_uah": trusted_cost,
             "ending_stock_kwh_simulated": stock,
             "ending_stock_cost_uah_simulated": stock_cost,
-            "policy": "carry the last snapshot while freshness was on; skip cumulative charge/discharge during invalid intervals rather than price with zero",
+            "policy": "carry the last valid snapshot while freshness was on; when the trusted stock/cost pair is invalid, leave battery pricing unknown and skip cumulative charge/discharge pricing rather than price with zero",
         },
         "total": total,
         "hourly": hourly_out,
         "raw_sample_tail": raw_rows[-10:],
     }
+    result["report_revision"] = hashlib.sha256(
+        json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
     con.close()
 

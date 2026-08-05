@@ -30,6 +30,12 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
       this._view = null;
     }
 
+    _invalidateRequests() {
+      this._requestGeneration += 1;
+      this._selection = null;
+      this._view = null;
+    }
+
     setConfig(config) {
       if (!config || config.type !== `custom:${TAG}`) {
         throw new Error(`${TAG}: invalid card configuration`);
@@ -43,6 +49,7 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
       if (!config.expected_unit || !config.expected_unit_class) {
         throw new Error(`${TAG}: expected_unit and expected_unit_class are required`);
       }
+      this._invalidateRequests();
       this._config = {
         title: config.title || 'Energy Split',
         collection_key: config.collection_key,
@@ -89,6 +96,7 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
     }
 
     disconnectedCallback() {
+      this._invalidateRequests();
       this._unsubscribeCollection();
     }
 
@@ -115,11 +123,13 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
       const key = `_${this._config.collection_key}`;
       const collection = this._hass.connection[key];
       if (!collection || typeof collection.subscribe !== 'function') {
+        this._invalidateRequests();
         this._unsubscribeCollection();
         this._renderError('Вибір періоду Energy Dashboard недоступний. Дані не підмінено поточним станом.');
         return;
       }
       if (collection === this._collection) return;
+      this._invalidateRequests();
       this._unsubscribeCollection();
       this._collection = collection;
       try {
@@ -131,6 +141,7 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
 
     _onSelection(selection) {
       if (!selection || !parseDate(selection.start)) {
+        this._invalidateRequests();
         this._renderError('Вибраний період недоступний.');
         return;
       }
@@ -140,6 +151,7 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
       // period is end-exclusive, so advance it by 1 ms, matching core cards.
       const end = selectedEnd ? new Date(selectedEnd.getTime() + 1) : new Date();
       if (!(end > start)) {
+        this._invalidateRequests();
         this._renderError('Некоректні межі вибраного періоду.');
         return;
       }
@@ -175,6 +187,7 @@ import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/
           end,
           coverage: total.coverage_fraction,
           reportEnd,
+          revision: validation.report_revision,
         };
       } catch (error) {
         console.warn(`[${TAG}] historical report unavailable`, error);
