@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-08-05T16:15:59Z",
+  "home_assistant_version": "2026.7.4",
+  "source": "read-only Home Assistant entity queries over the connected HA runtime",
+  "available_entities": {
+    "sensor.victron_multiplus_ii_last_ingest": {
+      "state": "2026-08-05T16:14:14+00:00",
+      "last_updated": "2026-08-05T16:14:15.048789+00:00"
+    },
+    "sensor.cerbo_gx_ac_active_input_source": {
+      "state": "grid",
+      "last_updated": "2026-08-05T16:10:16.413969+00:00"
+    },
+    "binary_sensor.energy_data_fresh": {
+      "state": "off",
+      "reason_at_capture": "package referenced a missing heartbeat entity"
+    },
+    "sensor.energy_split_total_houses_consumption": {
+      "state": "7889.77",
+      "unit": "kWh"
+    }
+  },
+  "missing_entities": [
+    "sensor.victron_multiplus_ii_6k5_last_ingest"
+  ],
+  "cost_entities_unavailable_at_capture": [
+    "sensor.energy_small_home_total_cost_consistent",
+    "sensor.energy_parents_home_total_cost_consistent",
+    "sensor.energy_small_home_grid_accounting_cost_total",
+    "sensor.energy_parents_home_grid_accounting_cost_total"
+  ]
+}

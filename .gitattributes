@@ -1,0 +1,4 @@
+# The live custom graph card is a byte-preserved minified build artifact.
+# Treat it as binary for whitespace checks; do not rewrite it without a new
+# live artifact/hash and an explicit frontend change.
+frontend/energycustomgraph.js -diff

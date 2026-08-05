@@ -1,0 +1,38 @@
+# Operating-system/editor files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Python/test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+env/
+
+# Secrets and local runtime state
+.env
+.env.*
+!.env.example
+*.token
+*.secret
+*.pem
+*.key
+*.p12
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated archives and temporary files
+*.tar
+*.tar.gz
+*.zip
+*.tmp
+*.bak
