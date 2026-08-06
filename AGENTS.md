@@ -49,6 +49,31 @@ Dashboard показує два окремі класи даних:
 4. Після зміни entity ID оновлювати всі шаблони, diagnostic attributes, documentation і regression tests разом.
 5. У звітах фіксувати точний source, timestamp/boundary, resolution/coverage, tariff/denominator і uncertainty.
 
+## Residual fallback contract
+
+When `sensor.lichilnik_budinku_power` is unavailable, the accounting candidate may
+select `victron_total_minus_small`:
+
+```text
+parents = sensor.cerbo_gx_consumption_power_l1
+          - small-home accounting load
+```
+
+Direct meter selection wins. The Victron total is treated as a qualified whole-home
+AC-load boundary under the current source contract; this assumption must remain
+explicit in topology reviews because units alone cannot prove physical coverage.
+The fallback is an estimate, not an independent parents-home measurement. The
+selector is a closed enum (`direct_meter`, `victron_total_minus_small`); any other
+state keeps the accounting chain unavailable. Negative, stale, future, unaligned,
+non-finite or wrong-unit candidates remain unknown and are never clamped to zero.
+
+The historical tool additionally derives small-home accounting power from the
+monotonic cumulative `sensor.entire_homes_spent_electricity`; that series already
+contains the shelter terms, so they must not be added a second time. Report v2
+requires `direct + derived = coverage`; transition-excluded seconds are tracked
+separately and must reconcile with hourly rows. Recorder unit metadata is part of
+historical validation, and tariff mode/value segments remain explicit in the report.
+
 ## Verification
 
 Мінімальний локальний gate:

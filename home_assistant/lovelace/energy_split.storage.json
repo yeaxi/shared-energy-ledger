@@ -63,8 +63,8 @@
                   "expected_unit_class": "monetary",
                   "display_unit": "грн",
                   "decimals": 2,
-                  "historical_data_url": "/local/energy-split/energy_cost_2026-08-05.json",
-                  "historical_target_date": "2026-08-05",
+                  "historical_data_url": "/local/energy-split/energy_cost_2026-08-06.json",
+                  "historical_target_date": "2026-08-06",
                   "historical_timezone": "Europe/Kyiv"
                 }
               ],
@@ -136,8 +136,8 @@
                   "allow_compare": false,
                   "show_stack_sums": true,
                   "tooltip_precision": 2,
-                  "historical_data_url": "/local/energy-split/energy_cost_2026-08-05.json",
-                  "historical_target_date": "2026-08-05",
+                  "historical_data_url": "/local/energy-split/energy_cost_2026-08-06.json",
+                  "historical_target_date": "2026-08-06",
                   "historical_timezone": "Europe/Kyiv",
                   "historical_series": {
                     "sensor.energy_small_home_total_cost_consistent": "small_known_uah",

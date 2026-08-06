@@ -54,6 +54,40 @@ report revision:    027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b3
 Це відома підтверджена сума за валідними Recorder-інтервалами, а не оцінка
 невідомих періодів. Report не змінює Recorder або live sensor states.
 
+## Derived fallback for missing parents-meter intervals
+
+Поточний candidate package і read-only reconstruction tool тепер мають fallback:
+
+```text
+parents accounting load = total Victron consumption
+                         - small-home accounting load
+```
+
+Канонічне джерело загального навантаження —
+`sensor.cerbo_gx_consumption_power_l1`. Малий будинок береться з
+`sensor.home_electricity_meter_power`; для historical reconstruction, якщо цей
+power sample stale або відсутній, дозволено лише validated delta з монотонного
+`sensor.entire_homes_spent_electricity`. До small-home accounting load входять
+також shelter dehumidifier/heating згідно з чинною фінансовою політикою.
+
+Fallback застосовується тільки якщо всі потрібні значення finite, невід'ємні та
+в W, total і small узгоджені за часом (skew до 180 s), delta cumulative energy
+не має reset/gap понад 900 s, а residual `total - small` не від'ємний. Для
+cumulative small-energy fallback shelter terms уже включені в cumulative series
+і вдруге не додаються. Нульовий shelter/accumulator допускається лише за свіжого
+підтвердженого `off` switch state (до 6 годин). Direct parents meter має
+пріоритет. При порушенні будь-якої умови інтервал залишається unknown — його не
+перетворюють на `0 UAH` і не clamp-ять мовчки.
+
+Походження derived рядків позначається `victron_total_minus_small`. Валідні
+тариф, battery/grid allocation і trusted ledger усе ще обов'язкові для UAH;
+сам derived load не є підтвердженою вартістю. Historical report є additive
+presentation artifact і не переписує Recorder. Candidate package ще потребує
+окремого live approval перед зміною `/config`.
+
+Поточний код перевіряється 18 Python contract tests, включно з residual,
+energy-delta, reset/gap, alignment і fail-closed cases.
+
 ## Фінальна live-перевірка
 
 ```text
@@ -75,7 +109,8 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 
 Пройдено:
 
-- `python3 -m unittest discover -s tests -v` — 9/9;
+- prior presentation rollout: `python3 -m unittest discover -s tests -v` — 9/9;
+- current fallback candidate: `python3 -m unittest discover -s tests -v` — 18/18;
 - `node tests/historical_frontend_behavior.mjs`;
 - JavaScript syntax checks для shared report, bridge і summary;
 - Python compilation check для reconstruction tool;
@@ -124,7 +159,7 @@ Pre-change backup для follow-up presentation rollout:
 - `frontend/energy-split-history-bridge.js` — existing graph adapter;
 - `frontend/energy-split-period-summary.js` — existing summary card;
 - `tools/reconstruct_today_cost.py` — deterministic read-only reconstruction;
-- `reports/energy_cost_2026-08-05.json` — current report;
+- `reports/energy_cost_2026-08-05.json` і `reports/energy_cost_2026-08-06.json` — additive reports;
 - `tests/` — contract and behavioral regression tests.
 
 Private repository: [`yeaxi/energy-split-dashboard`](https://github.com/yeaxi/energy-split-dashboard).

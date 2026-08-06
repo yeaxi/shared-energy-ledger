@@ -3,7 +3,7 @@ export const HISTORICAL_SERIES = Object.freeze({
   'sensor.energy_parents_home_total_cost_consistent': 'parents_known_uah',
 });
 
-const REQUIRED_SCHEMA_VERSION = 1;
+const SUPPORTED_SCHEMA_VERSIONS = new Set([1, 2]);
 const HOUR_MS = 60 * 60 * 1000;
 const EPSILON = 1e-7;
 const REPORT_REVISION_RE = /^[a-f0-9]{64}$/;
@@ -104,7 +104,11 @@ const invalid = (message) => ({ ok: false, error: message });
 
 export const validateReport = (report) => {
   if (!report || typeof report !== 'object' || Array.isArray(report)) return invalid('звіт має бути JSON-обʼєктом');
-  if (report.schema_version !== REQUIRED_SCHEMA_VERSION) return invalid('непідтримувана версія звіту');
+  if (!SUPPORTED_SCHEMA_VERSIONS.has(report.schema_version)) return invalid('непідтримувана версія звіту');
+  const hasProvenanceV2 = report.schema_version === 2;
+  if (hasProvenanceV2 && report.provenance_schema !== 'direct_allocation_v1') {
+    return invalid('у звіті відсутня provenance schema');
+  }
   if (typeof report.timezone !== 'string' || !report.timezone.trim()) return invalid('у звіті відсутня timezone');
   if (typeof report.today_local !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(report.today_local)) {
     return invalid('у звіті відсутня коректна today_local');
@@ -145,6 +149,9 @@ export const validateReport = (report) => {
   const seen = new Set();
   let previousStart = -Infinity;
   let rowCoverageSeconds = 0;
+  let rowDirectAllocationSeconds = 0;
+  let rowDerivedAllocationSeconds = 0;
+  let rowTransitionExcludedSeconds = 0;
   let small = 0;
   let parents = 0;
   for (const row of rows) {
@@ -166,6 +173,18 @@ export const validateReport = (report) => {
     for (const field of ['small_known_uah', 'parents_known_uah', 'known_uah', 'coverage_seconds', 'coverage_fraction']) {
       if (!strictNonnegative(row[field])) return invalid(`некоректне поле ${field}`);
     }
+    if (hasProvenanceV2) {
+      for (const field of ['direct_allocation_seconds', 'derived_allocation_seconds', 'source_transition_excluded_seconds']) {
+        if (!strictNonnegative(row[field])) return invalid(`некоректне provenance поле ${field}`);
+      }
+      if (!closeEnough(
+        row.direct_allocation_seconds + row.derived_allocation_seconds,
+        row.coverage_seconds,
+      )) return invalid('погодинний provenance total не дорівнює coverage');
+      rowDirectAllocationSeconds += row.direct_allocation_seconds;
+      rowDerivedAllocationSeconds += row.derived_allocation_seconds;
+      rowTransitionExcludedSeconds += row.source_transition_excluded_seconds;
+    }
     if (row.coverage_seconds > 3600 + EPSILON || row.coverage_fraction > 1 + EPSILON
       || !closeEnough(row.coverage_fraction, row.coverage_seconds / 3600)) {
       return invalid('некоректне погодинне coverage');
@@ -180,6 +199,21 @@ export const validateReport = (report) => {
   }
 
   const total = report.total;
+  if (hasProvenanceV2 && (!total
+    || !strictNonnegative(total.direct_allocation_seconds)
+    || !strictNonnegative(total.derived_allocation_seconds)
+    || !strictNonnegative(total.source_transition_excluded_seconds))) {
+    return invalid('у total відсутня provenance coverage');
+  }
+  if (hasProvenanceV2 && !closeEnough(
+    total.direct_allocation_seconds + total.derived_allocation_seconds,
+    total.coverage_seconds,
+  )) return invalid('total provenance не дорівнює coverage');
+  if (hasProvenanceV2 && (!closeEnough(rowDirectAllocationSeconds, total.direct_allocation_seconds)
+    || !closeEnough(rowDerivedAllocationSeconds, total.derived_allocation_seconds)
+    || !closeEnough(rowTransitionExcludedSeconds, total.source_transition_excluded_seconds))) {
+    return invalid('total provenance не відповідає погодинним рядкам');
+  }
   if (!total || !strictNonnegative(total.small_known_uah)
     || !strictNonnegative(total.parents_known_uah) || !strictNonnegative(total.known_uah)
     || !strictNonnegative(total.coverage_seconds) || !strictNonnegative(total.coverage_fraction)

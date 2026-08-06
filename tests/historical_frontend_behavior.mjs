@@ -69,6 +69,24 @@ assert.equal(shared.isExactLocalDay(
   'America/New_York',
 ), true, 'fall-back day is a valid 25-hour local day');
 
+const v2Transition = structuredClone(report);
+v2Transition.schema_version = 2;
+v2Transition.provenance_schema = 'direct_allocation_v1';
+for (const row of v2Transition.hourly) {
+  row.direct_allocation_seconds = row.coverage_seconds;
+  row.derived_allocation_seconds = 0;
+  row.source_transition_excluded_seconds = 0;
+}
+v2Transition.hourly[0].source_transition_excluded_seconds = 60;
+v2Transition.total.direct_allocation_seconds = v2Transition.total.coverage_seconds;
+v2Transition.total.derived_allocation_seconds = 0;
+v2Transition.total.source_transition_excluded_seconds = 60;
+assert.equal(shared.validateReport(v2Transition).ok, true, 'excluded source transition is not coverage');
+const forgedProvenance = structuredClone(v2Transition);
+forgedProvenance.total.direct_allocation_seconds = 0;
+forgedProvenance.total.derived_allocation_seconds = forgedProvenance.total.coverage_seconds;
+assert.equal(shared.validateReport(forgedProvenance).ok, false, 'hourly and total provenance must reconcile');
+
 const validated = shared.validateReport(report);
 const built = shared.buildHistoricalStatistics(
   validated,

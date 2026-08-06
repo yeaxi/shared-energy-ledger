@@ -29,5 +29,30 @@ battery stock/cost pair disables battery pricing rather than treating it as
 free.
 
 The existing dashboard graph and existing period-summary card consume the report
-through `/local/energy-split/energy_cost_2026-08-05.json` only for today's exact
-local-day selection. No standalone historical graph/card is required.
+through `/local/energy-split/energy_cost_2026-08-05.json` only for that exact
+local-day selection. The current candidate configuration points both cards to
+`/local/energy-split/energy_cost_2026-08-06.json`. No standalone historical
+graph/card is required.
+
+For `energy_cost_2026-08-06.json`:
+
+- timezone: `Europe/Kyiv`
+- source: read-only Recorder state history for Victron total, small-home power/energy, shelter inputs and accounting inputs
+- integration: one-minute trapezoidal integration with the package formula; source-transition intervals are excluded rather than bridged
+- fallback: direct parents meter first; otherwise `sensor.cerbo_gx_consumption_power_l1 - small-home accounting load`
+- small fallback: validated delta of `sensor.entire_homes_spent_electricity` when the small-home power sample is stale; this cumulative series already contains shelter terms
+- schema: v2 provenance requires direct+derived allocation to equal coverage; source-transition seconds are tracked separately
+- generated/finalized: `2026-08-06T12:12:05.617897Z`
+- report revision: `be20f6fe62c3d6a0a03a77d2e254540d228c7075efa366644fa40dc73b9bf3fb`
+- coverage: `14,160 / 54,725.283047 seconds = 0.2587469486059858` (`25.8747%`); exact values are in the JSON artifact
+- valid samples: `291 / 913`
+- known small-home cost: `2.5263208668827692 UAH`
+- known parents-home cost: `2.746881733117231 UAH`
+- known combined cost: `5.2732026 UAH`
+- allocation provenance: direct `3,660 s`, derived `10,500 s`, transition-excluded `0 s`; derived share `74.1525%` of covered intervals
+- tariff provenance: day/night values are read from Recorder at each minute; the `tariff_segments` array records the observed mode/value intervals
+- trusted ledger pair: valid at the exact local-day boundary
+- unavailable, stale, unaligned, reset/gapped or unpriced intervals: retained explicitly as uncertainty
+
+The 2026-08-06 artifact is additive and has not been uploaded to Home Assistant
+in this change. Live `/config` edits require separate explicit approval.

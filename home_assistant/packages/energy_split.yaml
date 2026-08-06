@@ -97,8 +97,8 @@ template:
           {% set battery_age = now_ts - as_timestamp(states['sensor.cerbo_gx_dc_battery_power'].last_updated, 0) %}
           {% set ac_input_age = now_ts - as_timestamp(states['sensor.multiplus_ii_48_6k5_100_50_id_276_input_power_l1'].last_updated, 0) %}
           {% set pv_ok = pv_state not in ['unknown','unavailable','none']
-             and (pv_age <= 180 or (is_state('sun.sun','below_horizon')
-             and pv_state|float(0) == 0 and heartbeat_age <= 900)) %}
+             and (0 <= pv_age <= 180 or (is_state('sun.sun','below_horizon')
+             and pv_state|float(0) == 0 and 0 <= heartbeat_age <= 900)) %}
           {{ heartbeat_age <= 900
              and pv_ok
              and battery_state not in ['unknown','unavailable','none'] and battery_age <= 180
@@ -120,6 +120,8 @@ template:
           {% set battery_state = states('sensor.cerbo_gx_dc_battery_power') %}
           {% set small_state = states('sensor.home_electricity_meter_power') %}
           {% set parents_state = states('sensor.lichilnik_budinku_power') %}
+          {% set parents_source = states('sensor.energy_parents_accounting_source') %}
+          {% set total_state = states('sensor.cerbo_gx_consumption_power_l1') %}
           {% set shelter_deh_state = states('sensor.shelter_dehumidifier_power') %}
           {% set shelter_heat_state = states('sensor.shelter_heating_plug_power') %}
           {% set accumulator_state = states('sensor.bak_akamuliator_3_kvt_power') %}
@@ -129,29 +131,47 @@ template:
           {% set battery_age = now_ts - as_timestamp(states['sensor.cerbo_gx_dc_battery_power'].last_updated, 0) %}
           {% set small_age = now_ts - as_timestamp(states['sensor.home_electricity_meter_power'].last_updated, 0) %}
           {% set parents_age = now_ts - as_timestamp(states['sensor.lichilnik_budinku_power'].last_updated, 0) %}
+          {% set total_age = now_ts - as_timestamp(states['sensor.cerbo_gx_consumption_power_l1'].last_updated, 0) %}
           {% set shelter_deh_age = now_ts - as_timestamp(states['sensor.shelter_dehumidifier_power'].last_updated, 0) %}
           {% set shelter_heat_age = now_ts - as_timestamp(states['sensor.shelter_heating_plug_power'].last_updated, 0) %}
           {% set accumulator_age = now_ts - as_timestamp(states['sensor.bak_akamuliator_3_kvt_power'].last_updated, 0) %}
+          {% set heating_switch_age = now_ts - as_timestamp(states['switch.shelter_heating_plug'].last_updated, 0) %}
+          {% set accumulator_switch_age = now_ts - as_timestamp(states['switch.bak_akamuliator_3_kvt_switch'].last_updated, 0) %}
           {% set ac_input_age = now_ts - as_timestamp(states['sensor.multiplus_ii_48_6k5_100_50_id_276_input_power_l1'].last_updated, 0) %}
           {% set active_source_age = now_ts - as_timestamp(states['sensor.cerbo_gx_ac_active_input_source'].last_updated, 0) %}
           {% set pv_ok = pv_state not in ['unknown','unavailable','none']
-             and (pv_age <= 180 or (is_state('sun.sun','below_horizon')
-             and pv_state|float(0) == 0 and heartbeat_age <= 900)) %}
+             and (0 <= pv_age <= 180 or (is_state('sun.sun','below_horizon')
+             and pv_state|float(0) == 0 and 0 <= heartbeat_age <= 900)) %}
+          {% set total_ok = total_state not in ['unknown','unavailable','none']
+             and state_attr('sensor.cerbo_gx_consumption_power_l1', 'unit_of_measurement') == 'W'
+             and is_number(total_state) and 0 <= total_state|float(none) <= 100000
+             and 0 <= total_age <= 180 %}
           {% set heating_ok = shelter_heat_state not in ['unknown','unavailable','none']
-             and (shelter_heat_age <= 600 or (is_state('switch.shelter_heating_plug','off')
+             and (0 <= shelter_heat_age <= 600 or (0 <= heating_switch_age <= 21600
+             and is_state('switch.shelter_heating_plug','off')
              and shelter_heat_state|float(0) == 0)) %}
           {% set accumulator_ok = accumulator_state not in ['unknown','unavailable','none']
-             and (accumulator_age <= 600 or (is_state('switch.bak_akamuliator_3_kvt_switch','off')
+             and (0 <= accumulator_age <= 600 or (0 <= accumulator_switch_age <= 21600
+             and is_state('switch.bak_akamuliator_3_kvt_switch','off')
              and accumulator_state|float(0) == 0)) %}
-          {{ heartbeat_age <= 900
+          {{ 0 <= heartbeat_age <= 900
              and pv_ok
-             and battery_state not in ['unknown','unavailable','none'] and battery_age <= 180
-             and small_state not in ['unknown','unavailable','none'] and small_age <= 1800
-             and parents_state not in ['unknown','unavailable','none'] and parents_age <= 1800
-             and shelter_deh_state not in ['unknown','unavailable','none'] and shelter_deh_age <= 600
-             and ac_input_state not in ['unknown','unavailable','none'] and ac_input_age <= 180
+             and battery_state not in ['unknown','unavailable','none'] and 0 <= battery_age <= 180
+             and small_state not in ['unknown','unavailable','none']
+             and state_attr('sensor.home_electricity_meter_power', 'unit_of_measurement') == 'W'
+             and is_number(small_state) and 0 <= small_state|float(none) <= 100000
+             and ((parents_source == 'victron_total_minus_small' and 0 <= small_age <= 180)
+                  or (parents_source == 'direct_meter' and 0 <= small_age <= 1800))
+             and parents_source in ['direct_meter', 'victron_total_minus_small']
+             and ((parents_source == 'victron_total_minus_small' and total_ok)
+                  or parents_source == 'direct_meter')
+             and shelter_deh_state not in ['unknown','unavailable','none']
+             and ((parents_source == 'victron_total_minus_small' and 0 <= shelter_deh_age <= 180)
+                  or (parents_source == 'direct_meter' and 0 <= shelter_deh_age <= 600))
+             and ac_input_state not in ['unknown','unavailable','none'] and 0 <= ac_input_age <= 180
              and active_source_state in ['grid','generator']
-             and heating_ok and accumulator_ok }}
+             and heating_ok
+             and (accumulator_ok or parents_source == 'victron_total_minus_small') }}
         attributes:
           transport_heartbeat_source: sensor.victron_multiplus_ii_last_ingest
           transport_heartbeat_max_age_seconds: 900
@@ -171,6 +191,10 @@ template:
           battery_source: sensor.cerbo_gx_dc_battery_power
           small_home_source: sensor.home_electricity_meter_power
           parents_home_source: sensor.lichilnik_budinku_power
+          parents_accounting_source: "{{ states('sensor.energy_parents_accounting_source') }}"
+          fallback_total_source: sensor.cerbo_gx_consumption_power_l1
+          fallback_formula: total Victron consumption - small-home accounting load
+          fallback_alignment_max_age_seconds: 180
           shelter_accounting_sources: sensor.shelter_dehumidifier_power, sensor.shelter_heating_plug_power
           accumulator_source: sensor.bak_akamuliator_3_kvt_power
           nighttime_zero_policy: PV zero is accepted only below horizon with a fresh Victron ingest heartbeat
@@ -225,6 +249,90 @@ template:
           source: sensor.garage_cerbo_gx_pv_power
 
   - sensor:
+      - name: Energy Parents Accounting Source
+        unique_id: energy_parents_accounting_source
+        icon: mdi:source-branch
+        state: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set invalid = ['unknown', 'unavailable', 'none', ''] %}
+          {% set parents_state = states('sensor.lichilnik_budinku_power') %}
+          {% set total_state = states('sensor.cerbo_gx_consumption_power_l1') %}
+          {% set small_state = states('sensor.home_electricity_meter_power') %}
+          {% set dehumidifier_state = states('sensor.shelter_dehumidifier_power') %}
+          {% set heating_state = states('sensor.shelter_heating_plug_power') %}
+          {% set accumulator_state = states('sensor.bak_akamuliator_3_kvt_power') %}
+          {% set parents = parents_state | float(none) %}
+          {% set total = total_state | float(none) %}
+          {% set small = small_state | float(none) %}
+          {% set dehumidifier = dehumidifier_state | float(none) %}
+          {% set heating = heating_state | float(none) %}
+          {% set accumulator = accumulator_state | float(none) %}
+          {% set heating_age = now_ts - as_timestamp(states['sensor.shelter_heating_plug_power'].last_updated, 0) %}
+          {% set accumulator_age = now_ts - as_timestamp(states['sensor.bak_akamuliator_3_kvt_power'].last_updated, 0) %}
+          {% set parents_age = now_ts - as_timestamp(states['sensor.lichilnik_budinku_power'].last_updated, 0) %}
+          {% set total_age = now_ts - as_timestamp(states['sensor.cerbo_gx_consumption_power_l1'].last_updated, 0) %}
+          {% set small_age = now_ts - as_timestamp(states['sensor.home_electricity_meter_power'].last_updated, 0) %}
+          {% set dehumidifier_age = now_ts - as_timestamp(states['sensor.shelter_dehumidifier_power'].last_updated, 0) %}
+          {% set heating_switch_age = now_ts - as_timestamp(states['switch.shelter_heating_plug'].last_updated, 0) %}
+          {% set accumulator_switch_age = now_ts - as_timestamp(states['switch.bak_akamuliator_3_kvt_switch'].last_updated, 0) %}
+          {% set heartbeat_ts = as_timestamp(states('sensor.victron_multiplus_ii_last_ingest'), 0) %}
+          {% set heartbeat_ok = 0 <= now_ts - heartbeat_ts <= 900 if heartbeat_ts else false %}
+          {% set power_limit = 100000 %}
+          {% set parents_number_ok = is_number(parents_state) and 0 <= parents <= power_limit %}
+          {% set total_number_ok = is_number(total_state) and 0 <= total <= power_limit %}
+          {% set small_number_ok = is_number(small_state) and 0 <= small <= power_limit %}
+          {% set dehumidifier_number_ok = is_number(dehumidifier_state) and 0 <= dehumidifier <= power_limit %}
+          {% set heating_number_ok = is_number(heating_state) and 0 <= heating <= power_limit %}
+          {% set accumulator_number_ok = is_number(accumulator_state) and 0 <= accumulator <= power_limit %}
+          {% set fallback_units_ok = state_attr('sensor.cerbo_gx_consumption_power_l1', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.home_electricity_meter_power', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.shelter_dehumidifier_power', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.shelter_heating_plug_power', 'unit_of_measurement') == 'W' %}
+          {% set direct_units_ok = state_attr('sensor.lichilnik_budinku_power', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.shelter_dehumidifier_power', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.shelter_heating_plug_power', 'unit_of_measurement') == 'W'
+             and state_attr('sensor.bak_akamuliator_3_kvt_power', 'unit_of_measurement') == 'W' %}
+          {% set heating_ok = heating_state not in invalid and heating_number_ok
+             and (0 <= heating_age <= 600 or (0 <= heating_switch_age <= 21600
+             and is_state('switch.shelter_heating_plug','off') and heating == 0)) %}
+          {% set accumulator_ok = accumulator_state not in invalid and accumulator_number_ok
+             and (0 <= accumulator_age <= 600 or (0 <= accumulator_switch_age <= 21600
+             and is_state('switch.bak_akamuliator_3_kvt_switch','off') and accumulator == 0)) %}
+          {% set direct_parent_power = parents - dehumidifier - heating + accumulator
+             if parents_number_ok and dehumidifier_number_ok and heating_number_ok and accumulator_number_ok else none %}
+          {% set direct_ok = parents_state not in invalid and direct_units_ok and parents_number_ok
+             and 0 <= parents_age <= 1800 and 0 <= dehumidifier_age <= 180
+             and heating_ok and accumulator_ok
+             and direct_parent_power is not none and direct_parent_power >= 0 %}
+          {% set small_load = small + dehumidifier + heating
+             if small_number_ok and dehumidifier_number_ok and heating_number_ok else none %}
+          {% set residual = total - small_load if total_number_ok and small_load is not none else none %}
+          {% set fallback_ok = heartbeat_ok and fallback_units_ok
+             and total_state not in invalid and total_number_ok and 0 <= total_age <= 180
+             and small_state not in invalid and small_number_ok and 0 <= small_age <= 180
+             and dehumidifier_state not in invalid and dehumidifier_number_ok and 0 <= dehumidifier_age <= 180
+             and heating_ok
+             and residual is not none and residual >= 0 %}
+          {% if direct_ok %}direct_meter
+          {% elif fallback_ok %}victron_total_minus_small
+          {% else %}unavailable{% endif %}
+        attributes:
+          direct_source: sensor.lichilnik_budinku_power
+          fallback_total_source: sensor.cerbo_gx_consumption_power_l1
+          fallback_small_source: sensor.home_electricity_meter_power
+          fallback_shelter_sources: sensor.shelter_dehumidifier_power, sensor.shelter_heating_plug_power
+          fallback_formula: total Victron consumption - small-home accounting load
+          fallback_alignment_max_age_seconds: 180
+          fallback_total_unit: W
+          fallback_small_unit: W
+          fallback_residual_w: >-
+            {% set total = states('sensor.cerbo_gx_consumption_power_l1') | float(none) %}
+            {% set small = states('sensor.home_electricity_meter_power') | float(none) %}
+            {% set dehumidifier = states('sensor.shelter_dehumidifier_power') | float(none) %}
+            {% set heating = states('sensor.shelter_heating_plug_power') | float(none) %}
+            {{ (total - small - dehumidifier - heating) | round(1) if total is not none and small is not none and dehumidifier is not none and heating is not none else none }}
+          provenance: direct_meter, or derived from Victron total minus small-home accounting load
+          invalid_fallback_policy: reject stale, unaligned, non-finite, negative, or unit-incompatible residuals; never clamp to zero
       - name: Energy active source
         unique_id: energy_active_source
         state: >-
@@ -239,12 +347,12 @@ template:
         state_class: measurement
         availability: "{{ is_state('binary_sensor.energy_data_fresh','on') }}"
         state: >-
-          {{ [
-              states('sensor.home_electricity_meter_power')|float(0)
-              + states('sensor.shelter_dehumidifier_power')|float(0)
-              + states('sensor.shelter_heating_plug_power')|float(0),
-              0
-            ] | max | round(1) }}
+          {% set small = states('sensor.home_electricity_meter_power')|float(none) %}
+          {% set dehumidifier = states('sensor.shelter_dehumidifier_power')|float(none) %}
+          {% set heating = states('sensor.shelter_heating_plug_power')|float(none) %}
+          {{ (small + dehumidifier + heating) | round(1)
+             if small is not none and dehumidifier is not none and heating is not none
+             and small >= 0 and dehumidifier >= 0 and heating >= 0 else none }}
         attributes:
           accounting_owner: small_home
           physical_shelter_feeder: parents_home
@@ -258,18 +366,33 @@ template:
         state_class: measurement
         availability: "{{ is_state('binary_sensor.energy_data_fresh','on') }}"
         state: >-
-          {% set raw = states('sensor.lichilnik_budinku_power')|float(0) %}
+          {% set source = states('sensor.energy_parents_accounting_source') %}
           {% set shelter = states('sensor.shelter_dehumidifier_power')|float(0)
              + states('sensor.shelter_heating_plug_power')|float(0) %}
-          {% set accumulator = states('sensor.bak_akamuliator_3_kvt_power')|float(0) %}
-          {{ [raw - shelter + accumulator, 0] | max | round(1) }}
+          {% if source == 'direct_meter' %}
+            {% set raw = states('sensor.lichilnik_budinku_power')|float(none) %}
+            {% set accumulator = states('sensor.bak_akamuliator_3_kvt_power')|float(none) %}
+            {% set direct = raw - shelter + accumulator if raw is not none and accumulator is not none else none %}
+            {{ direct | round(1) if direct is not none and direct >= 0 else none }}
+          {% elif source == 'victron_total_minus_small' %}
+            {% set total = states('sensor.cerbo_gx_consumption_power_l1')|float(none) %}
+            {% set small = states('sensor.home_electricity_meter_power')|float(none) %}
+            {% set residual = total - small - shelter if total is not none and small is not none else none %}
+            {{ residual | round(1) if residual is not none and residual >= 0 else none }}
+          {% else %}
+            {{ none }}
+          {% endif %}
         attributes:
           accounting_owner: parents_home
           physical_shelter_feeder: parents_home
           shelter_financial_policy: shelter is excluded here because it is charged to small home
-          accumulator_financial_policy: preserve existing parents accounting ownership exactly once
-          formula: parents feeder meter - shelter loads + garage accumulator
-          sources: sensor.lichilnik_budinku_power, sensor.shelter_dehumidifier_power, sensor.shelter_heating_plug_power, sensor.bak_akamuliator_3_kvt_power
+          accumulator_financial_policy: preserved for direct meter path; residual path includes it in Victron total
+          direct_formula: parents feeder meter - shelter loads + garage accumulator
+          fallback_formula: total Victron consumption - small-home accounting load
+          source_selector: sensor.energy_parents_accounting_source
+          direct_sources: sensor.lichilnik_budinku_power, sensor.bak_akamuliator_3_kvt_power
+          fallback_sources: sensor.cerbo_gx_consumption_power_l1, sensor.home_electricity_meter_power, sensor.shelter_dehumidifier_power, sensor.shelter_heating_plug_power
+          fallback_provenance: derived_from_victron_total_minus_small
       - name: Energy total homes power
         unique_id: energy_total_homes_power
         unit_of_measurement: W
@@ -284,6 +407,8 @@ template:
           shelter_owner: small_home
           accumulator_owner: parents_home
           accounting_epoch: post-source-allocation-fix
+          parents_accounting_source: "{{ states('sensor.energy_parents_accounting_source') }}"
+          fallback_provenance: derived_parent_load is accepted only when total and small inputs are aligned and non-negative
       - name: Energy small home accounting share
         unique_id: energy_small_home_accounting_share
         unit_of_measurement: '%'
