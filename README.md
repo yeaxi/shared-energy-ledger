@@ -54,9 +54,29 @@ report revision:    027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b3
 Це відома підтверджена сума за валідними Recorder-інтервалами, а не оцінка
 невідомих періодів. Report не змінює Recorder або live sensor states.
 
+## Recorder reconstruction за 2026-08-06
+
+Після дозволеного live rollout звіт за сьогодні доступний у dashboard через
+`/local/energy-split/energy_cost_2026-08-06.json`:
+
+```text
+small home known cost:  6.734795079553059 UAH
+parents home known cost: 7.204661661900781 UAH
+known total:             13.93945674145384 UAH
+coverage:                36,480 / 55,718.010454 seconds = 65.4725%
+direct allocation:       7,500 s
+derived allocation:      28,980 s
+transition excluded:     120 s
+unpriced battery:        21,600 s
+report revision:         0969e7254fdca87d4bee84b70c5c363d8e646349ee4851df98de3d14ab28a8ef
+```
+
+Derived allocation закриває частину попередньої прогалини за формулою
+`Victron total - small-home`. Непроцінену battery-частину не показано як нуль.
+
 ## Derived fallback for missing parents-meter intervals
 
-Поточний candidate package і read-only reconstruction tool тепер мають fallback:
+Package і read-only reconstruction tool тепер мають fallback:
 
 ```text
 parents accounting load = total Victron consumption
@@ -70,8 +90,9 @@ power sample stale або відсутній, дозволено лише valida
 `sensor.entire_homes_spent_electricity`. До small-home accounting load входять
 також shelter dehumidifier/heating згідно з чинною фінансовою політикою.
 
-Fallback застосовується тільки якщо всі потрібні значення finite, невід'ємні та
-в W, total і small узгоджені за часом (skew до 180 s), delta cumulative energy
+Fallback застосовується тільки якщо всі потрібні значення finite, total і small
+невід'ємні та в W, battery power finite signed у W (від'ємний означає discharge),
+total і small узгоджені за часом (skew до 180 s), delta cumulative energy
 не має reset/gap понад 900 s, а residual `total - small` не від'ємний. Для
 cumulative small-energy fallback shelter terms уже включені в cumulative series
 і вдруге не додаються. Нульовий shelter/accumulator допускається лише за свіжого
@@ -82,9 +103,8 @@ cumulative small-energy fallback shelter terms уже включені в cumula
 Походження derived рядків позначається `victron_total_minus_small`. Валідні
 тариф, battery/grid allocation і trusted ledger усе ще обов'язкові для UAH;
 сам derived load не є підтвердженою вартістю. Historical report є additive
-presentation artifact і не переписує Recorder. Candidate package ще потребує
-окремого live approval перед зміною `/config`.
-
+presentation artifact і не переписує Recorder. Package, report і dashboard
+references уже розгорнуті в live Home Assistant після explicit approval.
 Поточний код перевіряється 18 Python contract tests, включно з residual,
 energy-delta, reset/gap, alignment і fail-closed cases.
 
@@ -93,13 +113,13 @@ energy-delta, reset/gap, alignment і fail-closed cases.
 ```text
 binary_sensor.energy_victron_data_fresh = on
 binary_sensor.energy_data_fresh         = on
-last ingest                          = 2026-08-05T20:30:39+00:00
+last ingest                          = 2026-08-06T12:31:34+00:00
 battery ledger                      = active
-ledger stock / cost                 = 0.228 kWh / 0.5189724013 UAH
-small live cumulative cost          = 48.84 UAH
-parents live cumulative cost        = 24.83 UAH
-combined live cumulative cost       = 73.67 UAH
-household consumption               = 7894.75 kWh
+ledger stock / cost                 = 0.720000000000112 kWh / 2.07371433303849 UAH
+small live cumulative cost          = 54.93 UAH
+parents live cumulative cost        = 30.70 UAH
+combined live cumulative cost       = 85.63 UAH
+household consumption               = 6725.58 kWh
 ```
 
 Historical selected-day report і live cumulative accounting epoch навмисно
@@ -110,7 +130,7 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 Пройдено:
 
 - prior presentation rollout: `python3 -m unittest discover -s tests -v` — 9/9;
-- current fallback candidate: `python3 -m unittest discover -s tests -v` — 18/18;
+- deployed fallback + historical report: `python3 -m unittest discover -s tests -v` — 18/18;
 - `node tests/historical_frontend_behavior.mjs`;
 - JavaScript syntax checks для shared report, bridge і summary;
 - Python compilation check для reconstruction tool;
@@ -130,7 +150,7 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 У targeted post-deploy log search не було записів `energy_split`,
 `energy-split`, history bridge або summary card. Окремо залишилися unrelated
 entries від Victron MQTT та Energy Bounded Executor; вони не стосуються цієї
-read-only presentation зміни.
+accounting/deployment зміни.
 
 Фізичні service calls не виконувалися: inverter, ESS, battery, relay і load
 states не змінювалися.
@@ -141,13 +161,15 @@ resources, isolated behavior harness і post-deploy states підтвердже�
 
 ## Rollback
 
-Pre-change backup для follow-up presentation rollout:
+Backup після live rollout:
 
 ```text
-/config/backups/energy_split_dashboard_followup_20260805T203000Z/
+/config/backup/energy-split/20260806T121610Z/
 ```
 
-У backup є `SHA256SUMS` для попередніх frontend/report/resource файлів.
+У backup є `SHA256SUMS` для попередніх package/frontend/report/resource файлів;
+попередній report збережений як
+`energy_cost_2026-08-06.pre-signed-battery-fix.json`.
 
 ## Проєкт
 
