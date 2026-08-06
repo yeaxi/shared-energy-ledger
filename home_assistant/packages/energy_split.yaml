@@ -1351,6 +1351,12 @@ automation:
         value_template: >-
           {{ states('sensor.cerbo_gx_dc_battery_charge_energy') not in ['unknown','unavailable','none']
              and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none']
+             and state_attr('sensor.cerbo_gx_dc_battery_charge_energy', 'unit_of_measurement') == 'kWh'
+             and state_attr('sensor.cerbo_gx_dc_battery_discharge_energy', 'unit_of_measurement') == 'kWh'
+             and is_number(states('sensor.cerbo_gx_dc_battery_charge_energy'))
+             and is_number(states('sensor.cerbo_gx_dc_battery_discharge_energy'))
+             and states('sensor.cerbo_gx_dc_battery_charge_energy')|float(0) >= 0
+             and states('sensor.cerbo_gx_dc_battery_discharge_energy')|float(0) >= 0
              and states('select.energy_grid_day_night') in ['day','night'] }}
       - condition: state
         entity_id: binary_sensor.energy_data_fresh
@@ -1430,7 +1436,13 @@ automation:
       - condition: template
         value_template: >-
           {{ states('sensor.cerbo_gx_dc_battery_charge_energy') not in ['unknown','unavailable','none']
-             and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none'] }}
+             and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none']
+             and state_attr('sensor.cerbo_gx_dc_battery_charge_energy', 'unit_of_measurement') == 'kWh'
+             and state_attr('sensor.cerbo_gx_dc_battery_discharge_energy', 'unit_of_measurement') == 'kWh'
+             and is_number(states('sensor.cerbo_gx_dc_battery_charge_energy'))
+             and is_number(states('sensor.cerbo_gx_dc_battery_discharge_energy'))
+             and states('sensor.cerbo_gx_dc_battery_charge_energy')|float(0) >= 0
+             and states('sensor.cerbo_gx_dc_battery_discharge_energy')|float(0) >= 0 }}
     action:
       - action: input_number.set_value
         target: {entity_id: input_number.energy_battery_ledger_last_charge}

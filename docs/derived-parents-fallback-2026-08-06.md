@@ -54,7 +54,11 @@ A residual interval is accepted only when:
    accounting energy already includes shelter terms and they are not added again;
    an off/zero exception is allowed only with a switch state no older than 6 hours;
 7. `total - small_home_accounting_load >= 0`;
-8. the Victron total boundary is treated as a qualified whole-home AC-load
+8. battery cumulative charge/discharge counters are finite, non-negative numeric
+   `kWh` values with Recorder unit metadata and age no more than 900 seconds;
+   invalid counters invalidate battery pricing for the interval and never become
+   zero deltas;
+9. the Victron total boundary is treated as a qualified whole-home AC-load
    contract; unexplained topology mismatch remains a report uncertainty and is
    not hidden by the residual formula.
 
@@ -72,26 +76,30 @@ shown as free electricity.
 `tools/reconstruct_today_cost.py` reads Recorder in SQLite read-only mode. It
 integrates valid one-minute intervals with the existing trapezoidal method,
 excludes direct/derived source-transition intervals, and records direct versus
-derived allocation coverage in both `total` and hourly rows. The v2 report
-validator enforces `direct + derived = coverage`; transition-excluded seconds
-are tracked separately and reconciled with hourly rows. Recorder unit metadata
-is checked for every sampled power/cumulative source, and observed tariff mode
+derived allocation coverage in both `total` and hourly rows. The v2 report validator
+enforces `direct + derived = coverage`; transition-excluded seconds are tracked
+separately, reconciled with hourly rows, and bounded by the available duration
+of each row and the report. Recorder unit metadata is checked for every sampled
+power/cumulative source, and observed tariff mode
 and values are retained as `tariff_segments`. It does not write Recorder statistics,
 live states or Home Assistant services.
 
 The 2026-08-06 artifact is partial, not a complete day repair. The signed
 Victron battery-power validation allows the fallback to cover the historical
-battery-discharge intervals that were previously rejected:
+battery-discharge intervals that were previously rejected. Battery cumulative
+charge/discharge deltas are used only when their current Recorder samples are
+finite, non-negative, numeric `kWh` values with age `<= 900 s`.
 
-- coverage: `36,480 / 55,718.010454 s` (`65.4725%`);
-- known cost: `13.93945674145384 UAH`;
-- direct allocation: `7,500 s`;
+- coverage: `37,560 / 56,808.961463 s` (`66.1163%`);
+- valid samples: `713 / 947`;
+- known cost: `12.488144790784766 UAH`;
+- direct allocation: `8,580 s`;
 - derived allocation: `28,980 s`;
 - transition-excluded allocation: `120 s`;
-- unpriced battery coverage: `21,600 s`; unpriced charge/discharge remain
+- unpriced battery coverage: `31,260 s`; unpriced charge/discharge remain
   unknown rather than zero;
 - tariff segments: `2` (`night` then `day`);
-- report revision: `0969e7254fdca87d4bee84b70c5c363d8e646349ee4851df98de3d14ab28a8ef`.
+- report revision: `2238eec2adbc5b2dd1f6da895e19da141f81070d6d82dc639c69223e3893a3c6`.
 
 The exact artifact remains authoritative for uncertainty and excluded intervals.
 

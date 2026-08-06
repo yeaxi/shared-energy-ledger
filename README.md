@@ -60,15 +60,16 @@ report revision:    027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b3
 `/local/energy-split/energy_cost_2026-08-06.json`:
 
 ```text
-small home known cost:  6.734795079553059 UAH
-parents home known cost: 7.204661661900781 UAH
-known total:             13.93945674145384 UAH
-coverage:                36,480 / 55,718.010454 seconds = 65.4725%
-direct allocation:       7,500 s
+small home known cost:   6.2682757389462695 UAH
+parents home known cost: 6.219869051838497 UAH
+known total:             12.488144790784766 UAH
+coverage:                37,560 / 56,808.961463 seconds = 66.1163%
+valid samples:           713 / 947
+direct allocation:       8,580 s
 derived allocation:      28,980 s
 transition excluded:     120 s
-unpriced battery:        21,600 s
-report revision:         0969e7254fdca87d4bee84b70c5c363d8e646349ee4851df98de3d14ab28a8ef
+unpriced battery:        31,260 s
+report revision:         2238eec2adbc5b2dd1f6da895e19da141f81070d6d82dc639c69223e3893a3c6
 ```
 
 Derived allocation закриває частину попередньої прогалини за формулою
@@ -93,7 +94,9 @@ power sample stale або відсутній, дозволено лише valida
 Fallback застосовується тільки якщо всі потрібні значення finite, total і small
 невід'ємні та в W, battery power finite signed у W (від'ємний означає discharge),
 total і small узгоджені за часом (skew до 180 s), delta cumulative energy
-не має reset/gap понад 900 s, а residual `total - small` не від'ємний. Для
+не має reset/gap понад 900 s, battery charge/discharge cumulative counters мають
+бути finite non-negative numeric `kWh` із Recorder metadata і віком до 900 s, а
+residual `total - small` не від'ємний. Для
 cumulative small-energy fallback shelter terms уже включені в cumulative series
 і вдруге не додаються. Нульовий shelter/accumulator допускається лише за свіжого
 підтвердженого `off` switch state (до 6 годин). Direct parents meter має
@@ -105,8 +108,8 @@ cumulative small-energy fallback shelter terms уже включені в cumula
 сам derived load не є підтвердженою вартістю. Historical report є additive
 presentation artifact і не переписує Recorder. Package, report і dashboard
 references уже розгорнуті в live Home Assistant після explicit approval.
-Поточний код перевіряється 18 Python contract tests, включно з residual,
-energy-delta, reset/gap, alignment і fail-closed cases.
+Поточний код перевіряється 19 Python contract tests, включно з residual,
+energy-delta, reset/gap, alignment, cumulative battery unit/age і fail-closed cases.
 
 ## Фінальна live-перевірка
 
@@ -130,7 +133,7 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 Пройдено:
 
 - prior presentation rollout: `python3 -m unittest discover -s tests -v` — 9/9;
-- deployed fallback + historical report: `python3 -m unittest discover -s tests -v` — 18/18;
+- deployed fallback + historical report: `python3 -m unittest discover -s tests -v` — 19/19;
 - `node tests/historical_frontend_behavior.mjs`;
 - JavaScript syntax checks для shared report, bridge і summary;
 - Python compilation check для reconstruction tool;

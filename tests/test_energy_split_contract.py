@@ -66,11 +66,15 @@ class EnergySplitContractTests(unittest.TestCase):
             "    trigger:",
             text,
         )
-        self.assertIn(
-            "and states('sensor.cerbo_gx_dc_battery_discharge_energy') not in ['unknown','unavailable','none'] }}\n"
-            "    action:",
-            text,
-        )
+        for fragment in (
+            "state_attr('sensor.cerbo_gx_dc_battery_charge_energy', 'unit_of_measurement') == 'kWh'",
+            "state_attr('sensor.cerbo_gx_dc_battery_discharge_energy', 'unit_of_measurement') == 'kWh'",
+            "is_number(states('sensor.cerbo_gx_dc_battery_charge_energy'))",
+            "is_number(states('sensor.cerbo_gx_dc_battery_discharge_energy'))",
+            "states('sensor.cerbo_gx_dc_battery_charge_energy')|float(0) >= 0",
+            "states('sensor.cerbo_gx_dc_battery_discharge_energy')|float(0) >= 0",
+        ):
+            self.assertIn(fragment, text)
 
     def test_dashboard_keeps_consumption_and_cost_sources_distinct(self) -> None:
         dashboard = json.loads(DASHBOARD.read_text())
@@ -177,6 +181,27 @@ class EnergySplitContractTests(unittest.TestCase):
         self.assertEqual(allocation["small_load_power"], 1200)
         self.assertEqual(allocation["parents_load_power"], 2000)
         self.assertEqual(allocation["parents_source"], "victron_total_minus_small")
+
+    def test_reconstruction_validates_battery_ledger_cumulative_units_and_values(self) -> None:
+        path = ROOT / "tools" / "reconstruct_today_cost.py"
+        spec = importlib.util.spec_from_file_location("reconstruct_today_cost_ledger_inputs", path)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        now = 1_767_225_600.0
+        values = {
+            "charge_total": ("12.5", now - 10, "kWh"),
+            "discharge_total": ("8.5", now - 10, "kWh"),
+        }
+        self.assertTrue(module.cumulative_ledger_input_ok(values, "charge_total", now))
+        self.assertTrue(module.cumulative_ledger_input_ok(values, "discharge_total", now))
+        wrong_unit = {**values, "charge_total": ("12.5", now - 10, "Wh")}
+        self.assertFalse(module.cumulative_ledger_input_ok(wrong_unit, "charge_total", now))
+        nonnumeric = {**values, "discharge_total": ("unknown", now - 10, "kWh")}
+        self.assertFalse(module.cumulative_ledger_input_ok(nonnumeric, "discharge_total", now))
+        negative = {**values, "charge_total": ("-1", now - 10, "kWh")}
+        self.assertFalse(module.cumulative_ledger_input_ok(negative, "charge_total", now))
 
     def test_reconstruction_rejects_unaligned_or_negative_victron_residual(self) -> None:
         path = ROOT / "tools" / "reconstruct_today_cost.py"

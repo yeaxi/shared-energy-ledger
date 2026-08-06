@@ -41,18 +41,19 @@ For `energy_cost_2026-08-06.json`:
 - integration: one-minute trapezoidal integration with the package formula; source-transition intervals are excluded rather than bridged
 - fallback: direct parents meter first; otherwise `sensor.cerbo_gx_consumption_power_l1 - small-home accounting load`
 - small fallback: validated delta of `sensor.entire_homes_spent_electricity` when the small-home power sample is stale; this cumulative series already contains shelter terms
-- schema: v2 provenance requires direct+derived allocation to equal coverage; source-transition seconds are tracked separately
-- generated/finalized: `2026-08-06T12:28:38.010454Z`
-- report revision: `0969e7254fdca87d4bee84b70c5c363d8e646349ee4851df98de3d14ab28a8ef`
-- coverage: `36,480 / 55,718.010454 seconds = 0.6547254595559728` (`65.4725%`); exact values are in the JSON artifact
-- valid samples: `695 / 929`
-- known small-home cost: `6.734795079553059 UAH`
-- known parents-home cost: `7.204661661900781 UAH`
-- known combined cost: `13.93945674145384 UAH`
-- allocation provenance: direct `7,500 s`, derived `28,980 s`, transition-excluded `120 s`; derived share `79.4408%` of covered intervals
+- schema: v2 provenance requires direct+derived allocation to equal coverage; source-transition seconds are tracked separately, reconciled with hourly rows, and bounded by each row/report duration
+- generated/finalized: `2026-08-06T12:46:49.994416Z`
+- report revision: `2238eec2adbc5b2dd1f6da895e19da141f81070d6d82dc639c69223e3893a3c6`
+- coverage: `37,560 / 56,808.961463 seconds = 0.6611632924231482` (`66.1163%`); exact values are in the JSON artifact
+- valid samples: `713 / 947`
+- known small-home cost: `6.2682757389462695 UAH`
+- known parents-home cost: `6.219869051838497 UAH`
+- known combined cost: `12.488144790784766 UAH`
+- allocation provenance: direct `8,580 s`, derived `28,980 s`, transition-excluded `120 s`; derived share `77.1565%` of covered intervals
 - tariff provenance: day/night values are read from Recorder at each minute; the `tariff_segments` array records the observed mode/value intervals
 - trusted ledger pair: valid at the exact local-day boundary
-- unpriced battery: `21,600 s`; unpriced charge `1.111999999999938 kWh`, discharge `0.8039999999998315 kWh`; these remain unknown, not zero
+- battery cumulative charge/discharge inputs: only finite, non-negative numeric `kWh` states with Recorder metadata and age `<= 900 s` are used for deltas; invalid intervals remain unpriced
+- unpriced battery: `31,260 s`; unpriced charge `0.11699999999999022 kWh`, discharge `0.14699999999993452 kWh`; these remain unknown, not zero
 - unavailable, stale, unaligned, reset/gapped or unpriced intervals: retained explicitly as uncertainty
 
 The 2026-08-06 artifact is additive and is published to Home Assistant at

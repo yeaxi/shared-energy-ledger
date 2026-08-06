@@ -82,6 +82,10 @@ v2Transition.total.direct_allocation_seconds = v2Transition.total.coverage_secon
 v2Transition.total.derived_allocation_seconds = 0;
 v2Transition.total.source_transition_excluded_seconds = 60;
 assert.equal(shared.validateReport(v2Transition).ok, true, 'excluded source transition is not coverage');
+const oversizedTransition = structuredClone(v2Transition);
+oversizedTransition.hourly[0].source_transition_excluded_seconds = 3601;
+oversizedTransition.total.source_transition_excluded_seconds = 3601;
+assert.equal(shared.validateReport(oversizedTransition).ok, false, 'transition exclusion cannot exceed available hour');
 const forgedProvenance = structuredClone(v2Transition);
 forgedProvenance.total.direct_allocation_seconds = 0;
 forgedProvenance.total.derived_allocation_seconds = forgedProvenance.total.coverage_seconds;

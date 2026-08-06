@@ -27,6 +27,7 @@ DISCHARGE_EFFICIENCY = 0.90
 FALLBACK_ALIGNMENT_SECONDS = 180
 SMALL_ENERGY_MAX_AGE_SECONDS = 600
 CUMULATIVE_DELTA_MAX_INTERVAL_SECONDS = 900
+LEDGER_CUMULATIVE_MAX_AGE_SECONDS = 900
 OFF_ZERO_MAX_AGE_SECONDS = 21600
 LEDGER_SNAPSHOT_MAX_AGE_SECONDS = 3600
 LEDGER_PAIR_MAX_SKEW_SECONDS = 300
@@ -182,6 +183,26 @@ class CumulativePower:
         return delta * 3_600_000 / interval, end_ts, "kWh"
 
 
+def cumulative_ledger_input_ok(values: dict[str, tuple], name: str, now_ts: float) -> bool:
+    """Validate a live cumulative battery counter before using its delta."""
+    raw = values.get(name)
+    if raw is None or len(raw) < 3:
+        return False
+    value = parse_float(raw[0])
+    updated = raw[1]
+    unit = raw[2]
+    try:
+        age = now_ts - float(updated)
+    except (TypeError, ValueError):
+        return False
+    return (
+        value is not None
+        and value >= 0
+        and unit == "kWh"
+        and 0 <= age <= LEDGER_CUMULATIVE_MAX_AGE_SECONDS
+    )
+
+
 def fresh_sample(
     values: dict[str, tuple],
     now_ts: float,
@@ -323,6 +344,8 @@ def fresh_sample(
     selected_small = fallback_small if parents_source == "victron_total_minus_small" or not small_meter_ok else small
     selected_small_source = fallback_small_source if parents_source == "victron_total_minus_small" or not small_meter_ok else "power_meter"
     parents_accounting_ok = parents_source in {"direct_meter", "victron_total_minus_small"}
+    charge_total_ok = cumulative_ledger_input_ok(values, "charge_total", now_ts)
+    discharge_total_ok = cumulative_ledger_input_ok(values, "discharge_total", now_ts)
     selected_shelter = parents_source == "direct_meter" or selected_small_source == "power_meter"
     selected_dehumidifier = dehumidifier if selected_shelter else 0.0
     selected_heating = heating if selected_shelter else 0.0
@@ -335,6 +358,8 @@ def fresh_sample(
         "heartbeat_ok": heartbeat_ok,
         "pv_ok": pv_ok,
         "battery_ok": battery_ok,
+        "charge_total_ok": charge_total_ok,
+        "discharge_total_ok": discharge_total_ok,
         "ac_ok": ac_ok,
         "small_ok": small_ok,
         "small_source": selected_small_source,
@@ -516,6 +541,7 @@ def main():
     first_discharge = forward["discharge_total"].at(start_ts)
     previous_charge = parse_float(first_charge[1]) if first_charge else None
     previous_discharge = parse_float(first_discharge[1]) if first_discharge else None
+    previous_ledger_inputs_ok = False
     stock = trusted_stock if ledger_valid else None
     stock_cost = trusted_cost if ledger_valid else None
     previous_rate = None
@@ -599,27 +625,38 @@ def main():
         if sample["ok"]:
             valid_samples += 1
         alloc = allocation(sample) if sample["ok"] else None
+        ledger_inputs_ok = sample["charge_total_ok"] and sample["discharge_total_ok"]
         charge_now = parse_float(values["charge_total"][0])
         discharge_now = parse_float(values["discharge_total"][0])
-        delta_charge = max(charge_now - previous_charge, 0.0) if charge_now is not None and previous_charge is not None else 0.0
-        delta_discharge = max(discharge_now - previous_discharge, 0.0) if discharge_now is not None and previous_discharge is not None else 0.0
-        if sample["ok"] and alloc is not None and ledger_valid and stock is not None and stock_cost is not None:
+        if ledger_inputs_ok and previous_ledger_inputs_ok and charge_now is not None and previous_charge is not None:
+            delta_charge = max(charge_now - previous_charge, 0.0)
+        elif ledger_inputs_ok:
+            delta_charge = 0.0
+        else:
+            delta_charge = None
+        if ledger_inputs_ok and previous_ledger_inputs_ok and discharge_now is not None and previous_discharge is not None:
+            delta_discharge = max(discharge_now - previous_discharge, 0.0)
+        elif ledger_inputs_ok:
+            delta_discharge = 0.0
+        else:
+            delta_discharge = None
+        if sample["ok"] and alloc is not None and ledger_valid and ledger_inputs_ok and delta_charge is not None and delta_discharge is not None and stock is not None and stock_cost is not None:
             charge_power = alloc["battery_charge_power"]
             share = max(min(alloc["grid_to_battery_power"] / charge_power, 1.0), 0.0) if charge_power > 0 else 0.0
             charge_cost = delta_charge * share * alloc["tariff"] / CHARGE_EFFICIENCY
             discharge_cost = stock_cost / stock * delta_discharge / DISCHARGE_EFFICIENCY if stock > 0.01 else 0.0
             stock = max(stock + delta_charge - delta_discharge, 0.0)
             stock_cost = max(stock_cost + charge_cost - discharge_cost, 0.0)
-        else:
+        elif delta_charge is not None and delta_discharge is not None:
             unpriced_charge += delta_charge
             unpriced_discharge += delta_discharge
-        if charge_now is not None:
+        if ledger_inputs_ok:
             previous_charge = charge_now
-        if discharge_now is not None:
             previous_discharge = discharge_now
+        previous_ledger_inputs_ok = ledger_inputs_ok
 
         rate = None
-        if alloc is not None and ledger_valid and stock is not None and stock_cost is not None:
+        if alloc is not None and ledger_valid and ledger_inputs_ok and stock is not None and stock_cost is not None:
             weighted = stock_cost / stock if stock > 0.01 else None
             if weighted is not None and alloc["battery_to_loads_power"] > 0:
                 rate = {
@@ -676,6 +713,7 @@ def main():
             "ts": iso(float(t)),
             "local": datetime.fromtimestamp(float(t), LOCAL_TZ).isoformat(),
             "fresh": sample["ok"],
+            "ledger_inputs_ok": ledger_inputs_ok,
             "parents_source": sample["parents_source"],
             "parents_fallback_used": sample["parents_source"] == "victron_total_minus_small",
             "small_source": sample["small_source"],

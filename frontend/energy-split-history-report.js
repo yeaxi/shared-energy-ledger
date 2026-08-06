@@ -181,6 +181,14 @@ export const validateReport = (report) => {
         row.direct_allocation_seconds + row.derived_allocation_seconds,
         row.coverage_seconds,
       )) return invalid('погодинний provenance total не дорівнює coverage');
+      const availableRowSeconds = Math.min(
+        3600,
+        Math.max(0, (reportEnd.getTime() - startMs) / 1000),
+      );
+      if (row.coverage_seconds + row.source_transition_excluded_seconds
+        > availableRowSeconds + EPSILON) {
+        return invalid('погодинний provenance виходить за доступну тривалість рядка');
+      }
       rowDirectAllocationSeconds += row.direct_allocation_seconds;
       rowDerivedAllocationSeconds += row.derived_allocation_seconds;
       rowTransitionExcludedSeconds += row.source_transition_excluded_seconds;
@@ -213,6 +221,10 @@ export const validateReport = (report) => {
     || !closeEnough(rowDerivedAllocationSeconds, total.derived_allocation_seconds)
     || !closeEnough(rowTransitionExcludedSeconds, total.source_transition_excluded_seconds))) {
     return invalid('total provenance не відповідає погодинним рядкам');
+  }
+  if (hasProvenanceV2 && total.coverage_seconds + total.source_transition_excluded_seconds
+    > reportDurationSeconds + EPSILON) {
+    return invalid('total provenance виходить за тривалість звіту');
   }
   if (!total || !strictNonnegative(total.small_known_uah)
     || !strictNonnegative(total.parents_known_uah) || !strictNonnegative(total.known_uah)

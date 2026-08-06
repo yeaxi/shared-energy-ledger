@@ -72,7 +72,9 @@ monotonic cumulative `sensor.entire_homes_spent_electricity`; that series alread
 contains the shelter terms, so they must not be added a second time. Report v2
 requires `direct + derived = coverage`; transition-excluded seconds are tracked
 separately and must reconcile with hourly rows. Recorder unit metadata is part of
-historical validation, and tariff mode/value segments remain explicit in the report.
+historical validation, including finite non-negative `kWh` battery charge/discharge
+counters no older than 900 seconds; invalid counters leave battery pricing unknown.
+Tariff mode/value segments remain explicit in the report.
 
 ## Verification
 
