@@ -11,13 +11,21 @@ const dayEnd = new Date('2026-08-05T21:00:00.000Z');
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'energy-split-history-'));
 const sharedSource = fs.readFileSync(path.join(root, 'frontend/energy-split-history-report.js'), 'utf8');
-const bridgeSource = fs.readFileSync(path.join(root, 'frontend/energy-split-history-bridge.js'), 'utf8')
-  .replace("'/local/energy-split/energy-split-history-report.js'", "'./history-report.mjs'");
-const summarySource = fs.readFileSync(path.join(root, 'frontend/energy-split-period-summary.js'), 'utf8')
-  .replace("'/local/energy-split/energy-split-history-report.js'", "'./history-report.mjs'");
+const bridgeSource = fs.readFileSync(path.join(root, 'frontend/energy-split-history-bridge.js'), 'utf8');
+const summarySource = fs.readFileSync(path.join(root, 'frontend/energy-split-period-summary.js'), 'utf8');
+for (const source of [bridgeSource, summarySource]) {
+  assert.match(source, /\/local\/energy-split\/energy-split-history-report\.js\?v=\d+/,
+    'frontend consumers must cache-bust the shared report module');
+  assert.doesNotMatch(source, /\/local\/energy-split\/energy-split-history-report\.js';/,
+    'frontend consumers must not import an unversioned shared report module');
+}
+const bridgeModuleSource = bridgeSource
+  .replace("'/local/energy-split/energy-split-history-report.js?v=20260806-3'", "'./history-report.mjs'");
+const summaryModuleSource = summarySource
+  .replace("'/local/energy-split/energy-split-history-report.js?v=20260806-3'", "'./history-report.mjs'");
 fs.writeFileSync(path.join(temp, 'history-report.mjs'), sharedSource);
-fs.writeFileSync(path.join(temp, 'bridge.mjs'), bridgeSource);
-fs.writeFileSync(path.join(temp, 'summary.mjs'), summarySource);
+fs.writeFileSync(path.join(temp, 'bridge.mjs'), bridgeModuleSource);
+fs.writeFileSync(path.join(temp, 'summary.mjs'), summaryModuleSource);
 
 const shared = await import(pathToFileURL(path.join(temp, 'history-report.mjs')));
 assert.equal(shared.validateReport(report).ok, true);

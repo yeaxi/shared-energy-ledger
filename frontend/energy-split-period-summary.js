@@ -4,7 +4,7 @@
  * statistics for the selected Energy Dashboard period. It never reads the
  * presentation aggregate entities and never calls a Home Assistant service.
  */
-import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/energy-split-history-report.js';
+import { isExactLocalDay, parseDate, validateReport } from '/local/energy-split/energy-split-history-report.js?v=20260806-3';
 
 (() => {
   const TAG = 'energy-split-period-summary';

@@ -3,7 +3,7 @@ import {
   buildHistoricalStatistics,
   isExactLocalDay,
   validateReport,
-} from '/local/energy-split/energy-split-history-report.js';
+} from '/local/energy-split/energy-split-history-report.js?v=20260806-3';
 
 /*
  * Presentation-only adapter for the existing energy-custom-graph-card.

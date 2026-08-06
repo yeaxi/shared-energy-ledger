@@ -146,7 +146,8 @@ Historical selected-day report і live cumulative accounting epoch навмис�
 - `ha core check`;
 - HTTP `200` для report, shared module, bridge і summary;
 - live Lovelace contract: дві references до report URL, cache-busted resources присутні,
-  standalone card відсутня;
+  standalone card відсутня; shared report consumers також імпортують report module
+  через cache-busted URL, щоб старий v1 module не відхиляв v2 report;
 - regression tests для DST boundaries, strict/fail-closed validation, coverage,
   report revision, ABA/config races і incomplete battery ledger.
 
