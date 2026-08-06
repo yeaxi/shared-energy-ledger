@@ -116,13 +116,13 @@ energy-delta, reset/gap, alignment, cumulative battery unit/age і fail-closed c
 ```text
 binary_sensor.energy_victron_data_fresh = on
 binary_sensor.energy_data_fresh         = on
-last ingest                          = 2026-08-06T12:31:34+00:00
+last ingest                          = 2026-08-06T12:54:53+00:00
 battery ledger                      = active
-ledger stock / cost                 = 0.720000000000112 kWh / 2.07371433303849 UAH
-small live cumulative cost          = 54.93 UAH
-parents live cumulative cost        = 30.70 UAH
-combined live cumulative cost       = 85.63 UAH
-household consumption               = 6725.58 kWh
+ledger stock / cost                 = 0.694000000000102 kWh / 1.97159405811246 UAH
+small live cumulative cost          = 55.37 UAH
+parents live cumulative cost        = 31.26 UAH
+combined live cumulative cost       = 86.63 UAH
+household consumption               = 6726.08 kWh
 ```
 
 Historical selected-day report і live cumulative accounting epoch навмисно
