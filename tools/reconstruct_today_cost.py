@@ -224,6 +224,10 @@ def fresh_sample(
     def power_ok(value: float | None):
         return value is not None and 0 <= value <= 100_000
 
+    def signed_power_ok(value: float | None):
+        # Victron battery power is signed: negative is discharge, positive is charge.
+        return value is not None and abs(value) <= 100_000
+
     heartbeat = parse_timestamp(point("heartbeat")[0])
     heartbeat_ok = heartbeat is not None and 0 <= now_ts - heartbeat <= 900
 
@@ -252,7 +256,7 @@ def fresh_sample(
     pv_ok = power_ok(pv) and unit_ok("pv") and (age_ok(pv_updated, 180) or (
         (sun_state or "").lower() == "below_horizon" and pv == 0 and heartbeat_ok
     ))
-    battery_ok = power_ok(battery) and unit_ok("battery") and age_ok(battery_updated, 180)
+    battery_ok = signed_power_ok(battery) and unit_ok("battery") and age_ok(battery_updated, 180)
     ac_ok = power_ok(ac_input) and unit_ok("ac_input") and age_ok(ac_updated, 180)
     small_meter_ok = power_ok(small) and unit_ok("small") and age_ok(small_updated, 1800)
     small_power_fallback_ok = power_ok(small) and unit_ok("small") and age_ok(small_updated, FALLBACK_ALIGNMENT_SECONDS)

@@ -156,7 +156,7 @@ class EnergySplitContractTests(unittest.TestCase):
         values = {
             "heartbeat": ("2026-01-01T00:00:00+00:00", now - 10),
             "pv": ("0", now - 10),
-            "battery": ("0", now - 10),
+            "battery": ("-250", now - 10),
             "ac_input": ("3200", now - 10),
             "active_source": ("grid", now - 10),
             "sun": ("below_horizon", now - 10),

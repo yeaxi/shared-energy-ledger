@@ -41,7 +41,8 @@ energy, including the shelter terms.
 A residual interval is accepted only when:
 
 1. total and selected small-home values are finite, numeric, non-negative and
-   expressed in watts;
+   expressed in watts; Victron battery power is validated as finite signed watts
+   because negative means discharge;
 2. Victron total is fresh within 180 seconds;
 3. direct small-home power is fresh within 180 seconds, or the cumulative
    small-home delta is valid, with a maximum 600-second sample age;
@@ -78,22 +79,28 @@ is checked for every sampled power/cumulative source, and observed tariff mode
 and values are retained as `tariff_segments`. It does not write Recorder statistics,
 live states or Home Assistant services.
 
-The 2026-08-06 artifact is partial, not a complete day repair:
+The 2026-08-06 artifact is partial, not a complete day repair. The signed
+Victron battery-power validation allows the fallback to cover the historical
+battery-discharge intervals that were previously rejected:
 
-- coverage: `14,160 / 54,725.283047 s` (`25.8747%`);
-- known cost: `5.2732026 UAH`;
-- direct allocation: `3,660 s`;
-- derived allocation: `10,500 s`;
-- transition-excluded allocation: `0 s`;
+- coverage: `36,480 / 55,718.010454 s` (`65.4725%`);
+- known cost: `13.93945674145384 UAH`;
+- direct allocation: `7,500 s`;
+- derived allocation: `28,980 s`;
+- transition-excluded allocation: `120 s`;
+- unpriced battery coverage: `21,600 s`; unpriced charge/discharge remain
+  unknown rather than zero;
 - tariff segments: `2` (`night` then `day`);
-- report revision: `be20f6fe62c3d6a0a03a77d2e254540d228c7075efa366644fa40dc73b9bf3fb`.
+- report revision: `0969e7254fdca87d4bee84b70c5c363d8e646349ee4851df98de3d14ab28a8ef`.
 
 The exact artifact remains authoritative for uncertainty and excluded intervals.
 
 ## Activation boundary
 
-The package change is committed locally/Git-side first. Changing
-`/config/packages/energy_split.yaml`, reloading or restarting Home Assistant,
-or uploading the current-day report to `/config/www/energy-split/` requires a
-separate explicit live approval. No physical device or Home Assistant service
-call is part of this change.
+The package, cache-busted report validator, historical report and Lovelace
+references were deployed to Home Assistant only after explicit live approval.
+The report is published at `/config/www/energy-split/energy_cost_2026-08-06.json`;
+Recorder statistics and live states were not rewritten. The deployment included
+an atomic backup under `/config/backup/energy-split/20260806T121610Z` and a
+controlled Home Assistant restart. No physical device or Home Assistant
+service call was part of this change.
