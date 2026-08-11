@@ -2,6 +2,5 @@
   "name": "Energy Split",
   "content_in_root": false,
   "homeassistant": "2025.4.0",
-  "render_readme": true,
   "zip_release": false
 }
