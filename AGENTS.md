@@ -96,3 +96,11 @@ PY
 ## Git and secret hygiene
 
 Не комітити passwords, tokens, private keys, `.env`, Home Assistant auth stores, databases, logs або machine-specific caches. `live_snapshot/` може містити лише перевірені конфігураційні snapshots без credentials; при появі secret-like значення snapshot вилучити або санітизувати до commit. Для rollback використовувати Git revert або окремий перевірений backup, а не `reset --hard` чи force-push.
+
+## Cursor Cloud specific instructions
+
+This repo is a Home Assistant config/frontend bundle with no application server, package manager, or lockfile. Local development only needs `python3` (stdlib) and `node`, both preinstalled on the VM. `PyYAML` is the only pip dependency and is used solely by the optional YAML parse step in `## Verification`; the update script installs it so that gate always works.
+
+- There is nothing long-running to "start" locally. The runnable surface is the verification gate in `## Verification` (this file) and `## Перевірки` in `README.md`: `python3 -m unittest discover -s tests -v` (19 contract tests), `node tests/historical_frontend_behavior.mjs`, and the JSON/YAML validation snippets. Prefer those commands rather than duplicating them elsewhere.
+- Tests are pure local contract/behavior checks: they never reach a live Home Assistant, do SSH, or make service calls. Do not attempt any live `/config`, `.storage`, or service-call action without explicit approval per the safety rules above.
+- `tools/reconstruct_today_cost.py`'s `main()` opens a hardcoded read-only Recorder DB at `/config/home-assistant_v2.db`, so it cannot run as a script on the VM. Exercise its logic instead by importing the module and calling its pure functions (`fresh_sample`, `allocation`, `normalize_trusted_ledger`, etc.) with synthetic samples — this is exactly what the unittest suite does.
