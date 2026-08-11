@@ -194,10 +194,12 @@ def allocate(allocation_input: AllocationInput) -> tuple[AllocationResult, ...]:
             provenance = (
                 "proportional_by_direct_meters" if accounting is not None else "unavailable"
             )
-        else:  # pragma: no cover
+        else:
             # Exhaustiveness: AllocationPolicy is a closed StrEnum. If a
             # future policy is added without matching engine support, mypy
-            # flags this branch as reachable, forcing an update here.
+            # flags this branch as reachable, forcing an update here. The
+            # runtime ``assert_never`` also catches operator bypasses (see
+            # ``tests.unit.test_allocation_exhaustive``).
             assert_never(tenant.policy)
         computed[tenant.slug] = accounting
         provenances[tenant.slug] = provenance

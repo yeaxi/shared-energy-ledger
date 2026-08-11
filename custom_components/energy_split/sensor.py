@@ -115,6 +115,35 @@ class TenantCostRateSensor(EnergySplitEntity, SensorEntity):
         return self.coordinator.data.tenants_cost_rate.get(self._slug)
 
 
+class GridImportCostPerKwhSensor(EnergySplitEntity, SensorEntity):
+    """Effective grid-import per-kWh cost, exposed for historical re-pricing.
+
+    Publishes the tariff rate the coordinator resolved for the moment of the
+    last successful update. Home Assistant's Recorder captures long-term
+    statistics for this sensor because it declares
+    ``state_class: measurement`` with a monetary-per-energy unit — a hint
+    that survives currency swaps because the accounting-epoch metadata
+    marks the change explicitly (invariant I9).
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_translation_key = "grid_import_cost_per_kwh"
+
+    def __init__(self, coordinator: EnergySplitCoordinator, currency: str) -> None:
+        super().__init__(coordinator, "grid_import_cost_per_kwh", "hub")
+        self._attr_native_unit_of_measurement = f"{currency}/kWh"
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self.coordinator.data.tariff_rate is not None
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.data.tariff_rate
+
+
 class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
     """Cumulative per-tenant total cost.
 
@@ -192,7 +221,9 @@ async def async_setup_entry(
     if config is None:
         async_add_entities([])
         return
-    entities: list[SensorEntity] = []
+    entities: list[SensorEntity] = [
+        GridImportCostPerKwhSensor(coordinator, config.currency),
+    ]
     for tenant in config.tenants:
         entities.extend(
             [
@@ -208,6 +239,7 @@ async def async_setup_entry(
 __all__ = [
     "TENANT_ACCOUNTING_POWER",
     "TENANT_SHARE",
+    "GridImportCostPerKwhSensor",
     "TenantCostRateSensor",
     "TenantCumulativeCostSensor",
     "TenantSensor",
