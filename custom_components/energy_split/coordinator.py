@@ -3,7 +3,7 @@
 The coordinator gathers upstream samples (grid, PV, battery, per-tenant
 meters), validates them against per-data-class freshness windows and unit
 metadata using :mod:`.samples`, applies the allocation policy from
-:mod:`.allocation`, updates the battery ledger via :mod:`.ledger`, and prices
+:mod:`.allocation`, drives the battery ledger via :mod:`.ledger`, and prices
 the resulting accounting power via :mod:`.tariff`.
 
 Missing or stale samples propagate as ``None`` in the payload and drive the
@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, State
@@ -25,12 +24,25 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .allocation import AllocationInput, AllocationResult, TenantInput, allocate
 from .configio import ConfigError, config_from_entry
 from .const import DOMAIN
-from .ledger import LedgerState, empty_state
+from .issues import (
+    clear_ledger_incoherent,
+    clear_tariff_schedule_invalid,
+    raise_ledger_incoherent,
+    raise_tariff_schedule_invalid,
+)
+from .ledger import (
+    LedgerInputs,
+    LedgerState,
+    unavailable_state,
+    unpriced_discharge_kwh,
+    update_ledger,
+    validate_boundary,
+)
+from .ledger_store import LedgerPersisted, LedgerStore, to_ledger_state
 from .models import (
-    AllocationPolicy,
+    BatteryConfig,
     EnergySplitConfig,
     SharedLoad,
-    Tenant,
 )
 from .samples import (
     validate_energy_sample,
@@ -38,9 +50,6 @@ from .samples import (
     validate_signed_power_sample,
 )
 from .tariff import rate_at, slot_at, validate_schedule
-
-if TYPE_CHECKING:
-    pass
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +71,7 @@ class CoordinatorPayload:
     tariff_slot: str | None = None
     tariff_rate: float | None = None
     currency: str = ""
+    unpriced_battery_kwh: float = 0.0
 
 
 def _state(hass: HomeAssistant, entity_id: str | None) -> State | None:
@@ -121,13 +131,46 @@ def _sum_optional(values: list[float | None]) -> float | None:
     return sum(values)  # type: ignore[arg-type]
 
 
+def _grid_share_of_charge(
+    pv_power: float | None,
+    battery_charge_power: float | None,
+    total_load: float | None,
+) -> float | None:
+    """Return the fraction of battery charge coming from the grid (0..1).
+
+    PV serves accounting loads first per the allocation-order policy; any
+    remaining PV supplies the battery. The residual charge is attributed to
+    the grid. If any input is ``None`` or the battery is not charging,
+    return ``None`` and let the caller keep the ledger unchanged.
+    """
+    if battery_charge_power is None or battery_charge_power <= 0:
+        return None
+    pv = pv_power if pv_power is not None else 0.0
+    loads = total_load if total_load is not None else 0.0
+    pv_to_loads = max(min(pv, loads), 0.0)
+    pv_remaining = max(pv - pv_to_loads, 0.0)
+    pv_to_battery = min(pv_remaining, battery_charge_power)
+    grid_to_battery = max(battery_charge_power - pv_to_battery, 0.0)
+    share = grid_to_battery / battery_charge_power
+    if share < 0:
+        return 0.0
+    if share > 1:
+        return 1.0
+    return share
+
+
 class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
     """Coordinator that owns the Energy Split runtime payload."""
 
     config_entry: ConfigEntry
     _energy_config: EnergySplitConfig | None
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        ledger_store: LedgerStore | None = None,
+    ) -> None:
         super().__init__(
             hass,
             _LOGGER,
@@ -137,25 +180,39 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         )
         self.config_entry = entry
         self._energy_config = None
+        self._ledger_store = ledger_store or LedgerStore(hass, entry.entry_id)
         self._load_config_if_ready()
         self.data = CoordinatorPayload()
 
     def _load_config_if_ready(self) -> None:
+        entry_id = self.config_entry.entry_id
         try:
             config = config_from_entry(self.config_entry.data, self.config_entry.options)
             validate_schedule(config.tariff)
         except ConfigError:
             self._energy_config = None
             return
-        except Exception:
+        except Exception as err:
+            raise_tariff_schedule_invalid(self.hass, entry_id, str(err))
             self._energy_config = None
             return
+        clear_tariff_schedule_invalid(self.hass, entry_id)
         self._energy_config = config
 
     @property
     def energy_config(self) -> EnergySplitConfig | None:
         """Return the typed config or ``None`` when the entry is not ready."""
         return self._energy_config
+
+    @property
+    def ledger_store(self) -> LedgerStore:
+        """Return the persistent ledger store handle."""
+        return self._ledger_store
+
+    async def async_config_entry_first_refresh(self) -> None:
+        """Prime the ledger cache before the first data fetch."""
+        await self._ledger_store.async_load()
+        await super().async_config_entry_first_refresh()
 
     async def _async_update_data(self) -> CoordinatorPayload:
         """Gather and validate one round of samples."""
@@ -174,7 +231,11 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             config.freshness.energy_max_age_s,
         )
         payload.grid_data_fresh = grid_import is not None
+        grid_power = _read_power(
+            self.hass, config.grid.power_entity, now, config.freshness.power_max_age_s
+        )
 
+        pv_power: float | None = None
         if config.pv:
             pv_power = _read_power(
                 self.hass, config.pv.power_entity, now, config.freshness.power_max_age_s
@@ -184,17 +245,20 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             )
             payload.pv_data_fresh = (pv_power is not None) or (pv_energy is not None)
 
+        battery_charge_power: float | None = None
+        battery_charge_kwh: float | None = None
+        battery_discharge_kwh: float | None = None
         if config.battery:
             battery_power = _read_signed_power(
                 self.hass, config.battery.power_entity, now, config.freshness.power_max_age_s
             )
-            charge_energy = _read_energy(
+            battery_charge_kwh = _read_energy(
                 self.hass,
                 config.battery.charge_energy_entity,
                 now,
                 config.freshness.battery_ledger_max_age_s,
             )
-            discharge_energy = _read_energy(
+            battery_discharge_kwh = _read_energy(
                 self.hass,
                 config.battery.discharge_energy_entity,
                 now,
@@ -202,13 +266,11 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             )
             payload.battery_data_fresh = (
                 battery_power is not None
-                and charge_energy is not None
-                and discharge_energy is not None
+                and battery_charge_kwh is not None
+                and battery_discharge_kwh is not None
             )
-
-        # Empty ledger placeholder until Wave 4 wires the persistent ledger
-        # update path.
-        payload.ledger = empty_state()
+            if battery_power is not None and battery_power > 0:
+                battery_charge_power = float(battery_power)
 
         tenant_inputs: list[TenantInput] = []
         for tenant in config.tenants:
@@ -229,7 +291,7 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 )
             )
 
-        whole_building_load = None
+        whole_building_load: float | None = None
         if config.whole_building:
             whole_building_load = _read_power(
                 self.hass,
@@ -245,15 +307,36 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         )
         payload.allocations = {r.slug: r for r in results}
 
+        total_load: float | None = None
+        if whole_building_load is not None:
+            total_load = whole_building_load
+        else:
+            accounting_powers = [
+                r.accounting_power for r in results if r.accounting_power is not None
+            ]
+            if accounting_powers:
+                total_load = sum(accounting_powers)
+
         try:
             payload.tariff_slot = slot_at(config.tariff, now)
             payload.tariff_rate = rate_at(config.tariff, now)
-        except (ValueError, Exception):
+        except Exception:
             payload.tariff_slot = None
             payload.tariff_rate = None
 
+        payload.ledger = await self._advance_ledger(
+            config=config.battery,
+            battery_data_fresh=payload.battery_data_fresh,
+            charge_now=battery_charge_kwh,
+            discharge_now=battery_discharge_kwh,
+            battery_charge_power=battery_charge_power,
+            pv_power=pv_power,
+            total_load=total_load,
+            tariff_rate=payload.tariff_rate,
+        )
+
         payload.grid_import_cost_rate = _grid_cost_rate(
-            payload.grid_data_fresh, payload.tariff_rate, self.hass, config
+            payload.grid_data_fresh, payload.tariff_rate, grid_power
         )
 
         payload.tenants_cost_rate = {}
@@ -262,14 +345,110 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 result, payload.tariff_rate
             )
 
-        # Freshness gates are binary sensors that report the current state; a
-        # cold start with no upstream is a valid ``payload`` with every gate
-        # set to False. The coordinator therefore does not raise
-        # :class:`UpdateFailed` here — that would flip cost sensors to
-        # ``unavailable`` and freshness sensors to ``unknown``, which
-        # violates requirement I10 (dashboards must render "unavailable" for
-        # cost, not for freshness). Instead we return the payload as-is.
+        payload.unpriced_battery_kwh = self._unpriced_battery_kwh
         return payload
+
+    _unpriced_battery_kwh: float = 0.0
+
+    async def _advance_ledger(
+        self,
+        config: BatteryConfig | None,
+        battery_data_fresh: bool,
+        charge_now: float | None,
+        discharge_now: float | None,
+        battery_charge_power: float | None,
+        pv_power: float | None,
+        total_load: float | None,
+        tariff_rate: float | None,
+    ) -> LedgerState | None:
+        """Advance the persistent ledger by one tick.
+
+        Fails closed per requirements I1 and I6. Any missing or non-coherent
+        input keeps the persisted state untouched and returns the previous
+        ledger snapshot (or ``unavailable_state`` when we cannot even
+        initialise).
+        """
+        if config is None:
+            return None
+        if not battery_data_fresh or charge_now is None or discharge_now is None:
+            snapshot = self._ledger_store.snapshot()
+            return to_ledger_state(snapshot) if snapshot else None
+
+        persisted: LedgerPersisted | None = await self._ledger_store.async_load()
+        if persisted is None:
+            seeded: LedgerPersisted = {
+                "last_charge_kwh": float(charge_now),
+                "last_discharge_kwh": float(discharge_now),
+                "stock_kwh": float(config.initial_stock_kwh),
+                "stock_cost": float(config.initial_stock_cost),
+            }
+            if not validate_boundary(seeded["stock_kwh"], seeded["stock_cost"]):
+                raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
+                return unavailable_state()
+            clear_ledger_incoherent(self.hass, self.config_entry.entry_id)
+            await self._ledger_store.async_save(seeded)
+            return to_ledger_state(seeded)
+
+        previous_state = to_ledger_state(persisted)
+        if previous_state is None or not validate_boundary(
+            previous_state.stock_kwh, previous_state.stock_cost
+        ):
+            raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
+            return unavailable_state()
+        clear_ledger_incoherent(self.hass, self.config_entry.entry_id)
+
+        last_charge = float(persisted.get("last_charge_kwh", charge_now))
+        last_discharge = float(persisted.get("last_discharge_kwh", discharge_now))
+        # Counter-reset guard: if either cumulative counter dropped, we cannot
+        # trust the interval. Update the anchor and skip pricing this tick.
+        if charge_now < last_charge or discharge_now < last_discharge:
+            persisted = {
+                **persisted,
+                "last_charge_kwh": float(charge_now),
+                "last_discharge_kwh": float(discharge_now),
+            }
+            await self._ledger_store.async_save(persisted)
+            return previous_state
+
+        delta_charge = float(charge_now) - last_charge
+        delta_discharge = float(discharge_now) - last_discharge
+
+        grid_share = _grid_share_of_charge(
+            pv_power=pv_power,
+            battery_charge_power=battery_charge_power,
+            total_load=total_load,
+        )
+        if grid_share is None:
+            grid_share = 0.0 if pv_power is not None and delta_charge > 0 else 1.0
+
+        rate = tariff_rate if tariff_rate is not None else 0.0
+        inputs = LedgerInputs(
+            delta_charge_kwh=delta_charge,
+            delta_discharge_kwh=delta_discharge,
+            grid_share_of_charge=grid_share,
+            tariff_rate=rate,
+            charge_efficiency=config.charge_efficiency,
+            discharge_efficiency=config.discharge_efficiency,
+        )
+        new_state = update_ledger(previous_state, inputs)
+        if new_state.status == "unavailable":
+            return new_state
+
+        unpriced = unpriced_discharge_kwh(previous_state, inputs)
+        if unpriced > 0:
+            self._unpriced_battery_kwh = round(unpriced, 6)
+        else:
+            self._unpriced_battery_kwh = 0.0
+
+        await self._ledger_store.async_save(
+            {
+                "last_charge_kwh": float(charge_now),
+                "last_discharge_kwh": float(discharge_now),
+                "stock_kwh": new_state.stock_kwh,
+                "stock_cost": new_state.stock_cost,
+            }
+        )
+        return new_state
 
 
 def _shared_power_sum(
@@ -289,21 +468,15 @@ def _shared_power_sum(
 def _grid_cost_rate(
     grid_fresh: bool,
     rate: float | None,
-    hass: HomeAssistant,
-    config: EnergySplitConfig,
+    grid_power: float | None,
 ) -> float | None:
     """Return the live grid import cost rate in currency/h.
 
     Fail-closed: any missing dependency yields ``None`` (requirement I1).
     """
-    if not grid_fresh or rate is None:
+    if not grid_fresh or rate is None or grid_power is None:
         return None
-    power = _read_power(
-        hass, config.grid.power_entity, datetime.now(UTC), config.freshness.power_max_age_s
-    )
-    if power is None:
-        return None
-    return power / 1000.0 * rate
+    return grid_power / 1000.0 * rate
 
 
 def _tenant_cost_rate(
@@ -315,7 +488,3 @@ def _tenant_cost_rate(
 
 
 __all__ = ["CoordinatorPayload", "EnergySplitCoordinator"]
-
-
-# Keep imports referenced for type checkers.
-_UNUSED = (Tenant, AllocationPolicy)

@@ -61,11 +61,11 @@ async def test_reset_battery_ledger_accepts_coherent_boundary_i6(hass: HomeAssis
         blocking=True,
         return_response=True,
     )
-    assert response == {"status": "queued", "stock_kwh": 5.0, "stock_cost": 12.5}
+    assert response == {"status": "applied", "stock_kwh": 5.0, "stock_cost": 12.5}
 
 
 @pytest.mark.asyncio
-async def test_set_tariff_rate_queues_change(hass: HomeAssistant) -> None:
+async def test_set_tariff_rate_applies_change(hass: HomeAssistant) -> None:
     await _setup(hass)
     response = await hass.services.async_call(
         DOMAIN,
@@ -75,5 +75,6 @@ async def test_set_tariff_rate_queues_change(hass: HomeAssistant) -> None:
         return_response=True,
     )
     assert response is not None
+    assert response["status"] == "applied"
     assert response["slot"] == "day"
     assert response["rate"] == 0.40

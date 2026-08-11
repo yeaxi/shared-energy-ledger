@@ -61,12 +61,12 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
       - name: Install dependencies
-        # Only the "latest" toolchain is exercised here. Pinning older HA
-        # versions requires a matching pinned pytest-homeassistant-custom-component
-        # release; the mapping is tracked in
-        # https://github.com/MatthewFlamm/pytest-homeassistant-custom-component
-        # and will be reintroduced as a matrix once the version-matrix helper
-        # lands.
+        # The pytest-homeassistant-custom-component release cadence is tied
+        # to a specific Home Assistant version. Installing pinned older HA
+        # versions requires the matching plugin release, so we run against
+        # ``latest`` here and let the plugin resolve HA. The matrix will be
+        # reintroduced together with ``scripts/matrix_versions.py`` which
+        # maps HA versions to plugin versions.
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements_test.txt
@@ -77,3 +77,30 @@ jobs:
           --cov=custom_components.energy_split
           --cov-report=term-missing
           --cov-fail-under=90
+
+  frontend:
+    name: Frontend (Lovelace cards)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build

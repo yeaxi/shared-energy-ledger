@@ -115,6 +115,35 @@ class TenantCostRateSensor(EnergySplitEntity, SensorEntity):
         return self.coordinator.data.tenants_cost_rate.get(self._slug)
 
 
+class GridImportCostPerKwhSensor(EnergySplitEntity, SensorEntity):
+    """Effective grid-import per-kWh cost, exposed for historical re-pricing.
+
+    Publishes the tariff rate the coordinator resolved for the moment of the
+    last successful update. Home Assistant's Recorder captures long-term
+    statistics for this sensor because it declares
+    ``state_class: measurement`` with a monetary-per-energy unit — a hint
+    that survives currency swaps because the accounting-epoch metadata
+    marks the change explicitly (invariant I9).
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_translation_key = "grid_import_cost_per_kwh"
+
+    def __init__(self, coordinator: EnergySplitCoordinator, currency: str) -> None:
+        super().__init__(coordinator, "grid_import_cost_per_kwh", "hub")
+        self._attr_native_unit_of_measurement = f"{currency}/kWh"
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self.coordinator.data.tariff_rate is not None
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.data.tariff_rate
+
+
 class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
     """Cumulative per-tenant total cost.
 
@@ -136,6 +165,23 @@ class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        # Prefer the typed ``RestoreSensor`` API so we can detect a unit
+        # change and start a new accounting epoch cleanly per requirement
+        # I9.
+        stored = await self.async_get_last_sensor_data()
+        if stored is not None and stored.native_value is not None:
+            stored_unit = stored.native_unit_of_measurement
+            if stored_unit is None or stored_unit == self._attr_native_unit_of_measurement:
+                try:
+                    self._total = Decimal(str(stored.native_value))
+                    return
+                except (ValueError, ArithmeticError):
+                    pass
+            else:
+                # Currency changed since the last save; start a new epoch.
+                self._total = Decimal("0")
+                return
+        # Fall back to the untyped last-state string; on failure keep zero.
         last_state = await self.async_get_last_state()
         if last_state is None or last_state.state in ("unknown", "unavailable"):
             return
@@ -175,7 +221,9 @@ async def async_setup_entry(
     if config is None:
         async_add_entities([])
         return
-    entities: list[SensorEntity] = []
+    entities: list[SensorEntity] = [
+        GridImportCostPerKwhSensor(coordinator, config.currency),
+    ]
     for tenant in config.tenants:
         entities.extend(
             [
@@ -191,6 +239,7 @@ async def async_setup_entry(
 __all__ = [
     "TENANT_ACCOUNTING_POWER",
     "TENANT_SHARE",
+    "GridImportCostPerKwhSensor",
     "TenantCostRateSensor",
     "TenantCumulativeCostSensor",
     "TenantSensor",
