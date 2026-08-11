@@ -1,38 +1,37 @@
-# Operating-system/editor files
-.DS_Store
-.vscode/
-.idea/
-*.swp
-
-# Python/test artifacts
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+.tox/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
-.venv/
-venv/
-env/
+dist/
+build/
 
-# Secrets and local runtime state
-.env
+# Node / dashboard
+node_modules/
+dashboard/**/dist/
+dashboard/**/build/
+dashboard/**/*.tsbuildinfo
+dashboard/**/coverage/
+
+# Docs build output
+site/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local secrets or logs — never commit these
+*.env
 .env.*
-!.env.example
-*.token
-*.secret
-*.pem
-*.key
-*.p12
-*.db
-*.sqlite
-*.sqlite3
-
-# Generated archives and temporary files
-*.tar
-*.tar.gz
-*.zip
-*.tmp
-*.bak
+*.log

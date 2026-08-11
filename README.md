@@ -1,191 +1,77 @@
-# Energy Split Dashboard
+# Energy Split
 
-Окремий проєкт для підтримки Home Assistant Energy Split Dashboard.
+**Energy Split** is a Home Assistant custom integration for **cooperative
+buildings** where one grid connection, optionally one PV array, and optionally
+one battery are shared by `N` metered flats or houses. It answers a single
+operational question:
 
-## Що виправлено
+> Who owes how much for any timeframe?
 
-Вартість зникала не через Lovelace layout. Споживання і вартість мають різні
-source chains. У live package був старий heartbeat entity ID
-`sensor.victron_multiplus_ii_6k5_last_ingest`, якого більше немає. Фактичний
-entity — `sensor.victron_multiplus_ii_last_ingest`.
+...in the operator's chosen currency, with a strict **fail-closed** contract:
+when upstream data is missing, stale, or otherwise unusable, dependent cost
+sensors stay `unavailable`. The integration never invents a zero.
 
-Package також має fail-closed battery-cost logic і guard для battery ledger за
-свіжими CerboGX charge/discharge inputs. MQTT transport noise не
-використовується як blocker, якщо CerboGX power sensors і freshness gate
-оновлюються.
+- **Scope.** Public, generic, HACS-installable. No hard-coded device models,
+  brand identifiers, or private installation names. All inputs are supplied
+  by the operator via entity selectors in the UI config flow.
+- **Quality target.** [Home Assistant Platinum tier](https://developers.home-assistant.io/docs/core/integration-quality-scale/).
+- **Status.** Under active migration from a personal proof-of-concept. See
+  [`REQUIREMENTS.md`](REQUIREMENTS.md) for the full public spec and the
+  migration phases.
 
-## Presentation target
+## Highlights
 
-Історичні дані інтегровані лише у вже існуючі presentation targets:
+- N tenants (minimum 2). Each tenant has a direct energy meter or an
+  allocated share of a shared boundary.
+- Optional battery accounting with a weighted-cost ledger. Priced stock is
+  separated from raw kWh so PV-charged and grid-charged energy are priced
+  differently.
+- Optional PV. When PV is configured, PV serves accounting loads first, then
+  the active AC source, then the battery.
+- Time-of-use tariffs. Arbitrary daily windows with day-of-week overrides;
+  DST-safe.
+- Currency-agnostic. ISO 4217 selector at config time; historical intervals
+  keep their original tariff and currency via a stored accounting epoch.
+- Deterministic Recorder-based reports for any timeframe. Reports are
+  finalized-as-of, revision-hashed, and reconcile with the hourly rows.
 
-- `custom:energy-custom-graph-card` — через
-  `frontend/energy-split-history-bridge.js`;
-- `custom:energy-split-period-summary` — через validated report path.
+## Repository layout
 
-Новий графік або окрема historical-картка не створювалися. Попередній
-`custom:energy-split-historical-cost` resource/card відсутній.
-
-Спільний модуль `frontend/energy-split-history-report.js` перевіряє schema,
-DST-safe exact local-day boundaries, strict JSON numbers, finalized-as-of and
-immutable revision, sorted/in-period hourly rows, обидві дозволені cost-серії,
-coverage і total equality. Некоректний або частковий target-day report
-fail-closed; новіші async selections не можуть бути перезаписані старим
-результатом.
-
-## Recorder reconstruction за 2026-08-05
-
-```text
-small home:         27.508121299942783 UAH
-parents home:       27.151157569360638 UAH
-known total:        54.65927886930342 UAH
-coverage:           65,940 / 84,301.785704 seconds = 78.2190%
-valid samples:      1,111 / 1,406
-unpriced charge:    1.0840000000000316 kWh
-unpriced discharge: 0.7280000000000086 kWh
-report revision:    027e806a324f7000e47290aadc4ad70e6d645b666fc8789f750f7b53d0b30b10
+```
+custom_components/energy_split/     # the integration
+dashboard/                          # companion Lovelace cards
+tests/                              # pytest suite (unit + integration)
+docs/                               # mkdocs site
+scripts/                            # dev helpers (lint, traceability, i18n)
+legacy/                             # read-only pre-migration archive
+.cursor/skills/                     # reusable HA-development skills
+REQUIREMENTS.md                     # public specification (source of truth)
 ```
 
-Картка показує після округлення компонентів:
+For architectural context, invariants, and the Cursor workflow, read:
 
-```text
-27.51 + 27.15 = 54.66 UAH
-```
+- [`REQUIREMENTS.md`](REQUIREMENTS.md) — public specification.
+- [`docs/`](docs/) — mkdocs site (quickstart, invariants, examples).
+- [`docs/cursor-agents.md`](docs/cursor-agents.md) — Cursor agent identities
+  and their bound skills.
 
-Це відома підтверджена сума за валідними Recorder-інтервалами, а не оцінка
-невідомих періодів. Report не змінює Recorder або live sensor states.
+## Installation (once released)
 
-## Recorder reconstruction за 2026-08-06
+Add this repository as a custom integration in HACS, then add the
+**Energy Split** integration from *Settings → Devices & Services → Add
+Integration*. The config flow walks through currency, grid, optional PV,
+optional battery, and per-tenant meters.
 
-Після дозволеного live rollout звіт за сьогодні доступний у dashboard через
-`/local/energy-split/energy_cost_2026-08-06.json`:
+## Contributing
 
-```text
-small home known cost:   6.2682757389462695 UAH
-parents home known cost: 6.219869051838497 UAH
-known total:             12.488144790784766 UAH
-coverage:                37,560 / 56,808.961463 seconds = 66.1163%
-valid samples:           713 / 947
-direct allocation:       8,580 s
-derived allocation:      28,980 s
-transition excluded:     120 s
-unpriced battery:        31,260 s
-report revision:         2238eec2adbc5b2dd1f6da895e19da141f81070d6d82dc639c69223e3893a3c6
-```
+- Read [`REQUIREMENTS.md`](REQUIREMENTS.md) first.
+- Every contribution runs `hassfest`, `mypy --strict`, `ruff`, and the pytest
+  suite with a coverage floor of 90 %.
+- No PR regresses an invariant without a matching test and documentation
+  update.
+- No PR references private installation entity IDs. See
+  [`legacy/README.md`](legacy/README.md).
 
-Derived allocation закриває частину попередньої прогалини за формулою
-`Victron total - small-home`. Непроцінену battery-частину не показано як нуль.
+## License
 
-## Derived fallback for missing parents-meter intervals
-
-Package і read-only reconstruction tool тепер мають fallback:
-
-```text
-parents accounting load = total Victron consumption
-                         - small-home accounting load
-```
-
-Канонічне джерело загального навантаження —
-`sensor.cerbo_gx_consumption_power_l1`. Малий будинок береться з
-`sensor.home_electricity_meter_power`; для historical reconstruction, якщо цей
-power sample stale або відсутній, дозволено лише validated delta з монотонного
-`sensor.entire_homes_spent_electricity`. До small-home accounting load входять
-також shelter dehumidifier/heating згідно з чинною фінансовою політикою.
-
-Fallback застосовується тільки якщо всі потрібні значення finite, total і small
-невід'ємні та в W, battery power finite signed у W (від'ємний означає discharge),
-total і small узгоджені за часом (skew до 180 s), delta cumulative energy
-не має reset/gap понад 900 s, battery charge/discharge cumulative counters мають
-бути finite non-negative numeric `kWh` із Recorder metadata і віком до 900 s, а
-residual `total - small` не від'ємний. Для
-cumulative small-energy fallback shelter terms уже включені в cumulative series
-і вдруге не додаються. Нульовий shelter/accumulator допускається лише за свіжого
-підтвердженого `off` switch state (до 6 годин). Direct parents meter має
-пріоритет. При порушенні будь-якої умови інтервал залишається unknown — його не
-перетворюють на `0 UAH` і не clamp-ять мовчки.
-
-Походження derived рядків позначається `victron_total_minus_small`. Валідні
-тариф, battery/grid allocation і trusted ledger усе ще обов'язкові для UAH;
-сам derived load не є підтвердженою вартістю. Historical report є additive
-presentation artifact і не переписує Recorder. Package, report і dashboard
-references уже розгорнуті в live Home Assistant після explicit approval.
-Поточний код перевіряється 19 Python contract tests, включно з residual,
-energy-delta, reset/gap, alignment, cumulative battery unit/age і fail-closed cases.
-
-## Фінальна live-перевірка
-
-```text
-binary_sensor.energy_victron_data_fresh = on
-binary_sensor.energy_data_fresh         = on
-last ingest                          = 2026-08-06T12:54:53+00:00
-battery ledger                      = active
-ledger stock / cost                 = 0.694000000000102 kWh / 1.97159405811246 UAH
-small live cumulative cost          = 55.37 UAH
-parents live cumulative cost        = 31.26 UAH
-combined live cumulative cost       = 86.63 UAH
-household consumption               = 6726.08 kWh
-```
-
-Historical selected-day report і live cumulative accounting epoch навмисно
-залишаються окремими величинами.
-
-## Перевірки
-
-Пройдено:
-
-- prior presentation rollout: `python3 -m unittest discover -s tests -v` — 9/9;
-- deployed fallback + historical report: `python3 -m unittest discover -s tests -v` — 19/19;
-- `node tests/historical_frontend_behavior.mjs`;
-- JavaScript syntax checks для shared report, bridge і summary;
-- Python compilation check для reconstruction tool;
-- JSON/YAML validation;
-- `git diff --check`;
-- value-free secret scan;
-- forbidden-path scan;
-- local/live SHA-256 correspondence;
-- remote JSON/resource validation;
-- `ha core check`;
-- HTTP `200` для report, shared module, bridge і summary;
-- live Lovelace contract: дві references до report URL, cache-busted resources присутні,
-  standalone card відсутня; shared report consumers також імпортують report module
-  через cache-busted URL, щоб старий v1 module не відхиляв v2 report;
-- regression tests для DST boundaries, strict/fail-closed validation, coverage,
-  report revision, ABA/config races і incomplete battery ledger.
-
-У targeted post-deploy log search не було записів `energy_split`,
-`energy-split`, history bridge або summary card. Окремо залишилися unrelated
-entries від Victron MQTT та Energy Bounded Executor; вони не стосуються цієї
-accounting/deployment зміни.
-
-Фізичні service calls не виконувалися: inverter, ESS, battery, relay і load
-states не змінювалися.
-
-Візуальний pixel-level screenshot і browser console не підтверджені: background
-CUA capture повернув порожню поверхню `0x0`. HTTP endpoints, live storage,
-resources, isolated behavior harness і post-deploy states підтверджені.
-
-## Rollback
-
-Backup після live rollout:
-
-```text
-/config/backup/energy-split/20260806T121610Z/
-```
-
-У backup є `SHA256SUMS` для попередніх package/frontend/report/resource файлів;
-попередній report збережений як
-`energy_cost_2026-08-06.pre-signed-battery-fix.json`.
-
-## Проєкт
-
-- `home_assistant/packages/energy_split.yaml` — heartbeat, fail-closed cost і
-  ledger guards;
-- `home_assistant/lovelace/energy_split.storage.json` — existing dashboard;
-- `home_assistant/lovelace/resources.storage.json` — registered/cache-busted frontend modules;
-- `frontend/energy-split-history-report.js` — shared report contract;
-- `frontend/energy-split-history-bridge.js` — existing graph adapter;
-- `frontend/energy-split-period-summary.js` — existing summary card;
-- `tools/reconstruct_today_cost.py` — deterministic read-only reconstruction;
-- `reports/energy_cost_2026-08-05.json` і `reports/energy_cost_2026-08-06.json` — additive reports;
-- `tests/` — contract and behavioral regression tests.
-
-Private repository: [`yeaxi/energy-split-dashboard`](https://github.com/yeaxi/energy-split-dashboard).
+MIT. See [`LICENSE`](LICENSE).
