@@ -32,6 +32,7 @@ select = [
 ]
 ignore = [
   "E501",
+  "SIM103",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -54,6 +55,7 @@ exclude = ["legacy", "dashboard", "docs", "tests"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 filterwarnings = [
   "error",

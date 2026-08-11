@@ -46,8 +46,8 @@ class CoordinatorPayload:
     pv_data_fresh: bool = False
     battery_data_fresh: bool = False
     tenant_data_fresh: dict[str, bool] = field(default_factory=dict)
-    allocations: dict[str, "AllocationResult | None"] = field(default_factory=dict)
-    ledger: "LedgerState | None" = None
+    allocations: dict[str, AllocationResult | None] = field(default_factory=dict)
+    ledger: LedgerState | None = None
     grid_import_cost_rate: float | None = None
     tenants_cost_rate: dict[str, float | None] = field(default_factory=dict)
 

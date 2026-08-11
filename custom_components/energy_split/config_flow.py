@@ -11,8 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 
 from .const import CONF_CURRENCY, CONFIG_ENTRY_VERSION, DOMAIN
 
@@ -26,7 +25,9 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = CONFIG_ENTRY_VERSION
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle the initial step.
 
         A minimal implementation lands here as a placeholder. The full
@@ -35,7 +36,7 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input.get(CONF_CURRENCY, "Energy Split"),
+                title=str(user_input.get(CONF_CURRENCY, "Energy Split")),
                 data=user_input,
             )
         return self.async_show_form(step_id="user", data_schema=_user_schema())
@@ -52,7 +53,9 @@ class EnergySplitOptionsFlow(OptionsFlow):
     def __init__(self, entry: ConfigEntry) -> None:
         self.entry = entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Placeholder options flow entry point."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
