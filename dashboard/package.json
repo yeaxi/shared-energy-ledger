@@ -1,0 +1,26 @@
+{
+  "name": "energy-split-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Companion Lovelace card bundle for the energy_split Home Assistant custom integration.",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "build": "npm run build:period-summary && npm run build:history-report && npm run build:history-bridge",
+    "build:period-summary": "CARD_ENTRY=energy-split-period-summary vite build",
+    "build:history-report": "CARD_ENTRY=energy-split-history-report CARD_KEEP_DIST=1 vite build",
+    "build:history-bridge": "CARD_ENTRY=energy-split-history-bridge CARD_KEEP_DIST=1 vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.4.0",
+    "eslint": "^9.9.0",
+    "@typescript-eslint/parser": "^8.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0"
+  }
+}

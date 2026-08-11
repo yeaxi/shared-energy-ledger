@@ -20,8 +20,8 @@ directories).
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 PRIVATE_INSTALL_DENYLIST: frozenset[str] = frozenset({
     "sensor.victron_multiplus_ii_last_ingest",

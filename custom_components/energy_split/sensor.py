@@ -82,6 +82,13 @@ class TenantSensor(EnergySplitEntity, SensorEntity):
         self._slug = slug
 
     @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        value = self.entity_description.value_fn(self.coordinator.data, self._slug)
+        return value is not None
+
+    @property
     def native_value(self) -> float | None:
         return self.entity_description.value_fn(self.coordinator.data, self._slug)
 
@@ -96,6 +103,12 @@ class TenantCostRateSensor(EnergySplitEntity, SensorEntity):
         super().__init__(coordinator, "tenant_total_cost_rate", slug)
         self._slug = slug
         self._attr_native_unit_of_measurement = f"{currency}/h"
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self.coordinator.data.tenants_cost_rate.get(self._slug) is not None
 
     @property
     def native_value(self) -> float | None:

@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"float\([^)]*,\s*0(?:\.0*)?\s*\)"),

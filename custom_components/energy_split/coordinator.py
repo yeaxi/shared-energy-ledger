@@ -262,15 +262,13 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 result, payload.tariff_rate
             )
 
-        if not any(
-            [
-                payload.grid_data_fresh,
-                any(payload.tenant_data_fresh.values()),
-            ]
-        ):
-            raise UpdateFailed(
-                "No fresh upstream data yet. Coordinator entities will report unavailable."
-            )
+        # Freshness gates are binary sensors that report the current state; a
+        # cold start with no upstream is a valid ``payload`` with every gate
+        # set to False. The coordinator therefore does not raise
+        # :class:`UpdateFailed` here — that would flip cost sensors to
+        # ``unavailable`` and freshness sensors to ``unknown``, which
+        # violates requirement I10 (dashboards must render "unavailable" for
+        # cost, not for freshness). Instead we return the payload as-is.
         return payload
 
 

@@ -1,0 +1,60 @@
+site_name: Energy Split
+site_description: Cooperative-building energy accounting for Home Assistant.
+site_url: https://yeaxi.github.io/energy-split-dashboard/
+repo_url: https://github.com/yeaxi/energy-split-dashboard
+repo_name: yeaxi/energy-split-dashboard
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Configuration: configuration.md
+  - Allocation policies: allocation-policies.md
+  - Tariffs and currency: tariffs-and-currency.md
+  - Battery ledger: battery-ledger.md
+  - Invariants: invariants.md
+  - Troubleshooting: troubleshooting.md
+  - Upgrade guide: upgrade-guide.md
+  - Traceability: traceability.md
+  - History: history.md
+  - Cursor agents: cursor-agents.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - toc:
+      permalink: true

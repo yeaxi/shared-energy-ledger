@@ -152,8 +152,8 @@ def _load_battery(payload: Mapping[str, Any] | None) -> BatteryConfig | None:
         discharge_efficiency=float(
             payload.get(CONF_DISCHARGE_EFFICIENCY, DEFAULT_DISCHARGE_EFFICIENCY)
         ),
-        initial_stock_kwh=float(payload.get(CONF_INITIAL_STOCK_KWH, 0.0)),
-        initial_stock_cost=float(payload.get(CONF_INITIAL_STOCK_COST, 0.0)),
+        initial_stock_kwh=float(payload.get(CONF_INITIAL_STOCK_KWH, 0.0)),  # no-silent-zero: allow (config default, not upstream sample)
+        initial_stock_cost=float(payload.get(CONF_INITIAL_STOCK_COST, 0.0)),  # no-silent-zero: allow (config default, not upstream sample)
     )
 
 
