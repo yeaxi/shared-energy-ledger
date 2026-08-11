@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a defect in the Energy Split integration or its cards.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please redact personal data before submitting. If your report reveals
+        secrets or personally identifying information, use the security
+        disclosure workflow in `SECURITY.md` instead.
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.1.0"
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Energy Split version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: |
+        Please describe how to reproduce the bug using a synthetic setup.
+        Do not paste entity IDs from your real installation.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics export
+      description: |
+        Attach the redacted diagnostics from Settings → Devices & Services →
+        Energy Split → three dots → Download diagnostics. Do not paste it
+        inline if it contains any personal identifiers you would rather
+        redact by hand.
+    validations:
+      required: false

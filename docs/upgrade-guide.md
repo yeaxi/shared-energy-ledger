@@ -1,0 +1,123 @@
+# Upgrade guide
+
+Energy Split follows [Semantic Versioning 2.0.0](https://semver.org/).
+This page describes the versioning policy, what counts as a breaking
+change, and a template for migration notes shipped with each release.
+
+## Versioning policy
+
+Given a version `MAJOR.MINOR.PATCH`:
+
+- **`MAJOR`** — incremented when a change is not backward compatible
+  for operators. Examples:
+    - Removing a config-flow field or a service.
+    - Changing the semantics of an entity `unique_id`.
+    - Removing an allocation policy from the closed enum defined in
+      [invariant I3](invariants.md).
+    - Changing the JSON report schema in a way that older readers
+      cannot parse.
+- **`MINOR`** — incremented for backward-compatible feature additions.
+  Examples:
+    - Adding a new optional config-flow field.
+    - Adding a new tenant sensor with a stable `unique_id`.
+    - Adding a new service call.
+    - Adding a new locale.
+- **`PATCH`** — incremented for backward-compatible bug fixes,
+  documentation-only changes, and dependency bumps that do not change
+  behavior.
+
+Pre-1.0 releases (`0.x.y`) are considered *initial development*. The
+project treats every `MINOR` bump before `1.0.0` as potentially
+breaking and calls out breaking changes explicitly.
+
+## What triggers a config-entry migration
+
+Any change to the config-entry schema or the storage layout requires a
+migration, per [invariant I9](invariants.md):
+
+- `CONFIG_ENTRY_VERSION` is bumped in `custom_components/energy_split/const.py`.
+- `async_migrate_entry` is extended to translate the old shape into
+  the new shape. Migrations are exhaustive; no field is silently
+  dropped.
+- Entity `unique_id`s stay stable across renames and translation
+  changes. When a rename is unavoidable, the migration writes an
+  entity-registry entry that maps the old `unique_id` to the new one
+  so history is preserved.
+
+## Migration notes template
+
+Each release includes a `## Upgrade notes` section in the release
+description. The template below is copied into `CHANGELOG.md`.
+
+```markdown
+## Upgrade notes for v<MAJOR>.<MINOR>.<PATCH>
+
+### Highlights
+
+- One-line summary of the release.
+
+### Breaking changes
+
+- List every breaking change with a link to the PR.
+- For each item, describe:
+    - what changed,
+    - who is affected,
+    - the exact operator action required.
+
+### Config-entry migration
+
+- **From version `<N-1>` to `<N>`:** describe schema differences.
+- Actions required by the operator (usually none; the migration is
+  automatic).
+- Rollback guidance: whether downgrading is safe.
+
+### New features
+
+- List new capabilities with links to the docs sections they extend.
+
+### Bug fixes
+
+- List fixed bugs and, when possible, the invariant they touch
+  (for example "`I4` residual now rejects a mixed `W` and `kWh`
+  tuple, see [invariants](invariants.md)").
+
+### Dependencies
+
+- List runtime and dev-time dependency changes.
+
+### Known issues
+
+- Optional. Document any known regressions and the workaround.
+```
+
+## Recommended upgrade procedure
+
+1. Read the release notes end to end. Pay attention to the *Breaking
+   changes* and *Config-entry migration* sections.
+2. **Take a backup.** Home Assistant's built-in backup covers the
+   Energy Split config entry, the recorder database, and the utility
+   meters.
+3. Upgrade through HACS. HACS downloads the new release into
+   `custom_components/energy_split/`.
+4. **Restart Home Assistant.** Do not use a "reload" shortcut for
+   major upgrades: `async_migrate_entry` runs at load time and needs
+   a clean start.
+5. After the restart:
+    - Confirm the integration is loaded from **Settings** > **Devices
+      & services**.
+    - Open the **Diagnostics download** and verify the reported
+      version matches the release.
+    - Watch the **Log** view for any warnings under
+      `custom_components.energy_split`.
+6. If anything looks wrong, restore the backup and open a community
+   issue with the diagnostics YAML attached. See
+   [Troubleshooting](troubleshooting.md).
+
+## Downgrading
+
+- Downgrades within the same `MAJOR` release are usually safe.
+- Downgrading across a `MAJOR` boundary is not supported. The
+  migration only runs forwards; older versions may fail to load a
+  config entry migrated by a newer version.
+- To recover from a failed downgrade, restore the backup taken before
+  the upgrade.

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint and static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
+          python -m pip install ruff mypy homeassistant voluptuous
+      - name: Ruff
+        run: python -m ruff check .
+      - name: mypy (strict)
+        run: python -m mypy custom_components/energy_split
+      - name: JSON validation
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          skipped = {'legacy', 'node_modules', '.venv', '.git'}
+          for path in pathlib.Path('.').rglob('*.json'):
+              if any(part in skipped for part in path.parts):
+                  continue
+              json.loads(path.read_text())
+          print('JSON validation: ok')
+          PY
+      - name: No silent zero
+        run: python scripts/lint_no_silent_zero.py
+      - name: Translations
+        run: python scripts/check_translations.py custom_components/energy_split
+      - name: Private denylist
+        run: python scripts/check_private_denylist.py
+      - name: Requirements traceability
+        run: python scripts/check_requirements_traceability.py
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install dependencies
+        # Only the "latest" toolchain is exercised here. Pinning older HA
+        # versions requires a matching pinned pytest-homeassistant-custom-component
+        # release; the mapping is tracked in
+        # https://github.com/MatthewFlamm/pytest-homeassistant-custom-component
+        # and will be reintroduced as a matrix once the version-matrix helper
+        # lands.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
+          python -m pip install --upgrade homeassistant pytest-homeassistant-custom-component
+      - name: Run pytest
+        run: >-
+          python -m pytest tests/ -q -W error
+          --cov=custom_components.energy_split
+          --cov-report=term-missing
+          --cov-fail-under=90

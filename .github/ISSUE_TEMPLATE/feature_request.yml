@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a change to the Energy Split integration or its cards.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What operational question can you not answer today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How should the integration change to answer that question?
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Invariant impact
+      description: |
+        Which invariants from REQUIREMENTS.md#a3 does this proposal affect?
+        Write "none" if you believe the proposal is invariant-neutral.
+    validations:
+      required: true

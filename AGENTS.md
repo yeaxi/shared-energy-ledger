@@ -1,98 +1,92 @@
-# Energy Split Dashboard — project context
+# Energy Split — project context and agent rules
 
 ## Scope
 
-Цей репозиторій містить Home Assistant-пакет обліку енергії для двох будинків, storage-конфігурацію dashboard `Energy Split` і frontend-картки, від яких він залежить. Він не є Solar Analytics, Energy Bounded Executor або Power Orchestrator і не повинен змінювати їхні файли чи політики.
+This repository is a **public, generic, open-source Home Assistant custom
+integration** for cooperative buildings that share one grid connection,
+optionally one PV array, and optionally one battery between `N` metered flats
+or houses. It targets Home Assistant's [Platinum quality
+scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/).
 
-Dashboard показує два окремі класи даних:
+The public specification is [`REQUIREMENTS.md`](REQUIREMENTS.md). It is the
+source of truth for scope, non-functional invariants, and the migration path.
 
-- споживання будинків у кВт·год;
-- фактичну вартість у гривнях, розраховану з grid/battery accounting та тарифу day/night.
+The integration is a **read-only accounting layer**. It never controls
+physical devices, never calls side-effecting Home Assistant services, and
+never mutates recorder state.
 
-Розподіл між будинками є обліковою політикою за наявними лічильниками та proportional allocation; це не незалежне фізичне вимірювання кожного джерела.
+## Canonical folders
 
-## Canonical sources
+- [`custom_components/energy_split/`](custom_components/energy_split/) — the
+  Home Assistant custom integration.
+- [`dashboard/`](dashboard/) — companion Lovelace cards.
+- [`tests/`](tests/) — pytest suite (unit + integration) using
+  `pytest-homeassistant-custom-component`.
+- [`docs/`](docs/) — mkdocs site (quickstart, examples, invariants,
+  traceability).
+- [`scripts/`](scripts/) — dev helpers (lint, traceability, i18n coverage).
+- [`.cursor/skills/`](.cursor/skills/) — reusable Home Assistant development
+  skills.
+- [`legacy/`](legacy/) — **read-only** archive of the pre-migration personal
+  installation. Never a source of truth.
 
-- Кандидат пакета: `home_assistant/packages/energy_split.yaml`.
-- Кандидат dashboard: `home_assistant/lovelace/energy_split.storage.json`.
-- Реєстрація dashboard і resources: відповідні файли в `home_assistant/lovelace/`.
-- Frontend-артефакти: `frontend/`.
-- `live_snapshot/` — незмінний read-only знімок live-файлів для доказів і порівняння; його не можна використовувати як файл для розгортання.
-- `tests/` — локальні контрактні тести, які не звертаються до Home Assistant і не виконують service calls.
+Each of the first four folders has a scoped `AGENTS.md` with folder-specific
+rules. Read those before editing files in that folder.
 
-## Live Home Assistant contract
+## Cross-cutting hard rules
 
-- SSH target: `root@homeassistant.local`.
-- Live package path: `/config/packages/energy_split.yaml`.
-- Live dashboard storage: `/config/.storage/lovelace.energy_split`.
-- Dashboard route: `/energy-split`.
-- Канонічний heartbeat Victron: `sensor.victron_multiplus_ii_last_ingest`.
-- Старий і недійсний ID: `sensor.victron_multiplus_ii_6k5_last_ingest`; його не можна повертати в package, templates, tests або docs як active source.
-- Cost-card sources: `sensor.energy_small_home_total_cost_consistent` і `sensor.energy_parents_home_total_cost_consistent`.
-- Consumption-card sources: `sensor.entire_homes_spent_electricity` і `sensor.combined_parents_home_energy`.
+- **Public and generic.** No hard-coded entity IDs, device names, brand
+  identifiers, currencies-locked-to-a-country, addresses, or personal names in
+  any file outside `legacy/`. All external inputs are user-selected at config
+  time.
+- **Fail-closed accounting.** No `float(state, 0)`, no `state or 0`, no
+  `try/except: pass` on any cost, allocation, ledger, or report code path.
+  See the `energy-accounting-invariants` skill for the full invariant list.
+- **No live Home Assistant access.** Agents in this repository have no SSH,
+  no service calls, and no direct writes to any real Home Assistant instance.
+  Live testing is a separate rollout plan governed after the project is
+  "done by definition".
+- **Async only.** All I/O inside the event loop is async. Sync dependencies
+  are wrapped in `hass.async_add_executor_job`.
+- **Typed public surface.** `mypy --strict` and `ruff` are clean.
+- **Coverage floor.** `pytest --cov-fail-under=90` at the repository level.
+- **Deterministic tests.** No wall-clock waits, no real network, no real DB.
+  Fixtures under `tests/fixtures/` are fully synthetic.
+- **Branch names.** All branches follow `cursor/<descriptive-name>-c99d`.
+- **No secrets.** Ever. `.env`, tokens, private keys, auth stores, databases,
+  and Home Assistant logs are never committed.
 
-Вартість має ланцюг доступності: heartbeat → `binary_sensor.energy_victron_data_fresh` / `binary_sensor.energy_data_fresh` → source/allocation power → cost rate → integrated cost total → `*_total_cost_consistent` → dashboard. Якщо upstream availability вимкнена, dashboard має показувати недоступність, а не вигадану нульову вартість.
+## Cursor workflow
 
-## Safety and change authority
+- Plan mode for every design change. Invariants are locked before code
+  moves.
+- Scoped rules per folder (see the scoped `AGENTS.md` files).
+- Skills at [`.cursor/skills/`](.cursor/skills/) apply per-folder as
+  documented in the scoped `AGENTS.md` files.
+- Cursor identities and their skill bindings are documented in
+  [`docs/cursor-agents.md`](docs/cursor-agents.md).
 
-- Локальний код, тести, Git commit і GitHub push не є дозволом на live Home Assistant change.
-- Без окремого explicit approval у поточній розмові не можна змінювати `/config`, `.storage`, dashboard resources, config entries, не можна виконувати reload/restart і не можна викликати Home Assistant services.
-- Це read-only analytics/accounting dashboard: не викликати `turn_on`, `turn_off`, `toggle`, ESS/PV/inverter/battery або інші фізичні service calls.
-- Перед live edit: зняти timestamped backup саме змінених файлів, перевірити локальний кандидат, перед restart виконати `ha core check`, після activation перевірити readiness, exact entity states і logs. Не редагувати `.storage` навмання.
-- Якщо live approval отримано, застосовувати лише мінімальний diff, який усуває підтверджений root cause; не змішувати з рефакторингом тарифів, ledger або інших dashboard.
+## Verification gate
 
-## Debugging rules
-
-1. Спочатку перевірити actual live entity IDs і стани через read-only SSH/API.
-2. Для missing/unknown/unavailable upstream не застосовувати `float(0)` як прихований дозвіл для вартості.
-3. Відрізняти unavailable consumption від unavailable cost: dashboard може мати різні upstream chains.
-4. Після зміни entity ID оновлювати всі шаблони, diagnostic attributes, documentation і regression tests разом.
-5. У звітах фіксувати точний source, timestamp/boundary, resolution/coverage, tariff/denominator і uncertainty.
-
-## Residual fallback contract
-
-When `sensor.lichilnik_budinku_power` is unavailable, the accounting candidate may
-select `victron_total_minus_small`:
-
-```text
-parents = sensor.cerbo_gx_consumption_power_l1
-          - small-home accounting load
-```
-
-Direct meter selection wins. The Victron total is treated as a qualified whole-home
-AC-load boundary under the current source contract; this assumption must remain
-explicit in topology reviews because units alone cannot prove physical coverage.
-The fallback is an estimate, not an independent parents-home measurement. The
-selector is a closed enum (`direct_meter`, `victron_total_minus_small`); any other
-state keeps the accounting chain unavailable. Negative, stale, future, unaligned,
-non-finite or wrong-unit candidates remain unknown and are never clamped to zero.
-
-The historical tool additionally derives small-home accounting power from the
-monotonic cumulative `sensor.entire_homes_spent_electricity`; that series already
-contains the shelter terms, so they must not be added a second time. Report v2
-requires `direct + derived = coverage`; transition-excluded seconds are tracked
-separately and must reconcile with hourly rows. Recorder unit metadata is part of
-historical validation, including finite non-negative `kWh` battery charge/discharge
-counters no older than 900 seconds; invalid counters leave battery pricing unknown.
-Tariff mode/value segments remain explicit in the report.
-
-## Verification
-
-Мінімальний локальний gate:
+Minimum local gate before commit:
 
 ```bash
-python3 -m unittest discover -s tests -v
-python3 - <<'PY'
-from pathlib import Path
-import json
-for path in Path('home_assistant/lovelace').glob('*.json'):
-    json.loads(path.read_text())
-print('JSON validation: ok')
-PY
+python -m homeassistant.scripts.hassfest --requirements --action validate
+python -m mypy --strict custom_components/energy_split
+python -m ruff check .
+python -m pytest tests/ -q --cov=custom_components.energy_split --cov-fail-under=90 -W error
+python scripts/check_translations.py custom_components/energy_split
+python scripts/check_private_denylist.py
+python scripts/lint_no_silent_zero.py custom_components/energy_split
+python scripts/check_requirements_traceability.py
+python -c "import json, pathlib; [json.loads(p.read_text()) for p in pathlib.Path('.').rglob('*.json') if 'node_modules' not in p.parts and 'legacy' not in p.parts]"
+git diff --check
 ```
 
-Якщо доступний PyYAML, додатково parse `home_assistant/packages/energy_split.yaml`. Перед commit перевірити `git diff --check`, staged file list і value-free secret scan. Після будь-якого live deployment повторно перевірити correspondence між commit і remote SHA-256.
+CI reruns the same gate on every supported Home Assistant version.
 
 ## Git and secret hygiene
 
-Не комітити passwords, tokens, private keys, `.env`, Home Assistant auth stores, databases, logs або machine-specific caches. `live_snapshot/` може містити лише перевірені конфігураційні snapshots без credentials; при появі secret-like значення snapshot вилучити або санітизувати до commit. Для rollback використовувати Git revert або окремий перевірений backup, а не `reset --hard` чи force-push.
+Do not commit secrets, private keys, `.env`, Home Assistant auth stores,
+databases, logs, or machine-specific caches. Use Git revert or a verified
+backup for rollback; never force-push or `reset --hard` a shared branch.

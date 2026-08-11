@@ -147,23 +147,24 @@ tariff or currency changes without rewriting recorder history.
 ## A3. Non-functional invariants
 
 These invariants must hold from the first public release. They are testable and
-each has a matching contract test.
+each has a matching contract test. Each is labelled `I1` through `I10` for
+cross-referencing from tests, docs, and the traceability matrix.
 
-- **No silent zero.** When any required upstream is `unknown`, `unavailable`,
+- **I1. No silent zero.** When any required upstream is `unknown`, `unavailable`,
   `none`, missing a `last_updated`, has the wrong unit, has a future
   `last_updated`, or has an age greater than the configured freshness window,
   dependent cost and allocation entities MUST stay `unavailable`. Under no
   circumstance does the integration fall back to `0` for a missing input.
-- **Per-data-class freshness.** Freshness gates are independent for grid, PV,
+- **I2. Per-data-class freshness.** Freshness gates are independent for grid, PV,
   battery, and each tenant meter. Cost-side and consumption-side chains are
   evaluated independently: one chain can be `unavailable` while the other stays
   valid. Dashboards must reflect this asymmetry rather than blanking both.
-- **Closed allocation enum.** The allocation-policy selector accepts exactly
+- **I3. Closed allocation enum.** The allocation-policy selector accepts exactly
   three values: `direct_meter`, `residual_of_total_minus_others`,
   `proportional_by_direct_meters`. Any other value keeps the tenant's
   accounting chain `unavailable`. The enum is closed at the type-system level
   (`typing.Literal` or `StrEnum`).
-- **Residual fallback rules.** The `residual_of_total_minus_others` policy is
+- **I4. Residual fallback rules.** The `residual_of_total_minus_others` policy is
   only accepted when total, all sibling loads, and shared loads are:
   - finite,
   - non-negative,
@@ -175,11 +176,11 @@ each has a matching contract test.
 
   If any of these conditions fails, the interval stays unknown. Negative,
   unaligned, or unit-inconsistent residuals are never clamped to zero.
-- **Recorder unit metadata is validated.** Power inputs must have
+- **I5. Recorder unit metadata is validated.** Power inputs must have
   `unit_of_measurement == "W"`. Cumulative counters must have
   `unit_of_measurement == "kWh"`. Cumulative counters in `kW` or with missing
   unit metadata are rejected at both live-state and report-generation time.
-- **Battery ledger safety.** The ledger updates only when both cumulative
+- **I6. Battery ledger safety.** The ledger updates only when both cumulative
   counters are finite, non-negative, monotonic `kWh` values whose `last_updated`
   age is within a bounded window (default 900 s), AND the battery data-fresh
   gate is on. The boundary pair `(stock_kwh, stock_cost)` must be coherent:
@@ -187,7 +188,7 @@ each has a matching contract test.
   - both non-negative,
   - `stock_kwh > 0 ⇒ stock_cost >= 0`,
   - `stock_kwh == 0 ⇒ stock_cost == 0`.
-- **Report v2 contract.** The Recorder-based JSON report must:
+- **I7. Report v2 contract.** The Recorder-based JSON report must:
   - use DST-safe exact local-day boundaries computed via
     `homeassistant.util.dt.as_local`;
   - encode numbers as strict JSON numbers (no `NaN`, no `Infinity`, no strings);
@@ -199,13 +200,13 @@ each has a matching contract test.
     the hourly rows;
   - report unpriced battery kWh as a distinct field, never folded into total
     cost.
-- **Async selection ordering.** Newer asynchronous report selections are never
+- **I8. Async selection ordering.** Newer asynchronous report selections are never
   overwritten by an older completed report. The card must key on a monotonic
   selection id.
-- **Config-entry migration.** `CONFIG_ENTRY_VERSION` is bumped for every schema
+- **I9. Config-entry migration.** `CONFIG_ENTRY_VERSION` is bumped for every schema
   change. `async_migrate_entry` is exhaustive. Entity `unique_id`s are stable
   across renames and translation changes.
-- **Dashboards fail closed.** When the underlying accounting chain is
+- **I10. Dashboards fail closed.** When the underlying accounting chain is
   unavailable, cards render "unavailable" rather than a fabricated `0`. The
   card contract explicitly forbids treating `"unavailable"` as `0`.
 
