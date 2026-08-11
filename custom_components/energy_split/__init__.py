@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import CONFIG_ENTRY_VERSION, DOMAIN, PLATFORMS
 from .coordinator import EnergySplitCoordinator
-
-if TYPE_CHECKING:
-    pass
+from .services import async_register_services, async_unregister_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,10 +17,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up an Energy Split config entry."""
     coordinator = EnergySplitCoordinator(hass, entry)
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        _LOGGER.debug(
+            "Coordinator first refresh raised; setup continues with empty payload"
+        )
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, list(PLATFORMS))
+    await async_register_services(hass)
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
@@ -33,6 +36,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload an Energy Split config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, list(PLATFORMS))
+    if not any(e.state.recoverable for e in hass.config_entries.async_entries(DOMAIN)):
+        await async_unregister_services(hass)
     return unload_ok
 
 
