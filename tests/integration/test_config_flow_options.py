@@ -109,7 +109,7 @@ async def test_options_flow_saves_overrides(hass: HomeAssistant) -> None:
     )
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     options_flow = await hass.config_entries.options.async_init(entry.entry_id)
-    assert options_flow["type"] == FlowResultType.FORM
-
-    saved = await hass.config_entries.options.async_configure(options_flow["flow_id"], {})
-    assert saved["type"] == FlowResultType.CREATE_ENTRY
+    # ``async_step_init`` now returns a menu of sub-actions.
+    assert options_flow["type"] == FlowResultType.MENU
+    assert "add_tenant" in options_flow["menu_options"]
+    assert "remove_tenant" in options_flow["menu_options"]
