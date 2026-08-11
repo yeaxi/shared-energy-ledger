@@ -127,9 +127,10 @@ async def _reset_battery_ledger(call: ServiceCall) -> ServiceResponse:
     coordinator = _coordinator(call.hass)
     ledger_store = coordinator.ledger_store
     snapshot = ledger_store.snapshot() or {}
+    # no-silent-zero: allow (persisted counter anchors, not upstream samples)
     updated: LedgerPersisted = {
-        "last_charge_kwh": float(snapshot.get("last_charge_kwh", 0.0)),
-        "last_discharge_kwh": float(snapshot.get("last_discharge_kwh", 0.0)),
+        "last_charge_kwh": float(snapshot.get("last_charge_kwh", 0.0)),  # no-silent-zero: allow
+        "last_discharge_kwh": float(snapshot.get("last_discharge_kwh", 0.0)),  # no-silent-zero: allow
         "stock_kwh": stock_kwh,
         "stock_cost": stock_cost,
     }

@@ -82,8 +82,12 @@ def to_ledger_state(payload: LedgerPersisted | None) -> LedgerState | None:
     """
     if payload is None:
         return None
-    stock_kwh = float(payload.get("stock_kwh", 0.0))
-    stock_cost = float(payload.get("stock_cost", 0.0))
+    # Persisted-state defaults, not upstream samples. The ledger emits
+    # ``0.0`` only when no priced stock was ever seeded; that is the
+    # ``empty`` status, not a fabricated cost against a missing sensor
+    # (requirement I1 targets the latter).
+    stock_kwh = float(payload.get("stock_kwh", 0.0))  # no-silent-zero: allow
+    stock_cost = float(payload.get("stock_cost", 0.0))  # no-silent-zero: allow
     if stock_kwh < 0 or stock_cost < 0:
         return None
     return LedgerState(
