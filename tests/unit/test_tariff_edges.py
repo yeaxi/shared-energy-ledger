@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 
 import pytest
 
@@ -18,8 +18,7 @@ from custom_components.energy_split.tariff import (
     validate_schedule,
 )
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 def test_day_night_preset_rejects_equal_starts() -> None:

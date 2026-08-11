@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from custom_components.energy_split.samples import (
     as_utc,
@@ -11,8 +11,7 @@ from custom_components.energy_split.samples import (
     validate_signed_power_sample,
 )
 
-
-UTC = timezone.utc
+UTC = UTC
 NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
 
 

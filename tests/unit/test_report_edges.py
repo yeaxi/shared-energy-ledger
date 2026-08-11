@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -17,9 +17,8 @@ from custom_components.energy_split.report import (
     verify_revision,
 )
 
-
 KYIV = ZoneInfo("Europe/Kyiv")
-UTC = timezone.utc
+UTC = UTC
 
 
 def _row(slug: str, hour: datetime, cost: str = "1.00", coverage: int = 3600) -> HourlyRow:
