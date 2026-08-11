@@ -24,6 +24,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .allocation import AllocationInput, AllocationResult, TenantInput, allocate
 from .configio import ConfigError, config_from_entry
 from .const import DOMAIN
+from .issues import (
+    clear_ledger_incoherent,
+    clear_tariff_schedule_invalid,
+    raise_ledger_incoherent,
+    raise_tariff_schedule_invalid,
+)
 from .ledger import (
     LedgerInputs,
     LedgerState,
@@ -179,15 +185,18 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         self.data = CoordinatorPayload()
 
     def _load_config_if_ready(self) -> None:
+        entry_id = self.config_entry.entry_id
         try:
             config = config_from_entry(self.config_entry.data, self.config_entry.options)
             validate_schedule(config.tariff)
         except ConfigError:
             self._energy_config = None
             return
-        except Exception:
+        except Exception as err:
+            raise_tariff_schedule_invalid(self.hass, entry_id, str(err))
             self._energy_config = None
             return
+        clear_tariff_schedule_invalid(self.hass, entry_id)
         self._energy_config = config
 
     @property
@@ -374,13 +383,19 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 "stock_cost": float(config.initial_stock_cost),
             }
             if not validate_boundary(seeded["stock_kwh"], seeded["stock_cost"]):
+                raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
                 return unavailable_state()
+            clear_ledger_incoherent(self.hass, self.config_entry.entry_id)
             await self._ledger_store.async_save(seeded)
             return to_ledger_state(seeded)
 
         previous_state = to_ledger_state(persisted)
-        if previous_state is None:
+        if previous_state is None or not validate_boundary(
+            previous_state.stock_kwh, previous_state.stock_cost
+        ):
+            raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
             return unavailable_state()
+        clear_ledger_incoherent(self.hass, self.config_entry.entry_id)
 
         last_charge = float(persisted.get("last_charge_kwh", charge_now))
         last_discharge = float(persisted.get("last_discharge_kwh", discharge_now))

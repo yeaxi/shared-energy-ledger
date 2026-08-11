@@ -93,52 +93,32 @@
   },
   "options": {
     "step": {
-      "menu": {
+      "init": {
         "title": "Energy Split options",
         "description": "Add, rename, or remove tenants, change tariffs and currency, or adjust battery ledger settings."
+      },
+      "menu": {
+        "title": "Energy Split options",
+        "description": "Choose an action to run."
       }
     }
   },
   "entity": {
     "binary_sensor": {
-      "grid_data_fresh": {
-        "name": "Grid data fresh"
-      },
-      "pv_data_fresh": {
-        "name": "PV data fresh"
-      },
-      "battery_data_fresh": {
-        "name": "Battery data fresh"
-      },
-      "tenant_data_fresh": {
-        "name": "Tenant data fresh"
-      }
+      "grid_data_fresh": {"name": "Grid data fresh"},
+      "pv_data_fresh": {"name": "PV data fresh"},
+      "battery_data_fresh": {"name": "Battery data fresh"},
+      "tenant_data_fresh": {"name": "Tenant data fresh"}
     },
     "sensor": {
-      "tenant_accounting_power": {
-        "name": "Accounting power"
-      },
-      "tenant_share": {
-        "name": "Share"
-      },
-      "tenant_grid_cost_rate": {
-        "name": "Grid cost rate"
-      },
-      "tenant_battery_cost_rate": {
-        "name": "Battery cost rate"
-      },
-      "tenant_total_cost_rate": {
-        "name": "Total cost rate"
-      },
-      "tenant_total_cost": {
-        "name": "Total cost"
-      },
-      "battery_stock_kwh": {
-        "name": "Battery priced stock"
-      },
-      "battery_weighted_cost": {
-        "name": "Battery weighted cost"
-      },
+      "tenant_accounting_power": {"name": "Accounting power"},
+      "tenant_share": {"name": "Share"},
+      "tenant_grid_cost_rate": {"name": "Grid cost rate"},
+      "tenant_battery_cost_rate": {"name": "Battery cost rate"},
+      "tenant_total_cost_rate": {"name": "Total cost rate"},
+      "tenant_total_cost": {"name": "Total cost"},
+      "battery_stock_kwh": {"name": "Battery priced stock"},
+      "battery_weighted_cost": {"name": "Battery weighted cost"},
       "battery_ledger_status": {
         "name": "Battery ledger status",
         "state": {
@@ -148,9 +128,19 @@
           "unavailable": "Unavailable"
         }
       },
-      "grid_import_cost_rate": {
-        "name": "Grid import cost rate"
-      }
+      "grid_import_cost_rate": {"name": "Grid import cost rate"},
+      "grid_import_cost_per_kwh": {"name": "Grid import cost per kWh"}
+    },
+    "number": {
+      "day_rate": {"name": "Day tariff rate"},
+      "night_rate": {"name": "Night tariff rate"},
+      "charge_efficiency": {"name": "Battery charge efficiency"},
+      "discharge_efficiency": {"name": "Battery discharge efficiency"},
+      "initial_stock_kwh": {"name": "Battery initial priced stock"},
+      "initial_stock_cost": {"name": "Battery initial priced stock cost"}
+    },
+    "select": {
+      "active_tariff_slot": {"name": "Active tariff slot"}
     }
   },
   "services": {
@@ -158,52 +148,41 @@
       "name": "Rebuild period report",
       "description": "Rebuild a deterministic Recorder-based JSON report for the given period.",
       "fields": {
-        "start": {
-          "name": "Start (local)",
-          "description": "Local start of the reporting period."
-        },
-        "end": {
-          "name": "End (local)",
-          "description": "Local end of the reporting period."
-        },
-        "tenant": {
-          "name": "Tenant (optional)",
-          "description": "Restrict the report to a single tenant slug."
-        }
+        "start": {"name": "Start (local)", "description": "Local start of the reporting period."},
+        "end": {"name": "End (local)", "description": "Local end of the reporting period."},
+        "tenant": {"name": "Tenant (optional)", "description": "Restrict the report to a single tenant slug."}
       }
     },
     "reset_battery_ledger": {
       "name": "Reset battery ledger",
       "description": "Reset the priced battery stock to the given values. Requires admin permissions.",
       "fields": {
-        "stock_kwh": {
-          "name": "Stock (kWh)",
-          "description": "New priced stock in kWh."
-        },
-        "stock_cost": {
-          "name": "Stock cost",
-          "description": "Cost of the new priced stock in the configured currency."
-        }
+        "stock_kwh": {"name": "Stock (kWh)", "description": "New priced stock in kWh."},
+        "stock_cost": {"name": "Stock cost", "description": "Cost of the new priced stock in the configured currency."}
       }
     },
     "set_tariff_rate": {
       "name": "Set tariff rate",
       "description": "Set the per-kWh rate for a named tariff slot from a given effective_from timestamp forward.",
       "fields": {
-        "slot": {
-          "name": "Slot",
-          "description": "Name of the tariff slot (for example day or night)."
-        },
-        "rate": {
-          "name": "Rate",
-          "description": "Per-kWh rate in the configured currency."
-        },
-        "effective_from": {
-          "name": "Effective from",
-          "description": "Timestamp from which the new rate applies."
-        }
+        "slot": {"name": "Slot", "description": "Name of the tariff slot (for example day or night)."},
+        "rate": {"name": "Rate", "description": "Per-kWh rate in the configured currency."},
+        "effective_from": {"name": "Effective from", "description": "Timestamp from which the new rate applies."}
       }
     }
   },
-  "issues": {}
+  "issues": {
+    "tariff_schedule_invalid": {
+      "title": "Tariff schedule is invalid",
+      "description": "Energy Split rejected the current tariff schedule: {reason}. Open the integration options to fix it. Until then, cost sensors will remain unavailable per invariant I1."
+    },
+    "ledger_boundary_incoherent": {
+      "title": "Battery ledger is incoherent",
+      "description": "The persisted battery ledger boundary pair (stock_kwh, stock_cost) is not coherent per invariant I6. Reset it via the `energy_split.reset_battery_ledger` service with a valid pair."
+    },
+    "upstream_missing": {
+      "title": "Upstream sensor is missing",
+      "description": "The configured sensor {resource} is not present in Home Assistant. Reconfigure the integration to point at the current entity."
+    }
+  }
 }

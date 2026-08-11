@@ -15,7 +15,7 @@ Registers three domain services:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import voluptuous as vol
@@ -145,7 +145,7 @@ async def _set_tariff_rate(call: ServiceCall) -> ServiceResponse:
     rate = float(call.data[ATTR_RATE])
     effective_from: datetime = call.data[ATTR_EFFECTIVE_FROM]
     if effective_from.tzinfo is None:
-        effective_from = effective_from.replace(tzinfo=timezone.utc)
+        effective_from = effective_from.replace(tzinfo=UTC)
     coordinator = _coordinator(call.hass)
     config = coordinator.energy_config
     if config is None:

@@ -22,6 +22,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from itertools import pairwise
 from typing import Any
 
 from homeassistant.components.recorder import history
@@ -139,7 +140,7 @@ def _hourly_rows_for_tenant(
     """
     rows: list[HourlyRow] = []
     coverage_seconds = 0
-    for hour_start, hour_end in zip(boundaries[:-1], boundaries[1:], strict=True):
+    for hour_start, hour_end in pairwise(boundaries):
         anchor_before = _state_at_or_before(states, hour_start)
         anchor_after = _state_at_or_before(states, hour_end)
         before = _parse_cost(anchor_before, currency)

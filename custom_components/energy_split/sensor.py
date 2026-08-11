@@ -136,6 +136,23 @@ class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        # Prefer the typed ``RestoreSensor`` API so we can detect a unit
+        # change and start a new accounting epoch cleanly per requirement
+        # I9.
+        stored = await self.async_get_last_sensor_data()
+        if stored is not None and stored.native_value is not None:
+            stored_unit = stored.native_unit_of_measurement
+            if stored_unit is None or stored_unit == self._attr_native_unit_of_measurement:
+                try:
+                    self._total = Decimal(str(stored.native_value))
+                    return
+                except (ValueError, ArithmeticError):
+                    pass
+            else:
+                # Currency changed since the last save; start a new epoch.
+                self._total = Decimal("0")
+                return
+        # Fall back to the untyped last-state string; on failure keep zero.
         last_state = await self.async_get_last_state()
         if last_state is None or last_state.state in ("unknown", "unavailable"):
             return

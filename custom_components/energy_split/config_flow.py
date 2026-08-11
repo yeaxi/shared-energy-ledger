@@ -214,12 +214,25 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
         self._pv: PvConfig | None = None
         self._battery: BatteryConfig | None = None
         self._whole_building: WholeBuildingConfig | None = None
+        self._reconfiguring: bool = False
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Rerun the initial flow to swap grid/tariff/tenant sources.
+
+        Reconfigure is preferred over reauth for Energy Split because the
+        integration has no external credentials; the operator just wants to
+        replace the entity IDs when an upstream device is renamed.
+        """
+        self._reconfiguring = True
+        return await self.async_step_user(user_input)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Collect the base config (currency, grid, tariff, tenants count)."""
-        if self._async_current_entries():
+        if not self._reconfiguring and self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
         errors: dict[str, str] = {}
@@ -356,9 +369,14 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
             whole_building=self._whole_building,
             freshness=FreshnessConfig(),
         )
-        return self.async_create_entry(
-            title=f"Energy Split ({currency})", data=config_to_entry(config)
-        )
+        title = f"Energy Split ({currency})"
+        data = config_to_entry(config)
+        if self._reconfiguring:
+            existing = self._async_current_entries()[0]
+            return self.async_update_reload_and_abort(
+                existing, data=data, title=title, reason="reconfigure_successful"
+            )
+        return self.async_create_entry(title=title, data=data)
 
     @staticmethod
     def async_get_options_flow(entry: ConfigEntry) -> OptionsFlow:
