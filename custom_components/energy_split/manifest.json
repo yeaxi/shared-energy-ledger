@@ -1,0 +1,15 @@
+{
+  "domain": "energy_split",
+  "name": "Energy Split",
+  "after_dependencies": ["utility_meter"],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/yeaxi/energy-split-dashboard",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/yeaxi/energy-split-dashboard/issues",
+  "quality_scale": "silver",
+  "requirements": [],
+  "version": "0.1.0"
+}
