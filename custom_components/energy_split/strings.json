@@ -95,12 +95,84 @@
     "step": {
       "init": {
         "title": "Energy Split options",
-        "description": "Add, rename, or remove tenants, change tariffs and currency, or adjust battery ledger settings."
+        "description": "Add, rename, or remove tenants, change tariffs and currency, or adjust freshness windows.",
+        "menu_options": {
+          "add_tenant": "Add a tenant",
+          "rename_tenant": "Rename a tenant",
+          "remove_tenant": "Remove a tenant",
+          "freshness": "Freshness windows",
+          "tariff_edit": "Edit tariff rate"
+        }
       },
-      "menu": {
-        "title": "Energy Split options",
-        "description": "Choose an action to run."
+      "add_tenant": {
+        "title": "Add a tenant",
+        "description": "Add a new tenant to the cooperative. The slug is used in entity unique_ids and cannot be renamed later.",
+        "data": {
+          "slug": "Slug",
+          "name": "Display name",
+          "allocation_policy": "Allocation policy",
+          "energy_entity": "Direct energy meter (optional)",
+          "power_entity": "Direct power meter (optional)"
+        },
+        "data_description": {
+          "slug": "Lowercase kebab-case identifier, e.g. flat-3.",
+          "name": "Human-visible name shown on the dashboard.",
+          "allocation_policy": "How this tenant's accounting load is computed.",
+          "energy_entity": "Cumulative energy sensor (kWh).",
+          "power_entity": "Instantaneous power sensor (W)."
+        }
+      },
+      "rename_tenant": {
+        "title": "Rename a tenant",
+        "description": "Pick a tenant to rename. Only the display name changes; the slug is immutable so entity unique_ids stay stable.",
+        "data": {"slug": "Tenant"}
+      },
+      "rename_tenant_confirm": {
+        "title": "Rename tenant {slug}",
+        "description": "Enter the new display name for tenant {slug}.",
+        "data": {"name": "New display name"}
+      },
+      "remove_tenant": {
+        "title": "Remove a tenant",
+        "description": "Pick a tenant to remove. At least two tenants must remain configured.",
+        "data": {"slug": "Tenant"}
+      },
+      "remove_tenant_confirm": {
+        "title": "Remove tenant {name}",
+        "description": "Confirm removal of tenant {name} ({slug}). This is destructive: the tenant's sensors will disappear on next reload.",
+        "data": {"confirm": "Yes, remove this tenant"}
+      },
+      "freshness": {
+        "title": "Freshness windows",
+        "description": "Maximum accepted age (in seconds) for each data class before the corresponding freshness gate flips to off and dependent cost sensors go unavailable.",
+        "data": {
+          "power_max_age_s": "Power sample max age (s)",
+          "energy_max_age_s": "Energy sample max age (s)",
+          "battery_ledger_max_age_s": "Battery ledger max age (s)",
+          "alignment_skew_s": "Alignment skew (s)"
+        }
+      },
+      "tariff_edit": {
+        "title": "Edit tariff rate",
+        "description": "Append a new rate for a named tariff slot with the current UTC time as effective_from. Historical intervals keep their original rate per invariant I9.",
+        "data": {
+          "slot": "Slot",
+          "rate": "New rate"
+        }
       }
+    },
+    "error": {
+      "invalid_slug": "Slugs must be lowercase, ASCII, and kebab-case.",
+      "duplicate_slug": "That slug is already in use.",
+      "invalid_policy": "That allocation policy is not recognised.",
+      "invalid_name": "Display name cannot be empty.",
+      "unknown_slot": "That tariff slot is not defined.",
+      "invalid_rate": "Rate must be a non-negative number."
+    },
+    "abort": {
+      "no_tenants": "There are no tenants to rename.",
+      "unknown_tenant": "That tenant no longer exists; the action was aborted.",
+      "minimum_tenants": "At least two tenants must remain; add a tenant before removing one."
     }
   },
   "entity": {
