@@ -79,6 +79,7 @@ python scripts/check_translations.py custom_components/energy_split
 python scripts/check_private_denylist.py
 python scripts/lint_no_silent_zero.py custom_components/energy_split
 python scripts/check_requirements_traceability.py
+python scripts/live_probe.py                 # live smoke against the real HA runtime
 python -c "import json, pathlib; [json.loads(p.read_text()) for p in pathlib.Path('.').rglob('*.json') if 'node_modules' not in p.parts and 'legacy' not in p.parts]"
 git diff --check
 ```
