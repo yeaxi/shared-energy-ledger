@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Verify that every invariant identifier from ``REQUIREMENTS.md#a3`` is
-referenced by at least one test module.
+"""Verify the requirement/test traceability contract.
 
-The invariants are labelled ``I1`` through ``I10`` in the requirements
-document. The traceability contract is:
+The invariants are labelled ``I1`` through ``I10`` in ``REQUIREMENTS.md#a3``.
+The contract enforced here is:
 
 * Every ``IN`` identifier appears in at least one file under ``tests/``.
+* Every ``IN`` identifier is listed in the ``docs/traceability.md`` matrix.
+* Every ``tests/....py`` path cited in ``docs/traceability.md`` exists, so the
+  matrix cannot silently reference a deleted or renamed test module.
 
 Usage:
 
     python scripts/check_requirements_traceability.py
-
-Docs coverage (every ``IN`` also appearing under ``docs/``) is checked
-separately by the docs pipeline once the site is scaffolded.
 """
 
 from __future__ import annotations
@@ -58,12 +57,30 @@ def main() -> int:
 
     covered = gather_from(tests_root)
 
+    errors = 0
     missing = sorted(expected - covered, key=lambda s: int(s[1:]))
-    if missing:
-        for identifier in missing:
-            print(f"{identifier}: not referenced by any file under tests/")
+    for identifier in missing:
+        print(f"{identifier}: not referenced by any file under tests/")
+        errors += 1
+
+    matrix = repo / "docs" / "traceability.md"
+    if not matrix.is_file():
+        print(f"missing {matrix}", file=sys.stderr)
+        return 1
+    matrix_text = matrix.read_text()
+    documented = collect_invariants(matrix_text)
+    for identifier in sorted(expected - documented, key=lambda s: int(s[1:])):
+        print(f"{identifier}: not listed in docs/traceability.md matrix")
+        errors += 1
+
+    for cited in sorted(set(re.findall(r"tests/[\w./-]+\.py", matrix_text))):
+        if not (repo / cited).is_file():
+            print(f"docs/traceability.md cites missing test module: {cited}")
+            errors += 1
+
+    if errors:
         print(
-            f"\nTraceability check failed. {len(missing)} invariant(s) lack test coverage.",
+            f"\nTraceability check failed with {errors} error(s).",
             file=sys.stderr,
         )
         return 1
