@@ -3,6 +3,3 @@ contact_links:
   - name: Documentation
     url: https://yeaxi.github.io/shared-energy-ledger/
     about: Read the docs before filing an issue.
-  - name: Discussions
-    url: https://github.com/yeaxi/shared-energy-ledger/discussions
-    about: For open-ended questions and design discussions.

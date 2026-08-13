@@ -1,8 +1,8 @@
 # custom_components/shared_energy_ledger — agent rules
 
 This folder holds the `shared_energy_ledger` Home Assistant custom integration. Every
-change here is user-facing code that must reach and stay at
-`quality_scale: platinum`.
+change here is user-facing code. Platinum is the target; the manifest remains
+at its currently attested tier until every higher-tier rule has been audited.
 
 ## Scope
 
@@ -75,8 +75,8 @@ python scripts/check_brand_assets.py custom_components/shared_energy_ledger
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90
 ```
 
-CI reruns the same commands on every supported HA version declared in
-`manifest.json`.
+CI reruns the same commands against Home Assistant 2026.8.1, the supported
+floor declared in `hacs.json`.
 
 ## Live Home Assistant policy
 

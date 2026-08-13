@@ -4,7 +4,8 @@ The suite is deliberately split into two halves:
 
 * ``tests/unit/`` — pure-Python tests for the accounting core (``ledger``,
   ``allocation``, ``tariff``, ``report``). They never import
-  ``homeassistant`` and therefore run under any Python 3.12 environment.
+  ``homeassistant``. The project runs them on Python 3.14 with the integration
+  suite so local and hosted checks use one supported runtime.
 * ``tests/integration/`` — tests that use
   ``pytest-homeassistant-custom-component`` to boot a mock Home Assistant
   runtime. The ``enable_custom_integrations`` fixture below makes the

@@ -29,7 +29,8 @@ switches anything on or off.
 
 ## What you need
 
-- A working Home Assistant with [HACS](https://www.hacs.xyz/) installed.
+- Home Assistant 2026.8.1 or newer with
+  [HACS](https://www.hacs.xyz/) installed.
 - A grid **import** energy meter (in `kWh`) in Home Assistant.
 - One energy meter per home, or a whole-building meter to split from.
 - Optional: solar and/or battery meters if you have them.
@@ -40,7 +41,9 @@ switches anything on or off.
 2. Open the menu (top right) and choose **Custom repositories**.
 3. Paste `https://github.com/yeaxi/shared-energy-ledger` and pick the
    **Integration** category, then click **Add**.
-4. **Restart Home Assistant.**
+4. Return to **HACS** > **Integrations**, search for
+   **Shared Energy Ledger**, open it, and choose **Download**.
+5. **Restart Home Assistant.**
 
 Full step-by-step instructions with screenshots are in the
 [Quickstart guide](https://yeaxi.github.io/shared-energy-ledger/quickstart/).
@@ -55,6 +58,11 @@ Full step-by-step instructions with screenshots are in the
 Every option is explained in the
 [Configuration reference](https://yeaxi.github.io/shared-energy-ledger/configuration/).
 No YAML editing is required.
+
+The optional Lovelace cards are attached to tagged GitHub releases. HACS
+installs the integration only; follow the
+[card installation instructions](dashboard/README.md) to add the cards
+manually.
 
 ## Get help and report a bug
 

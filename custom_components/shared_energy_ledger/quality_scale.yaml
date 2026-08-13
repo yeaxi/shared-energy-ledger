@@ -13,7 +13,7 @@ rules:
   # ---------- Bronze ----------
   action-setup: done                         # custom_components/shared_energy_ledger/__init__.py::async_setup_entry
   appropriate-polling: done                  # DataUpdateCoordinator with UPDATE_INTERVAL, no per-entity polling
-  brands: todo                               # Brand PR to home-assistant/brands pending
+  brands: done                               # brand/icon.png and icon@2x.png are validated in CI
   common-modules: done                       # models.py, const.py, coordinator.py
   config-flow: done                          # config_flow.py (multi-step user + async_step_reconfigure)
   config-flow-test-coverage: done            # tests/integration/test_config_flow*.py + test_options_flow_menu.py
@@ -77,5 +77,5 @@ rules:
   strict-typing: done                        # mypy --strict passes on custom_components/shared_energy_ledger
 
 quality_scale: silver
-# ^ Bump to "gold" or "platinum" only after the todo rules above resolve
-# and the manifest is updated in the same PR.
+# ^ Silver is the current declaration. Platinum remains the documented target;
+# update the manifest only after every higher-tier rule is independently audited.

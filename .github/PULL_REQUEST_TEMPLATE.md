@@ -29,6 +29,11 @@ commit sequence.
 - [ ] `python scripts/check_private_denylist.py`
 - [ ] `python scripts/check_brand_assets.py custom_components/shared_energy_ledger`
 - [ ] `python scripts/check_requirements_traceability.py`
+- [ ] `python scripts/check_structured_data.py`
+- [ ] `python scripts/check_ha_version_alignment.py`
+- [ ] `npm --prefix dashboard ci && npm --prefix dashboard run lint && npm --prefix dashboard run typecheck && npm --prefix dashboard test && npm --prefix dashboard run build`
+- [ ] `python -m mkdocs build --strict`
+- [ ] `git diff --check`
 
 ## Screenshots
 

@@ -57,8 +57,8 @@ python scripts/check_requirements_traceability.py
 ```
 
 The traceability checker fails when a requirement identifier from
-`REQUIREMENTS.md#a3` is not referenced by at least one test module and one
-docs page.
+`REQUIREMENTS.md#a3` is not referenced by at least one test module. Reviewers
+check the matching docs references when an invariant changes.
 
 ## Locale policy
 

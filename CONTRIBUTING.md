@@ -34,8 +34,8 @@ developers. If you are an end user, start with the [README](README.md) and the
 
 ## Local setup
 
-Requires Python 3.12+ (CI runs the supported Home Assistant matrix). Install
-the test and docs dependencies:
+Requires Python 3.14.2+. CI tests against Home Assistant 2026.8.1, the minimum
+version declared in `hacs.json`. Install the test and docs dependencies:
 
 ```bash
 python -m pip install -r requirements_test.txt
@@ -44,8 +44,8 @@ python -m pip install -r requirements_docs.txt  # only needed for docs work
 
 ## Verification gate
 
-Run these locally before opening a pull request. CI reruns the same checks on
-every supported Home Assistant version.
+Run these locally before opening a pull request. CI reruns the same checks
+against the supported Home Assistant release.
 
 ```bash
 python -m homeassistant.scripts.hassfest --requirements --action validate
@@ -54,14 +54,18 @@ python -m ruff check .
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error
 python scripts/check_translations.py custom_components/shared_energy_ledger
 python scripts/check_private_denylist.py
+python scripts/check_brand_assets.py custom_components/shared_energy_ledger
 python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 python scripts/check_requirements_traceability.py
+python scripts/check_structured_data.py
+python scripts/check_ha_version_alignment.py
+git diff --check
 ```
 
 For the companion Lovelace cards:
 
 ```bash
-npm --prefix dashboard install
+npm --prefix dashboard ci
 npm --prefix dashboard run lint
 npm --prefix dashboard run typecheck
 npm --prefix dashboard test
@@ -73,6 +77,10 @@ For the documentation site:
 ```bash
 python -m mkdocs build --strict
 ```
+
+Before creating a release tag, maintainers also run
+`python scripts/live_probe.py`. This smoke probe runs Home Assistant
+in-process without connecting to a live installation.
 
 Coverage must stay at or above 90 % at the repository level. Tests are
 deterministic: no wall-clock waits, no real network, no real database.

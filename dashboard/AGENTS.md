@@ -1,8 +1,8 @@
 # dashboard — agent rules
 
 This folder holds the companion Lovelace card bundle for the `shared_energy_ledger`
-integration. It is delivered as HACS frontend resources and rendered inside
-Home Assistant dashboards.
+integration. Tagged GitHub releases attach the built files for manual
+installation in Home Assistant dashboards. HACS installs only the integration.
 
 ## Scope
 
