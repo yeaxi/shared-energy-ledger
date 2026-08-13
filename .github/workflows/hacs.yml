@@ -3,6 +3,7 @@ name: HACS validation
 on:
   push:
     branches: [main]
+  pull_request:
   schedule:
     # Off-hours cron avoids the 00:00 UTC HACS-ecosystem rate-limit storm
     # on raw.githubusercontent.com, which surfaces as
