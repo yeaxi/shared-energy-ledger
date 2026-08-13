@@ -1,6 +1,6 @@
 # dashboard — agent rules
 
-This folder holds the companion Lovelace card bundle for the `energy_split`
+This folder holds the companion Lovelace card bundle for the `shared_energy_ledger`
 integration. It is delivered as HACS frontend resources and rendered inside
 Home Assistant dashboards.
 
@@ -44,9 +44,9 @@ Agents editing this folder must follow, in this order of precedence:
 ## Forbidden patterns
 
 - Reading `states.<entity>` directly for any entity that is not owned by the
-  `energy_split` integration.
+  `shared_energy_ledger` integration.
 - Hard-coding entity IDs from any private installation. All entities the
-  card reads live under the `energy_split.*` namespace and are supplied by
+  card reads live under the `shared_energy_ledger.*` namespace and are supplied by
   the integration.
 - Sending network requests to hosts outside the Home Assistant frontend
   origin.
@@ -72,5 +72,5 @@ CI reruns the same commands on every PR that touches this folder.
 
 - Card fields that depend on new integration entities are proposed here first,
   agreed on in a design PR, and then implemented in
-  `custom_components/energy_split/` in a separate PR.
+  `custom_components/shared_energy_ledger/` in a separate PR.
 - No dashboard PR imports Python from the integration folder.

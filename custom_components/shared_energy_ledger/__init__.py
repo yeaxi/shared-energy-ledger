@@ -1,4 +1,4 @@
-"""The Energy Split integration."""
+"""The Shared Energy Ledger integration."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import CONFIG_ENTRY_VERSION, DOMAIN, PLATFORMS
-from .coordinator import EnergySplitCoordinator
+from .coordinator import SharedEnergyLedgerCoordinator
 from .ledger_store import LedgerStore
 from .services import async_register_services, async_unregister_services
 
@@ -16,9 +16,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up an Energy Split config entry."""
+    """Set up an Shared Energy Ledger config entry."""
     ledger_store = LedgerStore(hass, entry.entry_id)
-    coordinator = EnergySplitCoordinator(hass, entry, ledger_store=ledger_store)
+    coordinator = SharedEnergyLedgerCoordinator(hass, entry, ledger_store=ledger_store)
     try:
         await coordinator.async_config_entry_first_refresh()
     except Exception:
@@ -36,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload an Energy Split config entry."""
+    """Unload an Shared Energy Ledger config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, list(PLATFORMS))
     if not any(e.state.recoverable for e in hass.config_entries.async_entries(DOMAIN)):
         await async_unregister_services(hass)

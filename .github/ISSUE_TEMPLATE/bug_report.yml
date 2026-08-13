@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a defect in the Energy Split integration or its cards.
+description: Report a defect in the Shared Energy Ledger integration or its cards.
 labels: ["bug"]
 body:
   - type: markdown
@@ -18,7 +18,7 @@ body:
   - type: input
     id: integration_version
     attributes:
-      label: Energy Split version
+      label: Shared Energy Ledger version
       placeholder: "0.1.0"
     validations:
       required: true
@@ -53,7 +53,7 @@ body:
       label: Diagnostics export
       description: |
         Attach the redacted diagnostics from Settings → Devices & Services →
-        Energy Split → three dots → Download diagnostics. Do not paste it
+        Shared Energy Ledger → three dots → Download diagnostics. Do not paste it
         inline if it contains any personal identifiers you would rather
         redact by hand.
     validations:

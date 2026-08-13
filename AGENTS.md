@@ -1,4 +1,4 @@
-# Energy Split — project context and agent rules
+# Shared Energy Ledger — project context and agent rules
 
 ## Scope
 
@@ -17,7 +17,7 @@ never mutates recorder state.
 
 ## Canonical folders
 
-- [`custom_components/energy_split/`](custom_components/energy_split/) — the
+- [`custom_components/shared_energy_ledger/`](custom_components/shared_energy_ledger/) — the
   Home Assistant custom integration.
 - [`dashboard/`](dashboard/) — companion Lovelace cards.
 - [`tests/`](tests/) — pytest suite (unit + integration) using
@@ -72,12 +72,12 @@ Minimum local gate before commit:
 
 ```bash
 python -m homeassistant.scripts.hassfest --requirements --action validate
-python -m mypy --strict custom_components/energy_split
+python -m mypy --strict custom_components/shared_energy_ledger
 python -m ruff check .
-python -m pytest tests/ -q --cov=custom_components.energy_split --cov-fail-under=90 -W error
-python scripts/check_translations.py custom_components/energy_split
+python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error
+python scripts/check_translations.py custom_components/shared_energy_ledger
 python scripts/check_private_denylist.py
-python scripts/lint_no_silent_zero.py custom_components/energy_split
+python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 python scripts/check_requirements_traceability.py
 python scripts/live_probe.py                 # live smoke against the real HA runtime
 python -c "import json, pathlib; [json.loads(p.read_text()) for p in pathlib.Path('.').rglob('*.json') if 'node_modules' not in p.parts and 'legacy' not in p.parts]"

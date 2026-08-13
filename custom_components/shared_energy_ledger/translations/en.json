@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Energy Split",
+        "title": "Shared Energy Ledger",
         "description": "Configure the cooperative energy accounting for this Home Assistant install. You will be asked for currency, grid meter, optional PV and battery, and the list of tenants.",
         "data": {
           "currency": "Currency (ISO 4217)"
@@ -86,7 +86,7 @@
       "invalid_schedule": "Tariff windows must partition every configured weekday exactly once."
     },
     "abort": {
-      "single_instance_allowed": "Only a single Energy Split instance can be configured per Home Assistant install.",
+      "single_instance_allowed": "Only a single Shared Energy Ledger instance can be configured per Home Assistant install.",
       "reauth_successful": "Reauthentication was successful.",
       "reconfigure_successful": "Reconfiguration was successful."
     }
@@ -94,7 +94,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Energy Split options",
+        "title": "Shared Energy Ledger options",
         "description": "Add, rename, or remove tenants, change tariffs and currency, or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
@@ -246,11 +246,11 @@
   "issues": {
     "tariff_schedule_invalid": {
       "title": "Tariff schedule is invalid",
-      "description": "Energy Split rejected the current tariff schedule: {reason}. Open the integration options to fix it. Until then, cost sensors will remain unavailable per invariant I1."
+      "description": "Shared Energy Ledger rejected the current tariff schedule: {reason}. Open the integration options to fix it. Until then, cost sensors will remain unavailable per invariant I1."
     },
     "ledger_boundary_incoherent": {
       "title": "Battery ledger is incoherent",
-      "description": "The persisted battery ledger boundary pair (stock_kwh, stock_cost) is not coherent per invariant I6. Reset it via the `energy_split.reset_battery_ledger` service with a valid pair."
+      "description": "The persisted battery ledger boundary pair (stock_kwh, stock_cost) is not coherent per invariant I6. Reset it via the `shared_energy_ledger.reset_battery_ledger` service with a valid pair."
     },
     "upstream_missing": {
       "title": "Upstream sensor is missing",

@@ -1,4 +1,4 @@
-"""Diagnostics support for the Energy Split integration.
+"""Diagnostics support for the Shared Energy Ledger integration.
 
 Home Assistant surfaces this endpoint from the config entry page. The output
 is a stable JSON structure suitable for community bug reports and is
@@ -16,7 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .coordinator import EnergySplitCoordinator
+from .coordinator import SharedEnergyLedgerCoordinator
 
 # Entity IDs in ``entry.data`` and ``entry.options`` can carry personally
 # identifying names supplied by the operator. Redact them but keep the
@@ -40,7 +40,7 @@ def _redact_tenants(tenants: list[dict[str, Any]] | None) -> list[dict[str, Any]
     return [async_redact_data(tenant, REDACTED_KEYS) for tenant in tenants]
 
 
-def _payload_snapshot(coordinator: EnergySplitCoordinator | None) -> dict[str, Any]:
+def _payload_snapshot(coordinator: SharedEnergyLedgerCoordinator | None) -> dict[str, Any]:
     if coordinator is None or coordinator.data is None:
         return {"status": "no_payload"}
     data = coordinator.data
@@ -72,7 +72,7 @@ async def async_get_config_entry_diagnostics(
     for section in (data, options):
         if "tenants" in section:
             section["tenants"] = _redact_tenants(section["tenants"])
-    coordinator: EnergySplitCoordinator | None = getattr(entry, "runtime_data", None)
+    coordinator: SharedEnergyLedgerCoordinator | None = getattr(entry, "runtime_data", None)
     ledger_snapshot = None
     if coordinator is not None:
         ledger_snapshot = coordinator.ledger_store.snapshot()

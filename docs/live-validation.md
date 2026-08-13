@@ -1,6 +1,6 @@
 # Live validation
 
-Energy Split is validated at three layers:
+Shared Energy Ledger is validated at three layers:
 
 1. **Pure-Python unit tests** cover the accounting core
    (`tariff`, `allocation`, `ledger`, `report`, `samples`, `configio`,
@@ -14,7 +14,7 @@ Energy Split is validated at three layers:
    platforms, and services against the same runtime an operator installs.
 3. **Live smoke probe** at [`scripts/live_probe.py`](../scripts/live_probe.py)
    boots the exact same Home Assistant runtime in-process, loads the
-   integration from `custom_components/energy_split`, and asserts every
+   integration from `custom_components/shared_energy_ledger`, and asserts every
    invariant against the real state machine, entity registry, coordinator,
    and service registrations. It is designed to be re-runnable by
    maintainers before tagging a release.
@@ -28,7 +28,7 @@ python3 scripts/live_probe.py
 ```
 
 It exits `0` when every invariant check passes and non-zero otherwise. On
-success it prints a per-scenario dump of every registered `energy_split`
+success it prints a per-scenario dump of every registered `shared_energy_ledger`
 entity and the coordinator payload, which serves as a release-candidate
 sanity check.
 

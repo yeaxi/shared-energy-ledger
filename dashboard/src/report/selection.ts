@@ -19,7 +19,7 @@ export interface SelectionState {
 /**
  * Return whether a freshly fetched report should replace the currently
  * selected one. `nextFinalizedAsOf` must be an ISO-8601 UTC timestamp
- * ending in "Z" (see `custom_components/energy_split/report.py::_to_iso_utc`).
+ * ending in "Z" (see `custom_components/shared_energy_ledger/report.py::_to_iso_utc`).
  */
 export function shouldAcceptSelection(
   previous: SelectionState,

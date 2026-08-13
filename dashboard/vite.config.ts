@@ -12,25 +12,25 @@ type CardEntry = {
 };
 
 const CARDS: Readonly<Record<string, CardEntry>> = {
-  "energy-split-period-summary": {
-    globalName: "EnergySplitPeriodSummary",
-    fileName: "energy-split-period-summary",
+  "shared-energy-ledger-period-summary": {
+    globalName: "SharedEnergyLedgerPeriodSummary",
+    fileName: "shared-energy-ledger-period-summary",
     entry: resolve(rootDir, "src/cards/period-summary.ts"),
   },
-  "energy-split-history-report": {
-    globalName: "EnergySplitHistoryReport",
-    fileName: "energy-split-history-report",
+  "shared-energy-ledger-history-report": {
+    globalName: "SharedEnergyLedgerHistoryReport",
+    fileName: "shared-energy-ledger-history-report",
     entry: resolve(rootDir, "src/cards/history-report.ts"),
   },
-  "energy-split-history-bridge": {
-    globalName: "EnergySplitHistoryBridge",
-    fileName: "energy-split-history-bridge",
+  "shared-energy-ledger-history-bridge": {
+    globalName: "SharedEnergyLedgerHistoryBridge",
+    fileName: "shared-energy-ledger-history-bridge",
     entry: resolve(rootDir, "src/cards/history-bridge.ts"),
   },
 };
 
 function pickCard(): CardEntry {
-  const requested = process.env["CARD_ENTRY"] ?? "energy-split-period-summary";
+  const requested = process.env["CARD_ENTRY"] ?? "shared-energy-ledger-period-summary";
   const card = CARDS[requested];
   if (!card) {
     const known = Object.keys(CARDS).join(", ");

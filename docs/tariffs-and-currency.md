@@ -12,7 +12,7 @@ re-priced.
   three-letter code. Supported examples include `EUR`, `USD`, `UAH`,
   `PLN`, and `GBP`.
 - The chosen code becomes the unit of measurement for every monetary
-  sensor (`sensor.energy_split_tenant_<slug>_total_cost`,
+  sensor (`sensor.shared_energy_ledger_tenant_<slug>_total_cost`,
   `..._grid_cost_rate`, `..._battery_cost_rate`,
   `..._total_cost_rate`) and is written into the accounting-epoch
   metadata.
@@ -44,7 +44,7 @@ The default preset defines two slots and a single window per weekday:
 
 Rates in the table are illustrative. Real rates are entered by the
 operator during config-flow completion or via the
-`energy_split.set_tariff_rate` service. Use rates from your own supply
+`shared_energy_ledger.set_tariff_rate` service. Use rates from your own supply
 contract; do not copy the numbers above verbatim.
 
 ### Custom windows
@@ -91,7 +91,7 @@ Consequences:
   reproduce the same numbers whether they are generated today or a
   year from now, up to rounding.
 - Live rate changes take effect at the epoch boundary. The
-  `energy_split.set_tariff_rate` service requires an
+  `shared_energy_ledger.set_tariff_rate` service requires an
   `effective_from` timestamp and journals the change as a new epoch.
 - Rolling averages and cost rates displayed on the dashboard use the
   **current** epoch. They do not backfill.
@@ -102,7 +102,7 @@ migration-safe schema changes both depend on epochs being immutable.
 
 ## Import-cost history sensor
 
-Energy Split publishes the effective per-kWh cost of grid import as a
+Shared Energy Ledger publishes the effective per-kWh cost of grid import as a
 first-class sensor. This makes historical intervals re-priceable
 across the *displayed* period without rewriting recorder history:
 you can compute what the same period would cost under a hypothetical

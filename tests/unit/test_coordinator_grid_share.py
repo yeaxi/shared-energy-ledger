@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.energy_split.coordinator import _grid_share_of_charge
+from custom_components.shared_energy_ledger.coordinator import _grid_share_of_charge
 
 
 def test_grid_share_returns_none_when_battery_not_charging() -> None:

@@ -1,6 +1,6 @@
-# Energy Split — initial requirements
+# Shared Energy Ledger — initial requirements
 
-This document is the public specification for the `energy_split` Home Assistant
+This document is the public specification for the `shared_energy_ledger` Home Assistant
 custom integration and its companion Lovelace card bundle. It is the source of
 truth for scope, invariants, and the target Platinum tier. It is intentionally
 generic: nothing here references entities, hardware, or state from any private
@@ -14,7 +14,7 @@ governed by a separate rollout plan.
 
 ## A1. Vision
 
-A HACS-installable Home Assistant custom integration named `energy_split` plus a
+A HACS-installable Home Assistant custom integration named `shared_energy_ledger` plus a
 companion Lovelace card bundle for **cooperative buildings** where one grid
 connection, optionally one PV array, and optionally one battery are shared by
 `N` metered flats or houses.
@@ -97,16 +97,16 @@ Scope non-goals:
 
 ### A2.3 Runtime entities
 
-All entities live under the `energy_split` namespace. All entities expose stable
+All entities live under the `shared_energy_ledger` namespace. All entities expose stable
 `unique_id`s tied to the config-entry id and, where applicable, the tenant
 slug. No entity name is hard-coded to a specific manufacturer, device model, or
 private installation.
 
 - **Freshness gates**, one per data class:
-  - `binary_sensor.energy_split_grid_data_fresh`
-  - `binary_sensor.energy_split_pv_data_fresh`
-  - `binary_sensor.energy_split_battery_data_fresh`
-  - `binary_sensor.energy_split_tenant_<slug>_data_fresh`
+  - `binary_sensor.shared_energy_ledger_grid_data_fresh`
+  - `binary_sensor.shared_energy_ledger_pv_data_fresh`
+  - `binary_sensor.shared_energy_ledger_battery_data_fresh`
+  - `binary_sensor.shared_energy_ledger_tenant_<slug>_data_fresh`
 - **Per-tenant sensors**:
   - Accounting power (`W`, `device_class: power`, `state_class: measurement`).
   - Share (`%`, `state_class: measurement`).
@@ -127,14 +127,14 @@ private installation.
 
 ### A2.4 Services
 
-- `energy_split.rebuild_period_report(start, end, tenant?)` — deterministic
+- `shared_energy_ledger.rebuild_period_report(start, end, tenant?)` — deterministic
   Recorder-based JSON report matching the schema in
   [A3](#a3-non-functional-invariants). Schema-versioned, revision-hashed, and
   finalized-as-of timestamped. Never mutates recorder state.
-- `energy_split.reset_battery_ledger(stock_kwh, stock_cost)` — journaled admin
+- `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)` — journaled admin
   action. Requires `admin`; refuses to run when the battery data-fresh gate is
   off; enforces the boundary-pair coherence rule.
-- `energy_split.set_tariff_rate(rate, tariff_slot, effective_from)` — journaled
+- `shared_energy_ledger.set_tariff_rate(rate, tariff_slot, effective_from)` — journaled
   tariff change; requires `admin`; creates a new accounting epoch entry so past
   intervals keep their original price.
 
@@ -246,16 +246,16 @@ cross-referencing from tests, docs, and the traceability matrix.
 ## A5. Target repository layout
 
 ```
-custom_components/energy_split/
+custom_components/shared_energy_ledger/
   __init__.py  manifest.json  const.py  models.py  coordinator.py
   config_flow.py  options_flow.py  diagnostics.py  services.yaml  services.py
   sensor.py  binary_sensor.py  number.py  select.py
   ledger.py  allocation.py  tariff.py  report.py
-  translations/en.json  strategies/energy_split.yaml
+  translations/en.json  strategies/shared_energy_ledger.yaml
 dashboard/
-  energy-split-period-summary/
-  energy-split-history-report/
-  energy-split-history-bridge/
+  shared-energy-ledger-period-summary/
+  shared-energy-ledger-history-report/
+  shared-energy-ledger-history-bridge/
 tests/
   unit/{test_ledger,test_allocation,test_tariff,test_report}.py
   integration/{test_config_flow,test_entities,test_services}.py
@@ -268,7 +268,7 @@ legacy/                         # optional archive of pre-migration artifacts
 ```
 
 Content under `legacy/` is never a source of truth for the new integration.
-Nothing in `custom_components/energy_split/` may import identifiers from
+Nothing in `custom_components/shared_energy_ledger/` may import identifiers from
 `legacy/`, and no test may reference `legacy/` fixtures.
 
 ## A6. Migration path
@@ -279,7 +279,7 @@ reviewable in isolation.
 
 1. Archive or remove pre-migration artifacts. Anything retained is moved under
    `legacy/` and marked as non-canonical.
-2. Scaffold `custom_components/energy_split/` with `manifest.json`, an empty
+2. Scaffold `custom_components/shared_energy_ledger/` with `manifest.json`, an empty
    config flow, and the N-tenant data model in `models.py`. Ship a stub
    coordinator that always yields empty data so entities can register.
 3. Implement `tariff.py`, `allocation.py`, `ledger.py`, and `report.py` as pure

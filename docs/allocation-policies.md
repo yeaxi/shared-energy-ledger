@@ -1,6 +1,6 @@
 # Allocation policies
 
-Energy Split ships exactly three allocation policies. The enum is closed
+Shared Energy Ledger ships exactly three allocation policies. The enum is closed
 at the type-system level: any other value keeps a tenant's accounting
 chain `unavailable`, in line with
 [invariant I3](invariants.md).

@@ -1,4 +1,4 @@
-"""Config and options flow for Energy Split.
+"""Config and options flow for Shared Energy Ledger.
 
 The config flow walks the operator through the minimum viable setup:
 
@@ -51,7 +51,7 @@ from .const import (
 from .models import (
     AllocationPolicy,
     BatteryConfig,
-    EnergySplitConfig,
+    SharedEnergyLedgerConfig,
     FreshnessConfig,
     GridConfig,
     PvConfig,
@@ -201,8 +201,8 @@ def _parse_time(value: Any) -> time:
     return time.fromisoformat(str(value))
 
 
-class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Config flow for Energy Split."""
+class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Config flow for Shared Energy Ledger."""
 
     VERSION = CONFIG_ENTRY_VERSION
 
@@ -221,7 +221,7 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Rerun the initial flow to swap grid/tariff/tenant sources.
 
-        Reconfigure is preferred over reauth for Energy Split because the
+        Reconfigure is preferred over reauth for Shared Energy Ledger because the
         integration has no external credentials; the operator just wants to
         replace the entity IDs when an upstream device is renamed.
         """
@@ -357,7 +357,7 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
             night_start=night_start,
             effective_from=datetime.now(UTC),
         )
-        config = EnergySplitConfig(
+        config = SharedEnergyLedgerConfig(
             currency=currency,
             grid=GridConfig(
                 import_energy_entity=str(self._user_input[CONF_IMPORT_ENERGY])
@@ -369,7 +369,7 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
             whole_building=self._whole_building,
             freshness=FreshnessConfig(),
         )
-        title = f"Energy Split ({currency})"
+        title = f"Shared Energy Ledger ({currency})"
         data = config_to_entry(config)
         if self._reconfiguring:
             existing = self._async_current_entries()[0]
@@ -381,11 +381,11 @@ class EnergySplitConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow handler."""
-        return EnergySplitOptionsFlow(entry)
+        return SharedEnergyLedgerOptionsFlow(entry)
 
 
-class EnergySplitOptionsFlow(OptionsFlow):
-    """Options flow for Energy Split.
+class SharedEnergyLedgerOptionsFlow(OptionsFlow):
+    """Options flow for Shared Energy Ledger.
 
     The options flow is menu-driven. Every action mutates ``entry.options``
     and reloads the config entry via the update listener; the coordinator

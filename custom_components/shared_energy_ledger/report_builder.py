@@ -31,8 +31,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .coordinator import EnergySplitCoordinator
-from .models import EnergySplitConfig
+from .coordinator import SharedEnergyLedgerCoordinator
+from .models import SharedEnergyLedgerConfig
 from .report import HourlyRow, ReportInputs, build_report
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def _parse_cost(state: State | None, expected_currency: str) -> Decimal | None:
 
 
 def _tenants_to_include(
-    config: EnergySplitConfig, request: RebuildRequest
+    config: SharedEnergyLedgerConfig, request: RebuildRequest
 ) -> tuple[str, ...]:
     if request.tenant_slug is None:
         return tuple(t.slug for t in config.tenants)
@@ -168,7 +168,7 @@ def _hourly_rows_for_tenant(
 
 async def async_rebuild_period_report(
     hass: HomeAssistant,
-    coordinator: EnergySplitCoordinator,
+    coordinator: SharedEnergyLedgerCoordinator,
     request: RebuildRequest,
 ) -> dict[str, Any]:
     """Build a deterministic report v2 payload for the requested period."""

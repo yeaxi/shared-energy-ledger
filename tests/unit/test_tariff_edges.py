@@ -6,12 +6,12 @@ from datetime import UTC, datetime, time
 
 import pytest
 
-from custom_components.energy_split.models import (
+from custom_components.shared_energy_ledger.models import (
     TariffSchedule,
     TariffSlot,
     TariffWindow,
 )
-from custom_components.energy_split.tariff import (
+from custom_components.shared_energy_ledger.tariff import (
     TariffScheduleError,
     day_night_preset,
     rate_at,

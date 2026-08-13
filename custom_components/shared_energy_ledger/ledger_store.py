@@ -8,7 +8,7 @@ Home Assistant restarts we need a small persistent store that remembers:
 * the ISO 8601 timestamp of the last successful update.
 
 The store uses :class:`homeassistant.helpers.storage.Store` so the file lives
-under ``.storage/energy_split.ledger.<entry_id>`` and is JSON-serialisable.
+under ``.storage/shared_energy_ledger.ledger.<entry_id>`` and is JSON-serialisable.
 It is deliberately isolated from ``entry.options`` — writing to options on
 every coordinator tick would race with the options flow and thrash the
 config-entry reloader.

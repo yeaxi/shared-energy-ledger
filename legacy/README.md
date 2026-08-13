@@ -1,5 +1,7 @@
 # Legacy artifacts (non-canonical)
 
+> The project was renamed from **Energy Split** (`energy_split` / `energy-split-dashboard`) to **Shared Energy Ledger** (`shared_energy_ledger` / `shared-energy-ledger`). Files under `legacy/` keep their historical names verbatim as evidence and are intentionally not renamed. When this document references `custom_components/energy_split/` below, read it as the pre-rename name of `custom_components/shared_energy_ledger/`.
+
 This directory is a **read-only archive** of the pre-migration Home Assistant
 package, dashboard storage snapshot, frontend cards, reconstruction tool,
 tests, forensic reports, and live snapshot from the personal installation

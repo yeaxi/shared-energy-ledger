@@ -1,11 +1,11 @@
-"""Unit tests for :mod:`custom_components.energy_split.ledger_store`.
+"""Unit tests for :mod:`custom_components.shared_energy_ledger.ledger_store`.
 
 Covers I6 (ledger boundary coherence) and I9 (persisted state versioning).
 """
 
 from __future__ import annotations
 
-from custom_components.energy_split.ledger_store import to_ledger_state
+from custom_components.shared_energy_ledger.ledger_store import to_ledger_state
 
 
 def test_to_ledger_state_returns_none_for_missing_payload() -> None:

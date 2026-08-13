@@ -1,4 +1,4 @@
-"""Data update coordinator for Energy Split.
+"""Data update coordinator for Shared Energy Ledger.
 
 The coordinator gathers upstream samples (grid, PV, battery, per-tenant
 meters), validates them against per-data-class freshness windows and unit
@@ -41,7 +41,7 @@ from .ledger import (
 from .ledger_store import LedgerPersisted, LedgerStore, to_ledger_state
 from .models import (
     BatteryConfig,
-    EnergySplitConfig,
+    SharedEnergyLedgerConfig,
     SharedLoad,
 )
 from .samples import (
@@ -159,11 +159,11 @@ def _grid_share_of_charge(
     return share
 
 
-class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
-    """Coordinator that owns the Energy Split runtime payload."""
+class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
+    """Coordinator that owns the Shared Energy Ledger runtime payload."""
 
     config_entry: ConfigEntry
-    _energy_config: EnergySplitConfig | None
+    _energy_config: SharedEnergyLedgerConfig | None
 
     def __init__(
         self,
@@ -200,7 +200,7 @@ class EnergySplitCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         self._energy_config = config
 
     @property
-    def energy_config(self) -> EnergySplitConfig | None:
+    def energy_config(self) -> SharedEnergyLedgerConfig | None:
         """Return the typed config or ``None`` when the entry is not ready."""
         return self._energy_config
 
@@ -487,4 +487,4 @@ def _tenant_cost_rate(
     return allocation_result.accounting_power / 1000.0 * rate
 
 
-__all__ = ["CoordinatorPayload", "EnergySplitCoordinator"]
+__all__ = ["CoordinatorPayload", "SharedEnergyLedgerCoordinator"]

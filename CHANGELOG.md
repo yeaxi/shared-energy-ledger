@@ -38,15 +38,15 @@ prior epochs or start a new one.
 ## [0.1.0] - 2026-08-11
 
 First release-candidate slice landed via
-[PR #3](https://github.com/yeaxi/energy-split-dashboard/pull/3) (scaffold +
+[PR #3](https://github.com/yeaxi/shared-energy-ledger/pull/3) (scaffold +
 core integration + cards + docs + CI) and
-[PR #4](https://github.com/yeaxi/energy-split-dashboard/pull/4) (real
+[PR #4](https://github.com/yeaxi/shared-energy-ledger/pull/4) (real
 battery ledger, mutating services, reconfigure flow, repairs, per-tenant
 `NumberEntity` / `SelectEntity`, grid-import-cost sensor, frontend CI).
 
 ### Added
 
-- HACS-installable custom integration `energy_split` for cooperative
+- HACS-installable custom integration `shared_energy_ledger` for cooperative
   buildings sharing one grid connection, optional PV, and optional battery
   between `N` metered flats or houses.
 - Multi-step config flow covering currency, grid meter, tariff preset,
@@ -62,8 +62,8 @@ battery ledger, mutating services, reconfigure flow, repairs, per-tenant
   `homeassistant.helpers.storage.Store`.
 - Domain services: `rebuild_period_report`,
   `reset_battery_ledger`, `set_tariff_rate` (admin-scoped).
-- Companion Lovelace card bundle in `dashboard/`: `energy-split-period-summary`,
-  `energy-split-history-report`, `energy-split-history-bridge`. Cards
+- Companion Lovelace card bundle in `dashboard/`: `shared-energy-ledger-period-summary`,
+  `shared-energy-ledger-history-report`, `shared-energy-ledger-history-bridge`. Cards
   refuse to render out-of-order async report selections (I8) and never
   treat "unavailable" as `0` (I10).
 - Repairs / `issue_registry` integration for tariff-schedule and ledger
@@ -101,5 +101,5 @@ public HACS listing:
 - Brand PR to [`home-assistant/brands`](https://github.com/home-assistant/brands).
 - Addition PR to [`hacs/default`](https://github.com/hacs/default).
 
-[Unreleased]: https://github.com/yeaxi/energy-split-dashboard/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yeaxi/energy-split-dashboard/releases/tag/v0.1.0
+[Unreleased]: https://github.com/yeaxi/shared-energy-ledger/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/yeaxi/shared-energy-ledger/releases/tag/v0.1.0

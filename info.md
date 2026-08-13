@@ -1,4 +1,4 @@
-# Energy Split
+# Shared Energy Ledger
 
 Home Assistant custom integration for **cooperative buildings** where one grid
 connection, optionally one PV array, and optionally one battery are shared by

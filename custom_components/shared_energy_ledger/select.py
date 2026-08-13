@@ -14,17 +14,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import EnergySplitCoordinator
-from .entity import EnergySplitEntity
+from .coordinator import SharedEnergyLedgerCoordinator
+from .entity import SharedEnergyLedgerEntity
 
 
-class ActiveTariffSlotSelect(EnergySplitEntity, SelectEntity):
+class ActiveTariffSlotSelect(SharedEnergyLedgerEntity, SelectEntity):
     """Diagnostic select mirroring the current tariff slot."""
 
     _attr_translation_key = "active_tariff_slot"
     _attr_icon = "mdi:clock-outline"
 
-    def __init__(self, coordinator: EnergySplitCoordinator, options: list[str]) -> None:
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, options: list[str]) -> None:
         super().__init__(coordinator, "active_tariff_slot", "hub")
         self._attr_options = options
 
@@ -55,7 +55,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up select entities for this config entry."""
-    coordinator: EnergySplitCoordinator = entry.runtime_data
+    coordinator: SharedEnergyLedgerCoordinator = entry.runtime_data
     config = coordinator.energy_config
     entities: list[Any] = []
     if config is not None:

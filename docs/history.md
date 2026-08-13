@@ -1,8 +1,8 @@
 # History
 
-Energy Split began as a private Home Assistant setup for a
+Shared Energy Ledger began as a private Home Assistant setup for a
 cooperative building. The non-functional invariants documented in
-[`REQUIREMENTS.md`](https://github.com/yeaxi/energy-split-dashboard/blob/main/REQUIREMENTS.md)
+[`REQUIREMENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md)
 were discovered the hard way in that deployment: silent zeros in cost
 sensors, residuals that clamped to zero on skewed inputs, and battery
 ledgers that lost their weighted cost after an unexpected restart.
@@ -34,7 +34,7 @@ for this project is that the invariants survived the migration.
 
 ## Milestones
 
-- **Migration scaffolded.** The `custom_components/energy_split/`
+- **Migration scaffolded.** The `custom_components/shared_energy_ledger/`
   package was created with an empty config flow, a stub coordinator,
   and the N-tenant data model.
 - **Pure-Python modules landed.** `tariff.py`, `allocation.py`,

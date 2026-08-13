@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.energy_split.ledger import (
+from custom_components.shared_energy_ledger.ledger import (
     LedgerInputs,
     LedgerState,
     unpriced_discharge_kwh,

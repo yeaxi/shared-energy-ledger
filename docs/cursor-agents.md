@@ -1,7 +1,7 @@
 # Cursor agents and identities
 
 This document describes the Cursor identities used to develop the
-`energy_split` Home Assistant custom integration and its companion Lovelace
+`shared_energy_ledger` Home Assistant custom integration and its companion Lovelace
 cards. The identities are separated so that guardrails match responsibilities
 and so that no single agent can silently regress an invariant defined in
 [`REQUIREMENTS.md`](../REQUIREMENTS.md).
@@ -14,7 +14,7 @@ handled by a separate rollout plan after the project is "done by definition".
 
 | Identity | Owns | Bound skills |
 | --- | --- | --- |
-| `integration-dev` | `custom_components/energy_split/` | `ha-integration-scaffold`, `ha-platinum-quality`, `ha-config-flow-ux`, `ha-coordinator-and-entities`, `ha-recorder-and-statistics`, `energy-accounting-invariants`, `python-async-hygiene`, `translation-and-i18n` |
+| `integration-dev` | `custom_components/shared_energy_ledger/` | `ha-integration-scaffold`, `ha-platinum-quality`, `ha-config-flow-ux`, `ha-coordinator-and-entities`, `ha-recorder-and-statistics`, `energy-accounting-invariants`, `python-async-hygiene`, `translation-and-i18n` |
 | `frontend-dev` | `dashboard/` | `energy-accounting-invariants`, `translation-and-i18n`, `hacs-release-and-brands` |
 | `test-engineer` | `tests/`, `tests/fixtures/` | `ha-testing-with-pytest-hacc`, `ha-recorder-and-statistics`, `energy-accounting-invariants`, `python-async-hygiene` |
 | `docs-writer` | `docs/`, README, translations copy | `translation-and-i18n`, `hacs-release-and-brands`, `energy-accounting-invariants` |
@@ -24,14 +24,14 @@ handled by a separate rollout plan after the project is "done by definition".
 
 ## `integration-dev`
 
-- Home: `custom_components/energy_split/`.
+- Home: `custom_components/shared_energy_ledger/`.
 - Writes Python source, `manifest.json`, `services.yaml`, `strings.json`, and
   translations under `translations/`.
 - Never edits card code, docs prose, or test files. Test updates that
   accompany a change are proposed as a separate PR reviewed by
   `test-engineer`.
 - Bound by every rule in
-  [`custom_components/energy_split/AGENTS.md`](../custom_components/energy_split/AGENTS.md).
+  [`custom_components/shared_energy_ledger/AGENTS.md`](../custom_components/shared_energy_ledger/AGENTS.md).
 - Verification: hassfest, mypy strict, ruff, pytest with the coverage floor,
   and the invariant-lint script.
 

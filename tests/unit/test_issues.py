@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from custom_components.energy_split import issues
+from custom_components.shared_energy_ledger import issues
 
 
 def test_raise_tariff_invalid_creates_error_issue() -> None:
@@ -13,7 +13,7 @@ def test_raise_tariff_invalid_creates_error_issue() -> None:
         issues.raise_tariff_schedule_invalid(hass, "entry-a", "gap on Monday")
         create.assert_called_once()
         args, kwargs = create.call_args
-        assert args[1] == "energy_split"
+        assert args[1] == "shared_energy_ledger"
         assert args[2] == "entry-a:tariff_schedule_invalid"
         assert kwargs["severity"] == issues.ir.IssueSeverity.ERROR
         assert kwargs["translation_placeholders"] == {"reason": "gap on Monday"}
@@ -23,7 +23,7 @@ def test_clear_tariff_invalid_deletes_issue() -> None:
     hass = MagicMock()
     with patch.object(issues.ir, "async_delete_issue") as delete:
         issues.clear_tariff_schedule_invalid(hass, "entry-a")
-        delete.assert_called_once_with(hass, "energy_split", "entry-a:tariff_schedule_invalid")
+        delete.assert_called_once_with(hass, "shared_energy_ledger", "entry-a:tariff_schedule_invalid")
 
 
 def test_raise_ledger_incoherent_creates_warning_issue() -> None:

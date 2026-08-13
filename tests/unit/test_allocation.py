@@ -13,12 +13,12 @@ from math import isclose
 
 import pytest
 
-from custom_components.energy_split.allocation import (
+from custom_components.shared_energy_ledger.allocation import (
     AllocationInput,
     TenantInput,
     allocate,
 )
-from custom_components.energy_split.models import AllocationPolicy
+from custom_components.shared_energy_ledger.models import AllocationPolicy
 
 
 def _tenant(**kwargs: object) -> TenantInput:

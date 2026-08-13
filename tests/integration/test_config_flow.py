@@ -1,4 +1,4 @@
-"""Integration tests for the Energy Split config flow.
+"""Integration tests for the Shared Energy Ledger config flow.
 
 Covers requirement I3 (closed allocation enum), I9 (schema versioning), and
 the happy-path setup that other integration tests build on.
@@ -12,7 +12,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.energy_split.const import (
+from custom_components.shared_energy_ledger.const import (
     CONF_CURRENCY,
     CONF_IMPORT_ENERGY,
     CONFIG_ENTRY_VERSION,

@@ -2,7 +2,7 @@
 
 This page documents every field exposed by the config flow and the
 options flow. Field names and translations live in
-`custom_components/energy_split/strings.json`; this page mirrors those
+`custom_components/shared_energy_ledger/strings.json`; this page mirrors those
 labels so the docs stay in sync with the UI.
 
 All examples use generic tenant slugs (`flat-1`, `flat-2`, `house-a`,
@@ -17,7 +17,7 @@ currencies (`EUR`, `USD`, `UAH`, `PLN`, `GBP`).
 | --- | --- | --- |
 | `currency` | ISO 4217 code | Used as the unit of measurement for all monetary sensors and recorded into the accounting-epoch metadata. |
 
-The step title is *Energy Split*. Rejected values yield the
+The step title is *Shared Energy Ledger*. Rejected values yield the
 `invalid_currency` error.
 
 ### `grid` step
@@ -89,14 +89,14 @@ weekday yield `invalid_schedule`.
 
 | Reason | Meaning |
 | --- | --- |
-| `single_instance_allowed` | Energy Split allows at most one config entry per Home Assistant install. |
+| `single_instance_allowed` | Shared Energy Ledger allows at most one config entry per Home Assistant install. |
 | `reauth_successful` | Reauthentication for a swapped upstream succeeded. |
 | `reconfigure_successful` | Reconfiguration of an existing entry succeeded. |
 
 ## Options flow
 
 The options flow is entered from **Settings** > **Devices & services**
-> **Energy Split** > **Configure**.
+> **Shared Energy Ledger** > **Configure**.
 
 ### Tenants menu
 
@@ -123,7 +123,7 @@ The options flow is entered from **Settings** > **Devices & services**
 - **Charge efficiency** and **Discharge efficiency** — same rules as
   the config flow.
 - **Seed or reset priced stock** — calls the
-  `energy_split.reset_battery_ledger` service under the same coherence
+  `shared_energy_ledger.reset_battery_ledger` service under the same coherence
   rules.
 
 ### Optional inputs
@@ -134,12 +134,12 @@ The options flow is entered from **Settings** > **Devices & services**
 
 ## Related services
 
-- `energy_split.rebuild_period_report` — deterministic Recorder-based
+- `shared_energy_ledger.rebuild_period_report` — deterministic Recorder-based
   JSON report for any timeframe.
-- `energy_split.reset_battery_ledger` — journaled admin action; refuses
+- `shared_energy_ledger.reset_battery_ledger` — journaled admin action; refuses
   to run when the battery data-fresh gate is off.
-- `energy_split.set_tariff_rate` — journaled tariff change; creates a
+- `shared_energy_ledger.set_tariff_rate` — journaled tariff change; creates a
   new accounting epoch.
 
 Full service field definitions live in
-`custom_components/energy_split/services.yaml`.
+`custom_components/shared_energy_ledger/services.yaml`.

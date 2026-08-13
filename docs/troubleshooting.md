@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Because Energy Split refuses to invent a zero, the most common
+Because Shared Energy Ledger refuses to invent a zero, the most common
 support question is *"why does my cost sensor say `unavailable`?"*
 This page walks through the freshness-gate chain, common causes, and
 how to gather a redacted diagnostics bundle for community issues.
@@ -41,7 +41,7 @@ Read the diagram left to right when diagnosing:
 
 Fix: update the source entity's `unit_of_measurement` (via customize,
 template, or upstream integration configuration) and reload the
-Energy Split config entry.
+Shared Energy Ledger config entry.
 
 ### Stale `last_updated`
 
@@ -73,7 +73,7 @@ resettable one.
 - Common violations: setting a positive `stock_cost` while
   `stock_kwh == 0`, or vice versa.
 
-Fix: call `energy_split.reset_battery_ledger` with a coherent pair,
+Fix: call `shared_energy_ledger.reset_battery_ledger` with a coherent pair,
 for example `(0, 0)` to declare the battery empty, or the true stock
 values immediately after a manual reconciliation.
 
@@ -99,7 +99,7 @@ sensor is publishing at a much slower cadence than the boundary.
 
 Fix: open the options flow and confirm the tariff windows still
 partition the day exactly once per weekday. Rerun
-`energy_split.set_tariff_rate` if a slot has no rate.
+`shared_energy_ledger.set_tariff_rate` if a slot has no rate.
 
 ### Dashboard shows `unavailable`
 
@@ -112,7 +112,7 @@ partition the day exactly once per weekday. Rerun
 
 Home Assistant supports downloading a redacted diagnostics bundle for
 any integration. From **Settings** > **Devices & services** >
-**Energy Split** > **Download diagnostics**, you get a YAML file with:
+**Shared Energy Ledger** > **Download diagnostics**, you get a YAML file with:
 
 - the config-entry snapshot (with entity IDs redacted),
 - the coordinator's last successful and failed updates,
@@ -122,7 +122,7 @@ any integration. From **Settings** > **Devices & services** >
 When filing a community issue:
 
 1. Attach the diagnostics YAML.
-2. Include the Home Assistant and Energy Split versions.
+2. Include the Home Assistant and Shared Energy Ledger versions.
 3. Describe the expected and observed behavior in generic terms
    (`flat-1`, `flat-2`, and so on). Do not paste real personal data.
 4. If the issue reveals a secret or a personal identifier by mistake,
@@ -136,7 +136,7 @@ Enable verbose logging for the integration through:
 logger:
   default: info
   logs:
-    custom_components.energy_split: debug
+    custom_components.shared_energy_ledger: debug
 ```
 
 Reload Home Assistant, reproduce the failure, and copy the relevant

@@ -1,5 +1,5 @@
 /**
- * `energy-split-history-report` custom card.
+ * `shared-energy-ledger-history-report` custom card.
  *
  * Fetches a period report JSON from the Home Assistant frontend origin,
  * validates it via `parseReport`, and renders a compact daily summary:
@@ -10,7 +10,7 @@
  * - I1/I10: fail-closed "unavailable" rendering when the report is missing,
  *   malformed, or its revision hash does not match.
  * - I7: consumes the v2 envelope exactly as produced by
- *   `custom_components/energy_split/report.py`.
+ *   `custom_components/shared_energy_ledger/report.py`.
  * - I8: monotonic selection guard on `finalized_as_of` discards older
  *   responses that arrive after a newer selection is already displayed.
  */
@@ -40,7 +40,7 @@ export interface HistoryReportConfig {
   readonly poll_interval_seconds?: number;
 }
 
-const CARD_TYPE = "energy-split-history-report";
+const CARD_TYPE = "shared-energy-ledger-history-report";
 const DEFAULT_POLL_SECONDS = 300;
 
 function isValidConfig(raw: unknown): raw is HistoryReportConfig {
@@ -60,7 +60,7 @@ function isValidConfig(raw: unknown): raw is HistoryReportConfig {
   return true;
 }
 
-export class EnergySplitHistoryReport extends HTMLElement {
+export class SharedEnergyLedgerHistoryReport extends HTMLElement {
   private _hass: HassLike | null = null;
   private _config: HistoryReportConfig | null = null;
   private _report: ReportEnvelope | null = null;
@@ -79,7 +79,7 @@ export class EnergySplitHistoryReport extends HTMLElement {
     return {
       type: `custom:${CARD_TYPE}`,
       title: t("card.history_report.title"),
-      url: "/local/energy_split/report.json",
+      url: "/local/shared_energy_ledger/report.json",
       poll_interval_seconds: DEFAULT_POLL_SECONDS,
     };
   }
@@ -225,7 +225,7 @@ export class EnergySplitHistoryReport extends HTMLElement {
   }
 }
 
-defineCustomElementOnce(CARD_TYPE, EnergySplitHistoryReport);
+defineCustomElementOnce(CARD_TYPE, SharedEnergyLedgerHistoryReport);
 registerCustomCard({
   type: CARD_TYPE,
   name: t("card.history_report.name"),
