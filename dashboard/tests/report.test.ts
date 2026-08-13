@@ -27,24 +27,25 @@ async function loadHappy(): Promise<Record<string, unknown>> {
 }
 
 describe("parseReport (happy path)", () => {
-  it("accepts a well-formed v2 report and verifies the revision", async () => {
+  it("accepts a well-formed v3 report and verifies the revision", async () => {
     const raw = await loadHappy();
     const result = await parseReport(raw);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.schema_version).toBe(2);
+    expect(result.value.schema_version).toBe(3);
     expect(result.value.currency).toBe("EUR");
     expect(Object.keys(result.value.tenants).sort()).toEqual([
       "tenant-a",
       "tenant-b",
     ]);
     expect(result.value.tenants["tenant-a"]?.hourly).toHaveLength(24);
-    expect(result.value.tenants["tenant-b"]?.hourly).toHaveLength(24);
+    expect(result.value.tenants["tenant-a"]?.grid_cost).toBe("2.40");
+    expect(result.value.reconciliation_kwh).toBeNull();
   });
 });
 
 describe("parseReport (fail-closed rejections)", () => {
-  it("rejects schema_version !== 2", async () => {
+  it("rejects schema_version !== 3", async () => {
     const raw = (await loadFixture("report.bad-schema.json")) as Record<string, unknown>;
     const result = await parseReport(raw);
     expect(result.ok).toBe(false);
@@ -118,18 +119,27 @@ describe("parseReport (fail-closed rejections)", () => {
     expect(result.reason).toMatch(/revision/);
   });
 
-  it("rejects malformed hourly row source", async () => {
+  it("rejects a negative source cost string in an hourly row", async () => {
     const raw = await loadHappy();
     const tenants = raw["tenants"] as Record<string, unknown>;
     const tenantA = tenants["tenant-a"] as Record<string, unknown>;
     const hourly = tenantA["hourly"] as Array<Record<string, unknown>>;
     if (hourly[0] !== undefined) {
-      hourly[0]["source"] = "guessed";
+      hourly[0]["grid_cost"] = "-0.10";
     }
     const result = await parseReport(raw);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toMatch(/source/);
+    expect(result.reason).toMatch(/grid_cost/);
+  });
+
+  it("rejects a non-null, non-decimal reconciliation_kwh", async () => {
+    const raw = await loadHappy();
+    raw["reconciliation_kwh"] = "abc";
+    const result = await parseReport(raw);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/reconciliation_kwh/);
   });
 
   it("rejects null input", async () => {

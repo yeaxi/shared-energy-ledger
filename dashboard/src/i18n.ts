@@ -11,20 +11,20 @@ const EN = {
   "state.unavailable": "unavailable",
   "state.loading": "Loading",
   "state.no_data": "No data for this period",
-  "card.period_summary.title": "Energy split - period summary",
-  "card.period_summary.name": "Shared Energy Ledger period summary",
-  "card.period_summary.description":
-    "Per-tenant known cost for a selected period.",
-  "card.history_report.title": "Energy split - history report",
-  "card.history_report.name": "Shared Energy Ledger history report",
-  "card.history_report.description":
-    "Recorder-backed period report with coverage and transition-excluded seconds.",
-  "card.history_bridge.name": "Shared Energy Ledger history bridge",
-  "card.history_bridge.description":
-    "Invisible data adapter that publishes the currently selected report to sibling cards.",
+  "card.report.title": "Who owes how much",
+  "card.report.name": "Shared Energy Ledger report",
+  "card.report.description":
+    "Per-tenant cost for any period, split by grid, PV, and battery, computed by the integration service.",
+  "column.tenant": "Tenant",
+  "column.total": "Total",
+  "column.grid": "Grid",
+  "column.pv": "PV",
+  "column.battery": "Battery",
   "field.coverage_seconds": "Coverage (s)",
   "field.transition_excluded_seconds": "Transition-excluded (s)",
+  "field.unavailable_seconds": "Unavailable (s)",
   "field.unpriced_battery_kwh": "Unpriced battery (kWh)",
+  "field.reconciliation_kwh": "Reconciliation (kWh)",
   "field.finalized_as_of": "Finalized as of",
   "field.timezone": "Timezone",
   "field.currency": "Currency",
@@ -32,7 +32,7 @@ const EN = {
   "error.invalid_config": "Card configuration is invalid.",
   "error.invalid_report": "Report failed validation and cannot be shown.",
   "error.stale_report": "A newer selection is already displayed.",
-  "error.network": "Could not fetch report from the Home Assistant frontend.",
+  "error.network": "Could not run the report service.",
   "error.unit_mismatch": "Sensor unit does not match the expected unit.",
 } as const;
 

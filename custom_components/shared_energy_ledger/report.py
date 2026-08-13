@@ -94,6 +94,18 @@ def _quantize_currency(value: Decimal) -> str:
     return format(quantized, "f")
 
 
+def _quantize_kwh(value: float) -> str:
+    """Return a kWh amount as a fixed 6-decimal string.
+
+    kWh and reconciliation amounts are emitted as decimal strings (like
+    currency) rather than JSON floats so the canonical revision hash is
+    identical in Python and JavaScript; ``json.dumps(0.0)`` ("0.0") and
+    ``JSON.stringify(0)`` ("0") would otherwise diverge.
+    """
+    quantized = Decimal(str(value)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_EVEN)
+    return format(quantized, "f")
+
+
 def _validate_period(start: datetime, end: datetime) -> None:
     if start.tzinfo is None or end.tzinfo is None:
         raise ReportError("period_start_local and period_end_local must be tz-aware")
@@ -185,8 +197,10 @@ def build_report(inputs: ReportInputs) -> dict[str, Any]:
         "coverage_seconds": inputs.coverage_seconds,
         "transition_excluded_seconds": inputs.transition_excluded_seconds,
         "unavailable_seconds": inputs.unavailable_seconds,
-        "unpriced_battery_kwh": inputs.unpriced_battery_kwh,
-        "reconciliation_kwh": inputs.reconciliation_kwh,
+        "unpriced_battery_kwh": _quantize_kwh(inputs.unpriced_battery_kwh),
+        "reconciliation_kwh": (
+            None if inputs.reconciliation_kwh is None else _quantize_kwh(inputs.reconciliation_kwh)
+        ),
         "finalized_as_of": _to_iso_utc(inputs.finalized_as_of),
         "tenants": tenants_payload,
     }
