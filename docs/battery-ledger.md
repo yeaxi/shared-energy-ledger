@@ -1,6 +1,6 @@
 # Battery ledger
 
-When a battery is configured, Energy Split maintains a **weighted-cost
+When a battery is configured, Shared Energy Ledger maintains a **weighted-cost
 ledger**. The ledger separates *priced stock* from raw `kWh` so that
 PV-charged energy and grid-charged energy are priced differently when
 they later discharge into an accounting load.
@@ -10,7 +10,7 @@ This page explains the model, the inputs, and the operational rules.
 ## Concepts
 
 - **Priced stock** — the energy currently held in the battery that
-  Energy Split can price. Measured in `kWh`.
+  Shared Energy Ledger can price. Measured in `kWh`.
 - **Weighted cost** — the average per-`kWh` cost of the priced stock,
   in the configured currency.
 - **Unpriced discharge** — battery discharge that the ledger cannot
@@ -68,7 +68,7 @@ The ledger only updates when **all** of the following hold, per
   `kWh` values.
 - Both counters' `last_updated` is within the freshness window
   (default `900 s`).
-- The battery data-fresh gate `binary_sensor.energy_split_battery_data_fresh`
+- The battery data-fresh gate `binary_sensor.shared_energy_ledger_battery_data_fresh`
   is on.
 - The boundary pair `(stock_kwh, stock_cost)` is coherent:
     - both present and both finite,
@@ -97,7 +97,7 @@ Two paths are available:
    `Initial priced stock cost (currency)` on the battery step. The
    pair is validated as described above.
 2. **Service call** — invoke
-   `energy_split.reset_battery_ledger(stock_kwh, stock_cost)`. This is a
+   `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This is a
    journaled admin action. It refuses to run when the battery
    data-fresh gate is off, and it enforces the boundary-pair coherence
    rule.
@@ -105,7 +105,7 @@ Two paths are available:
 ### Example call (Developer Tools > Services)
 
 ```yaml
-service: energy_split.reset_battery_ledger
+service: shared_energy_ledger.reset_battery_ledger
 data:
   stock_kwh: 3.5
   stock_cost: 0.75
@@ -117,7 +117,7 @@ The example above seeds `3.5 kWh` of priced stock costing a total of
 
 ## Reporting
 
-Every `energy_split.rebuild_period_report` invocation returns:
+Every `shared_energy_ledger.rebuild_period_report` invocation returns:
 
 - `battery_charged_kwh`, `battery_discharged_kwh`,
 - `battery_priced_stock_start`, `battery_priced_stock_end`,

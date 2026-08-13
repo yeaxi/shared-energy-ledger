@@ -20,7 +20,7 @@ jobs:
           import os
           tag = os.environ["GITHUB_REF_NAME"]
           expected = tag.lstrip("v")
-          data = json.loads(open("custom_components/energy_split/manifest.json").read())
+          data = json.loads(open("custom_components/shared_energy_ledger/manifest.json").read())
           if data["version"] != expected:
               raise SystemExit(
                   f"manifest.json version {data['version']!r} does not match tag {tag!r}"

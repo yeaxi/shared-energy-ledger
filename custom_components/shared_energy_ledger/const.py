@@ -1,10 +1,10 @@
-"""Constants for the Energy Split integration."""
+"""Constants for the Shared Energy Ledger integration."""
 
 from __future__ import annotations
 
 from typing import Final
 
-DOMAIN: Final = "energy_split"
+DOMAIN: Final = "shared_energy_ledger"
 CONFIG_ENTRY_VERSION: Final = 1
 
 PLATFORMS: Final = ("binary_sensor", "sensor", "number", "select")

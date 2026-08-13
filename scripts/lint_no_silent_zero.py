@@ -2,7 +2,7 @@
 """Fail the build if the invariant-critical modules regress into silent-zero
 fallbacks on missing upstream state.
 
-The Energy Split integration must never coerce a missing or unavailable input
+The Shared Energy Ledger integration must never coerce a missing or unavailable input
 into ``0`` on any cost, allocation, ledger, or report code path. This lint is
 a lightweight second line of defence on top of the pytest contract tests.
 
@@ -21,7 +21,7 @@ Usage:
     python scripts/lint_no_silent_zero.py <path>...
 
 If no path is given, the script defaults to
-``custom_components/energy_split``.
+``custom_components/shared_energy_ledger``.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def scan(paths: Iterable[Path]) -> list[tuple[Path, int, str]]:
 
 
 def main(argv: list[str]) -> int:
-    targets = [Path(p) for p in argv[1:]] or [Path("custom_components/energy_split")]
+    targets = [Path(p) for p in argv[1:]] or [Path("custom_components/shared_energy_ledger")]
     findings = scan(targets)
     if not findings:
         print("no-silent-zero: ok")

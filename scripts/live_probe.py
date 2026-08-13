@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""In-process live smoke probe for the energy_split integration.
+"""In-process live smoke probe for the shared_energy_ledger integration.
 
 Boots a real Home Assistant runtime via
 ``pytest_homeassistant_custom_component.async_test_home_assistant``, loads
-our integration from ``custom_components/energy_split``, drives synthetic
+our integration from ``custom_components/shared_energy_ledger``, drives synthetic
 upstream sensors through the state machine, forces coordinator refreshes,
 and asserts every invariant from ``REQUIREMENTS.md#a3`` (I1..I9) against
 the real HA machinery — state machine, entity registry, config entries,
@@ -18,7 +18,7 @@ Usage:
     python3 scripts/live_probe.py
 
 Exits non-zero if any invariant fails. Prints a per-scenario dump of every
-registered ``energy_split`` entity's state so the operator can eyeball a
+registered ``shared_energy_ledger`` entity's state so the operator can eyeball a
 release candidate before tagging.
 """
 
@@ -84,10 +84,10 @@ def _dump(hass, header: str) -> None:
     ids = sorted(
         entry.entity_id
         for entry in registry.entities.values()
-        if entry.platform == "energy_split"
+        if entry.platform == "shared_energy_ledger"
     )
     print(f"\n=== {header} ===")
-    print(f"registered energy_split entities: {len(ids)}")
+    print(f"registered shared_energy_ledger entities: {len(ids)}")
     for entity_id in ids:
         state = hass.states.get(entity_id)
         if state is None:
@@ -104,13 +104,13 @@ def _set(hass, entity_id: str, value: str, unit: str | None = None) -> None:
 
 def _bootstrap_probe_dir() -> Path:
     """Prepare a config_dir with our integration symlinked in place."""
-    probe_dir = Path("/tmp/energy_split-live-probe")
+    probe_dir = Path("/tmp/shared_energy_ledger-live-probe")
     if probe_dir.exists():
         shutil.rmtree(probe_dir)
     probe_dir.mkdir()
     (probe_dir / "custom_components").mkdir()
-    (probe_dir / "custom_components" / "energy_split").symlink_to(
-        Path(__file__).resolve().parents[1] / "custom_components" / "energy_split"
+    (probe_dir / "custom_components" / "shared_energy_ledger").symlink_to(
+        Path(__file__).resolve().parents[1] / "custom_components" / "shared_energy_ledger"
     )
     return probe_dir
 
@@ -131,7 +131,7 @@ async def _run() -> int:
         hass.config.components.add("recorder")
 
         entry = MockConfigEntry(
-            domain="energy_split", data=ENTRY_DATA, version=1, title="Energy Split (EUR)"
+            domain="shared_energy_ledger", data=ENTRY_DATA, version=1, title="Shared Energy Ledger (EUR)"
         )
         entry.add_to_hass(hass)
 
@@ -208,7 +208,7 @@ async def _run() -> int:
         rejected = False
         try:
             await hass.services.async_call(
-                "energy_split",
+                "shared_energy_ledger",
                 "reset_battery_ledger",
                 {"stock_kwh": 0.0, "stock_cost": 5.0},
                 blocking=True,
@@ -221,7 +221,7 @@ async def _run() -> int:
             problems.append("I6 service accepted an incoherent boundary")
 
         response = await hass.services.async_call(
-            "energy_split",
+            "shared_energy_ledger",
             "reset_battery_ledger",
             {"stock_kwh": 7.5, "stock_cost": 22.5},
             blocking=True,
@@ -236,7 +236,7 @@ async def _run() -> int:
             problems.append(f"ledger snapshot missing 7.5 stock: {snapshot}")
 
         response = await hass.services.async_call(
-            "energy_split",
+            "shared_energy_ledger",
             "set_tariff_rate",
             {
                 "slot": "day",

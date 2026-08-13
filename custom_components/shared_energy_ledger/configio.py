@@ -1,7 +1,7 @@
-"""Serialize/deserialize :class:`EnergySplitConfig` to and from ``ConfigEntry``.
+"""Serialize/deserialize :class:`SharedEnergyLedgerConfig` to and from ``ConfigEntry``.
 
 Home Assistant stores the config entry as JSON-serializable ``dict`` values.
-The pure-Python core operates on the typed :class:`EnergySplitConfig` from
+The pure-Python core operates on the typed :class:`SharedEnergyLedgerConfig` from
 :mod:`.models`. This module owns the round-trip between the two.
 
 Every schema change bumps :data:`.const.CONFIG_ENTRY_VERSION` and adds an
@@ -60,10 +60,10 @@ from .const import (
 from .models import (
     AllocationPolicy,
     BatteryConfig,
-    EnergySplitConfig,
     FreshnessConfig,
     GridConfig,
     PvConfig,
+    SharedEnergyLedgerConfig,
     SharedLoad,
     TariffSchedule,
     TariffSlot,
@@ -200,8 +200,8 @@ def _load_freshness(payload: Mapping[str, Any] | None) -> FreshnessConfig:
     )
 
 
-def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> EnergySplitConfig:
-    """Build :class:`EnergySplitConfig` from a config entry.
+def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> SharedEnergyLedgerConfig:
+    """Build :class:`SharedEnergyLedgerConfig` from a config entry.
 
     ``options`` overrides ``data`` on a per-key basis so the options flow can
     swap tariffs, tenants, or thresholds without a full reconfigure.
@@ -220,7 +220,7 @@ def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> En
     slugs = [t.slug for t in tenants]
     if len(set(slugs)) != len(slugs):
         raise ConfigError("Tenant slugs must be unique")
-    return EnergySplitConfig(
+    return SharedEnergyLedgerConfig(
         currency=str(merged[CONF_CURRENCY]).upper(),
         grid=_load_grid(merged[CONF_GRID]),
         tenants=tenants,
@@ -232,8 +232,8 @@ def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> En
     )
 
 
-def config_to_entry(config: EnergySplitConfig) -> dict[str, Any]:
-    """Serialize :class:`EnergySplitConfig` back into a JSON-safe dict."""
+def config_to_entry(config: SharedEnergyLedgerConfig) -> dict[str, Any]:
+    """Serialize :class:`SharedEnergyLedgerConfig` back into a JSON-safe dict."""
     return {
         CONF_CURRENCY: config.currency,
         CONF_GRID: {k: v for k, v in asdict(config.grid).items() if v is not None},
@@ -286,8 +286,8 @@ def config_to_entry(config: EnergySplitConfig) -> dict[str, Any]:
 
 
 def with_freshness(
-    config: EnergySplitConfig, updates: Mapping[str, int]
-) -> EnergySplitConfig:
+    config: SharedEnergyLedgerConfig, updates: Mapping[str, int]
+) -> SharedEnergyLedgerConfig:
     """Return a new config with the given freshness overrides applied."""
     return replace(config, freshness=replace(config.freshness, **updates))
 

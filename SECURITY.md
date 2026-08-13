@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you discover a vulnerability in the Energy Split integration or its
+If you discover a vulnerability in the Shared Energy Ledger integration or its
 companion cards, please **do not open a public GitHub issue**. Instead:
 
 1. Email the maintainer team via the address listed on the repository's

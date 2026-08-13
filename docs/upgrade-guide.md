@@ -1,6 +1,6 @@
 # Upgrade guide
 
-Energy Split follows [Semantic Versioning 2.0.0](https://semver.org/).
+Shared Energy Ledger follows [Semantic Versioning 2.0.0](https://semver.org/).
 This page describes the versioning policy, what counts as a breaking
 change, and a template for migration notes shipped with each release.
 
@@ -35,7 +35,7 @@ breaking and calls out breaking changes explicitly.
 Any change to the config-entry schema or the storage layout requires a
 migration, per [invariant I9](invariants.md):
 
-- `CONFIG_ENTRY_VERSION` is bumped in `custom_components/energy_split/const.py`.
+- `CONFIG_ENTRY_VERSION` is bumped in `custom_components/shared_energy_ledger/const.py`.
 - `async_migrate_entry` is extended to translate the old shape into
   the new shape. Migrations are exhaustive; no field is silently
   dropped.
@@ -95,10 +95,10 @@ description. The template below is copied into `CHANGELOG.md`.
 1. Read the release notes end to end. Pay attention to the *Breaking
    changes* and *Config-entry migration* sections.
 2. **Take a backup.** Home Assistant's built-in backup covers the
-   Energy Split config entry, the recorder database, and the utility
+   Shared Energy Ledger config entry, the recorder database, and the utility
    meters.
 3. Upgrade through HACS. HACS downloads the new release into
-   `custom_components/energy_split/`.
+   `custom_components/shared_energy_ledger/`.
 4. **Restart Home Assistant.** Do not use a "reload" shortcut for
    major upgrades: `async_migrate_entry` runs at load time and needs
    a clean start.
@@ -108,7 +108,7 @@ description. The template below is copied into `CHANGELOG.md`.
     - Open the **Diagnostics download** and verify the reported
       version matches the release.
     - Watch the **Log** view for any warnings under
-      `custom_components.energy_split`.
+      `custom_components.shared_energy_ledger`.
 6. If anything looks wrong, restore the backup and open a community
    issue with the diagnostics YAML attached. See
    [Troubleshooting](troubleshooting.md).

@@ -17,8 +17,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from custom_components.energy_split.const import REPORT_SCHEMA_VERSION
-from custom_components.energy_split.report import (
+from custom_components.shared_energy_ledger.const import REPORT_SCHEMA_VERSION
+from custom_components.shared_energy_ledger.report import (
     HourlyRow,
     ReportError,
     ReportInputs,

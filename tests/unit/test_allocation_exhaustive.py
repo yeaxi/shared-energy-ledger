@@ -14,12 +14,12 @@ from typing import cast
 
 import pytest
 
-from custom_components.energy_split.allocation import (
+from custom_components.shared_energy_ledger.allocation import (
     AllocationInput,
     TenantInput,
     allocate,
 )
-from custom_components.energy_split.models import AllocationPolicy
+from custom_components.shared_energy_ledger.models import AllocationPolicy
 
 
 def test_assert_never_raises_on_bogus_policy_i3() -> None:

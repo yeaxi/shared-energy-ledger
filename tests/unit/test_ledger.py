@@ -13,7 +13,7 @@ from math import isclose
 
 import pytest
 
-from custom_components.energy_split.ledger import (
+from custom_components.shared_energy_ledger.ledger import (
     LedgerInputs,
     LedgerState,
     empty_state,

@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the Energy Split test suite.
+"""Shared pytest fixtures for the Shared Energy Ledger test suite.
 
 The suite is deliberately split into two halves:
 
@@ -8,7 +8,7 @@ The suite is deliberately split into two halves:
 * ``tests/integration/`` — tests that use
   ``pytest-homeassistant-custom-component`` to boot a mock Home Assistant
   runtime. The ``enable_custom_integrations`` fixture below makes the
-  ``energy_split`` component discoverable during those tests.
+  ``shared_energy_ledger`` component discoverable during those tests.
 
 Fixtures for synthetic data live under ``tests/fixtures/``. They must never
 contain data extracted from any real Home Assistant installation.

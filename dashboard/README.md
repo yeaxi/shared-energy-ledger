@@ -1,14 +1,14 @@
-# Energy Split Lovelace cards
+# Shared Energy Ledger Lovelace cards
 
 This folder ships the Lovelace card bundle that pairs with the
-`custom_components/energy_split` Home Assistant integration. Three custom
+`custom_components/shared_energy_ledger` Home Assistant integration. Three custom
 elements are published, each as its own IIFE bundle:
 
 | Element                          | Purpose                                                                 |
 |----------------------------------|-------------------------------------------------------------------------|
-| `energy-split-period-summary`    | Per-tenant known-cost tile for the selected accounting period.          |
-| `energy-split-history-report`    | Detailed period report with coverage and transition-excluded segments.  |
-| `energy-split-history-bridge`    | Data adapter that publishes the currently selected report to siblings.  |
+| `shared-energy-ledger-period-summary`    | Per-tenant known-cost tile for the selected accounting period.          |
+| `shared-energy-ledger-history-report`    | Detailed period report with coverage and transition-excluded segments.  |
+| `shared-energy-ledger-history-bridge`    | Data adapter that publishes the currently selected report to siblings.  |
 
 The card contract (fail-closed rendering, `unavailable` never treated as
 `0`, revision-hash verification, monotonic selection guard) is enforced in
@@ -28,9 +28,9 @@ npm run build
 
 `npm run build` emits three files under `dist/`:
 
-- `dist/energy-split-period-summary.js`
-- `dist/energy-split-history-report.js`
-- `dist/energy-split-history-bridge.js`
+- `dist/shared-energy-ledger-period-summary.js`
+- `dist/shared-energy-ledger-history-report.js`
+- `dist/shared-energy-ledger-history-bridge.js`
 
 Each file is a self-contained IIFE with an accompanying `.js.map` source
 map. Nothing is minified beyond what esbuild does by default; the source
@@ -38,45 +38,45 @@ maps ship alongside the bundles so operators can debug in production.
 
 ## Install in Home Assistant
 
-1. Copy the three JavaScript files to `config/www/energy_split/`.
+1. Copy the three JavaScript files to `config/www/shared_energy_ledger/`.
 2. Register the resources in Lovelace with a cache-busting `?v=<sha>` query.
    For example, in `configuration.yaml` (or the Lovelace resources UI):
 
    ```yaml
    lovelace:
      resources:
-       - url: /local/energy_split/energy-split-period-summary.js?v=1
+       - url: /local/shared_energy_ledger/shared-energy-ledger-period-summary.js?v=1
          type: module
-       - url: /local/energy_split/energy-split-history-report.js?v=1
+       - url: /local/shared_energy_ledger/shared-energy-ledger-history-report.js?v=1
          type: module
-       - url: /local/energy_split/energy-split-history-bridge.js?v=1
+       - url: /local/shared_energy_ledger/shared-energy-ledger-history-bridge.js?v=1
          type: module
    ```
 
 3. Add cards to a dashboard. Minimal example configurations:
 
    ```yaml
-   type: custom:energy-split-period-summary
+   type: custom:shared-energy-ledger-period-summary
    title: Period summary
    expected_unit: EUR
    display_unit: EUR
    decimals: 2
    entities:
-     tenant-a: sensor.energy_split_tenant_a_cost_cumulative
-     tenant-b: sensor.energy_split_tenant_b_cost_cumulative
+     tenant-a: sensor.shared_energy_ledger_tenant_a_cost_cumulative
+     tenant-b: sensor.shared_energy_ledger_tenant_b_cost_cumulative
    ```
 
    ```yaml
-   type: custom:energy-split-history-report
+   type: custom:shared-energy-ledger-history-report
    title: Last 24 h report
-   url: /local/energy_split/report.json
+   url: /local/shared_energy_ledger/report.json
    poll_interval_seconds: 300
    ```
 
    ```yaml
-   type: custom:energy-split-history-bridge
+   type: custom:shared-energy-ledger-history-bridge
    id: primary
-   url: /local/energy_split/report.json
+   url: /local/shared_energy_ledger/report.json
    poll_interval_seconds: 300
    ```
 

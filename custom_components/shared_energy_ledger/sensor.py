@@ -24,8 +24,8 @@ from homeassistant.const import PERCENTAGE, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import CoordinatorPayload, EnergySplitCoordinator
-from .entity import EnergySplitEntity
+from .coordinator import CoordinatorPayload, SharedEnergyLedgerCoordinator
+from .entity import SharedEnergyLedgerEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -66,14 +66,14 @@ TENANT_SHARE = TenantSensorDescription(
 )
 
 
-class TenantSensor(EnergySplitEntity, SensorEntity):
+class TenantSensor(SharedEnergyLedgerEntity, SensorEntity):
     """One measurement sensor for a single tenant."""
 
     entity_description: TenantSensorDescription
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         description: TenantSensorDescription,
         slug: str,
     ) -> None:
@@ -93,13 +93,13 @@ class TenantSensor(EnergySplitEntity, SensorEntity):
         return self.entity_description.value_fn(self.coordinator.data, self._slug)
 
 
-class TenantCostRateSensor(EnergySplitEntity, SensorEntity):
+class TenantCostRateSensor(SharedEnergyLedgerEntity, SensorEntity):
     """Live per-tenant cost rate in currency/h."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_translation_key = "tenant_total_cost_rate"
 
-    def __init__(self, coordinator: EnergySplitCoordinator, slug: str, currency: str) -> None:
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str, currency: str) -> None:
         super().__init__(coordinator, "tenant_total_cost_rate", slug)
         self._slug = slug
         self._attr_native_unit_of_measurement = f"{currency}/h"
@@ -115,7 +115,7 @@ class TenantCostRateSensor(EnergySplitEntity, SensorEntity):
         return self.coordinator.data.tenants_cost_rate.get(self._slug)
 
 
-class GridImportCostPerKwhSensor(EnergySplitEntity, SensorEntity):
+class GridImportCostPerKwhSensor(SharedEnergyLedgerEntity, SensorEntity):
     """Effective grid-import per-kWh cost, exposed for historical re-pricing.
 
     Publishes the tariff rate the coordinator resolved for the moment of the
@@ -129,7 +129,7 @@ class GridImportCostPerKwhSensor(EnergySplitEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_translation_key = "grid_import_cost_per_kwh"
 
-    def __init__(self, coordinator: EnergySplitCoordinator, currency: str) -> None:
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, currency: str) -> None:
         super().__init__(coordinator, "grid_import_cost_per_kwh", "hub")
         self._attr_native_unit_of_measurement = f"{currency}/kWh"
 
@@ -144,7 +144,7 @@ class GridImportCostPerKwhSensor(EnergySplitEntity, SensorEntity):
         return self.coordinator.data.tariff_rate
 
 
-class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
+class TenantCumulativeCostSensor(SharedEnergyLedgerEntity, RestoreSensor):
     """Cumulative per-tenant total cost.
 
     Uses ``RestoreSensor`` so the running total survives restarts. When the
@@ -156,7 +156,7 @@ class TenantCumulativeCostSensor(EnergySplitEntity, RestoreSensor):
     _attr_state_class = SensorStateClass.TOTAL
     _attr_translation_key = "tenant_total_cost"
 
-    def __init__(self, coordinator: EnergySplitCoordinator, slug: str, currency: str) -> None:
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str, currency: str) -> None:
         super().__init__(coordinator, "tenant_total_cost", slug)
         self._slug = slug
         self._attr_native_unit_of_measurement = currency
@@ -216,7 +216,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor entities for this config entry."""
-    coordinator: EnergySplitCoordinator = entry.runtime_data
+    coordinator: SharedEnergyLedgerCoordinator = entry.runtime_data
     config = coordinator.energy_config
     if config is None:
         async_add_entities([])

@@ -1,6 +1,6 @@
-"""Base entity classes for the Energy Split integration.
+"""Base entity classes for the Shared Energy Ledger integration.
 
-All entities extend :class:`EnergySplitEntity` (or its coordinator-driven
+All entities extend :class:`SharedEnergyLedgerEntity` (or its coordinator-driven
 variant) so they share device registration, unique_id policy, and
 availability propagation. This module never contains rendering logic.
 """
@@ -13,20 +13,20 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import EnergySplitCoordinator
+from .coordinator import SharedEnergyLedgerCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 
-class EnergySplitEntity(CoordinatorEntity[EnergySplitCoordinator]):
-    """Base class for every Energy Split entity."""
+class SharedEnergyLedgerEntity(CoordinatorEntity[SharedEnergyLedgerCoordinator]):
+    """Base class for every Shared Energy Ledger entity."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         translation_key: str,
         resource_slug: str,
     ) -> None:
@@ -38,11 +38,11 @@ class EnergySplitEntity(CoordinatorEntity[EnergySplitCoordinator]):
         self._attr_unique_id = f"{entry.entry_id}:{resource_slug}:{translation_key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title or "Energy Split",
-            manufacturer="Energy Split",
+            name=entry.title or "Shared Energy Ledger",
+            manufacturer="Shared Energy Ledger",
             model="Cooperative energy accounting",
             entry_type=None,
         )
 
 
-__all__ = ["EnergySplitEntity"]
+__all__ = ["SharedEnergyLedgerEntity"]

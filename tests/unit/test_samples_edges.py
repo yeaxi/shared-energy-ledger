@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from custom_components.energy_split.samples import (
+from custom_components.shared_energy_ledger.samples import (
     as_utc,
     validate_energy_sample,
     validate_power_sample,

@@ -12,14 +12,14 @@ const EN = {
   "state.loading": "Loading",
   "state.no_data": "No data for this period",
   "card.period_summary.title": "Energy split - period summary",
-  "card.period_summary.name": "Energy Split period summary",
+  "card.period_summary.name": "Shared Energy Ledger period summary",
   "card.period_summary.description":
     "Per-tenant known cost for a selected period.",
   "card.history_report.title": "Energy split - history report",
-  "card.history_report.name": "Energy Split history report",
+  "card.history_report.name": "Shared Energy Ledger history report",
   "card.history_report.description":
     "Recorder-backed period report with coverage and transition-excluded seconds.",
-  "card.history_bridge.name": "Energy Split history bridge",
+  "card.history_bridge.name": "Shared Energy Ledger history bridge",
   "card.history_bridge.description":
     "Invisible data adapter that publishes the currently selected report to sibling cards.",
   "field.coverage_seconds": "Coverage (s)",

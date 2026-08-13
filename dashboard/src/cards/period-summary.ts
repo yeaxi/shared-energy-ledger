@@ -1,5 +1,5 @@
 /**
- * `energy-split-period-summary` custom card.
+ * `shared-energy-ledger-period-summary` custom card.
  *
  * Renders per-tenant known cost for the selected accounting period.
  * Two data sources are supported (only one at a time per card instance):
@@ -50,7 +50,7 @@ export interface PeriodSummaryConfig {
   readonly historical_data_url?: string;
 }
 
-const CARD_TYPE = "energy-split-period-summary";
+const CARD_TYPE = "shared-energy-ledger-period-summary";
 
 function isValidConfig(raw: unknown): raw is PeriodSummaryConfig {
   if (typeof raw !== "object" || raw === null) {
@@ -91,7 +91,7 @@ function formatAmount(raw: string, decimals: number): string {
   return parsed.toFixed(decimals);
 }
 
-export class EnergySplitPeriodSummary extends HTMLElement {
+export class SharedEnergyLedgerPeriodSummary extends HTMLElement {
   private _hass: HassLike | null = null;
   private _config: PeriodSummaryConfig | null = null;
   private _report: ReportEnvelope | null = null;
@@ -109,7 +109,7 @@ export class EnergySplitPeriodSummary extends HTMLElement {
     return {
       type: `custom:${CARD_TYPE}`,
       title: t("card.period_summary.title"),
-      entities: { "tenant-a": "sensor.energy_split_tenant_a_cost_cumulative" },
+      entities: { "tenant-a": "sensor.shared_energy_ledger_tenant_a_cost_cumulative" },
       expected_unit: "EUR",
       display_unit: "EUR",
       decimals: 2,
@@ -282,7 +282,7 @@ export class EnergySplitPeriodSummary extends HTMLElement {
   }
 }
 
-defineCustomElementOnce(CARD_TYPE, EnergySplitPeriodSummary);
+defineCustomElementOnce(CARD_TYPE, SharedEnergyLedgerPeriodSummary);
 registerCustomCard({
   type: CARD_TYPE,
   name: t("card.period_summary.name"),

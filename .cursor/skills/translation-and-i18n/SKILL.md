@@ -86,7 +86,7 @@ translation `placeholders` argument.
 
 ## Forbidden patterns
 
-- Raw f-string labels like `_attr_name = "Energy Split total"`.
+- Raw f-string labels like `_attr_name = "Shared Energy Ledger total"`.
 - Concatenation such as `_("Total") + " " + tenant_name`.
 - Placeholder values that themselves contain a locale-specific format (dates,
   currencies) without going through `homeassistant.util.dt` and the

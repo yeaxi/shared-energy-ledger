@@ -1,4 +1,4 @@
-"""Issue-registry integration for Energy Split.
+"""Issue-registry integration for Shared Energy Ledger.
 
 Uses :mod:`homeassistant.helpers.issue_registry` to surface recoverable
 operator errors as user-visible repairs, rather than emitting log spam that
@@ -43,7 +43,7 @@ def clear_tariff_schedule_invalid(hass: HomeAssistant, entry_id: str) -> None:
 def raise_ledger_incoherent(hass: HomeAssistant, entry_id: str) -> None:
     """Raise a repair when the persisted ledger boundary pair is incoherent.
 
-    Recovery: operator runs ``energy_split.reset_battery_ledger`` with a
+    Recovery: operator runs ``shared_energy_ledger.reset_battery_ledger`` with a
     valid ``(stock_kwh, stock_cost)`` pair per requirement I6.
     """
     ir.async_create_issue(

@@ -1,6 +1,6 @@
 /**
  * TypeScript surface for the v2 report envelope produced by
- * `custom_components/energy_split/report.py`.
+ * `custom_components/shared_energy_ledger/report.py`.
  *
  * These types are intentionally the smallest shape the cards need. They MUST
  * stay in lock-step with the Python report builder; see REQUIREMENTS.md

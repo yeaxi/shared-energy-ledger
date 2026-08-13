@@ -1,5 +1,5 @@
 <!--
-Thanks for contributing to Energy Split. Please read REQUIREMENTS.md and the
+Thanks for contributing to Shared Energy Ledger. Please read REQUIREMENTS.md and the
 relevant AGENTS.md / .cursor/skills/* before opening this PR.
 -->
 
@@ -21,11 +21,11 @@ commit sequence.
 ## Verification
 
 - [ ] `python -m homeassistant.scripts.hassfest --requirements --action validate`
-- [ ] `python -m mypy --strict custom_components/energy_split`
+- [ ] `python -m mypy --strict custom_components/shared_energy_ledger`
 - [ ] `python -m ruff check .`
-- [ ] `python -m pytest tests/ -q --cov=custom_components.energy_split --cov-fail-under=90 -W error`
+- [ ] `python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error`
 - [ ] `python scripts/lint_no_silent_zero.py`
-- [ ] `python scripts/check_translations.py custom_components/energy_split`
+- [ ] `python scripts/check_translations.py custom_components/shared_energy_ledger`
 - [ ] `python scripts/check_private_denylist.py`
 - [ ] `python scripts/check_requirements_traceability.py`
 

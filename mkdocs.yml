@@ -1,8 +1,8 @@
-site_name: Energy Split
+site_name: Shared Energy Ledger
 site_description: Cooperative-building energy accounting for Home Assistant.
-site_url: https://yeaxi.github.io/energy-split-dashboard/
-repo_url: https://github.com/yeaxi/energy-split-dashboard
-repo_name: yeaxi/energy-split-dashboard
+site_url: https://yeaxi.github.io/shared-energy-ledger/
+repo_url: https://github.com/yeaxi/shared-energy-ledger
+repo_name: yeaxi/shared-energy-ledger
 edit_uri: edit/main/docs/
 
 docs_dir: docs

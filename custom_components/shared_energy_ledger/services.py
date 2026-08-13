@@ -1,13 +1,13 @@
-"""Service registration for Energy Split.
+"""Service registration for Shared Energy Ledger.
 
 Registers three domain services:
 
-* ``energy_split.rebuild_period_report`` — deterministic Recorder-based JSON
+* ``shared_energy_ledger.rebuild_period_report`` — deterministic Recorder-based JSON
   report for a period, backed by :mod:`.report_builder`.
-* ``energy_split.reset_battery_ledger`` — admin action that reseeds the
+* ``shared_energy_ledger.reset_battery_ledger`` — admin action that reseeds the
   weighted-cost ledger boundary pair (requires admin, enforces coherence
   per invariant I6).
-* ``energy_split.set_tariff_rate`` — journaled tariff change; creates a new
+* ``shared_energy_ledger.set_tariff_rate`` — journaled tariff change; creates a new
   tariff-slot entry in ``entry.options`` so historical accounting epochs
   are preserved (invariant I9).
 """
@@ -43,7 +43,7 @@ from .const import (
     SERVICE_RESET_BATTERY_LEDGER,
     SERVICE_SET_TARIFF_RATE,
 )
-from .coordinator import EnergySplitCoordinator
+from .coordinator import SharedEnergyLedgerCoordinator
 from .ledger import validate_boundary
 from .ledger_store import LedgerPersisted
 from .report_builder import RebuildRequest, async_rebuild_period_report
@@ -90,11 +90,11 @@ def _pick_entry(hass: HomeAssistant) -> ConfigEntry | None:
     return entries[0]
 
 
-def _coordinator(hass: HomeAssistant) -> EnergySplitCoordinator:
+def _coordinator(hass: HomeAssistant) -> SharedEnergyLedgerCoordinator:
     entry = _pick_entry(hass)
     if entry is None:
-        raise HomeAssistantError("No Energy Split config entry is currently loaded.")
-    coordinator: EnergySplitCoordinator | None = getattr(entry, "runtime_data", None)
+        raise HomeAssistantError("No Shared Energy Ledger config entry is currently loaded.")
+    coordinator: SharedEnergyLedgerCoordinator | None = getattr(entry, "runtime_data", None)
     if coordinator is None:
         raise HomeAssistantError("Config entry is not ready yet; try again in a moment.")
     return coordinator

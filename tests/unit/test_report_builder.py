@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`custom_components.energy_split.report_builder` helpers.
+"""Unit tests for :mod:`custom_components.shared_energy_ledger.report_builder` helpers.
 
 Covers I5 (unit-metadata validation), I7 (DST-safe local-day boundaries), and
 I8 (finalized-as-of ordering).
@@ -11,7 +11,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from custom_components.energy_split.report_builder import (
+from custom_components.shared_energy_ledger.report_builder import (
     _hour_boundaries,
     _hourly_rows_for_tenant,
     _parse_cost,

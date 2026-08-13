@@ -1,18 +1,18 @@
 """Additional allocation edge cases for coverage of I3/I4 paths.
 
 These tests exercise the numeric edge cases in
-:mod:`custom_components.energy_split.allocation` that
+:mod:`custom_components.shared_energy_ledger.allocation` that
 :mod:`tests.unit.test_allocation` covers only at a high level.
 """
 
 from __future__ import annotations
 
-from custom_components.energy_split.allocation import (
+from custom_components.shared_energy_ledger.allocation import (
     AllocationInput,
     TenantInput,
     allocate,
 )
-from custom_components.energy_split.models import AllocationPolicy
+from custom_components.shared_energy_ledger.models import AllocationPolicy
 
 
 def _t(**kwargs: object) -> TenantInput:

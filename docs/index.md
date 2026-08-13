@@ -1,6 +1,6 @@
-# Energy Split
+# Shared Energy Ledger
 
-Energy Split is a [Home Assistant](https://www.home-assistant.io/) custom
+Shared Energy Ledger is a [Home Assistant](https://www.home-assistant.io/) custom
 integration for **cooperative buildings** where a single grid connection,
 optionally a single photovoltaic array, and optionally a single shared
 battery are used by two or more metered flats or houses.
@@ -12,7 +12,7 @@ The integration answers one operational question:
 It reports that answer in the operator's chosen currency, with a strict
 **fail-closed** contract: when an upstream input is missing, stale, or has
 the wrong unit, dependent cost and allocation sensors stay `unavailable`.
-Energy Split never invents a zero.
+Shared Energy Ledger never invents a zero.
 
 ## Who this is for
 
@@ -24,7 +24,7 @@ Energy Split never invents a zero.
 - Home Assistant users who want a read-only accounting layer with
   deterministic reports, without any side-effecting control of hardware.
 
-## What Energy Split is not
+## What Shared Energy Ledger is not
 
 - It is not a physical controller. It does not call `turn_on`,
   `turn_off`, `toggle`, or any inverter, ESS, or battery-mode service.
@@ -59,6 +59,6 @@ Energy Split never invents a zero.
 ## Source of truth
 
 The public specification lives in
-[`REQUIREMENTS.md`](https://github.com/yeaxi/energy-split-dashboard/blob/main/REQUIREMENTS.md).
+[`REQUIREMENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md).
 Whenever the documentation and the specification disagree, the
 specification wins and the docs are updated in the same pull request.

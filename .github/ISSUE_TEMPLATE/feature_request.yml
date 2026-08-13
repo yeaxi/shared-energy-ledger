@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest a change to the Energy Split integration or its cards.
+description: Suggest a change to the Shared Energy Ledger integration or its cards.
 labels: ["enhancement"]
 body:
   - type: textarea

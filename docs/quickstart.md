@@ -1,6 +1,6 @@
 # Quickstart
 
-This page walks through installing Energy Split from
+This page walks through installing Shared Energy Ledger from
 [HACS](https://www.hacs.xyz/) as a custom repository and running the
 first-time config flow. It uses only generic examples: two tenants
 called `flat-1` and `flat-2`, a `EUR` currency, and a simple day/night
@@ -21,7 +21,7 @@ tariff.
     - Battery charge/discharge counters (`kWh`, monotonic) and a signed
       DC power sensor (`W`, negative on discharge).
 
-Every sensor is supplied to Energy Split through an entity selector at
+Every sensor is supplied to Shared Energy Ledger through an entity selector at
 setup time. The integration hard-codes no manufacturer, no device model,
 and no vendor-specific ID.
 
@@ -33,19 +33,19 @@ and no vendor-specific ID.
 3. In the *Repository* field paste:
 
     ```text
-    https://github.com/yeaxi/energy-split-dashboard
+    https://github.com/yeaxi/shared-energy-ledger
     ```
 
 4. In the *Category* field choose **Integration**.
 5. Click **Add**. HACS downloads the integration into
-   `custom_components/energy_split/`.
+   `custom_components/shared_energy_ledger/`.
 6. **Restart Home Assistant** so the new integration is picked up.
 
 ## Add the integration
 
 1. Open **Settings** and then **Devices & services**.
-2. Click **Add integration** and search for `Energy Split`.
-3. The config flow starts on the **Energy Split** step and walks
+2. Click **Add integration** and search for `Shared Energy Ledger`.
+3. The config flow starts on the **Shared Energy Ledger** step and walks
    through the following pages.
 
 ### Step 1: Currency
@@ -120,7 +120,7 @@ Add at least two tenants. A minimal generic configuration is:
 
 ## After setup
 
-Once the config flow finishes, Energy Split creates:
+Once the config flow finishes, Shared Energy Ledger creates:
 
 - Per-tenant sensors for accounting power, share, grid cost rate,
   battery cost rate, total cost rate, and cumulative total cost.
@@ -131,5 +131,5 @@ Once the config flow finishes, Energy Split creates:
 - Battery ledger diagnostics when battery is configured.
 
 You can reopen the integration from **Settings** > **Devices &
-services** > **Energy Split** > **Configure** to enter the options
+services** > **Shared Energy Ledger** > **Configure** to enter the options
 flow. See [Configuration reference](configuration.md).

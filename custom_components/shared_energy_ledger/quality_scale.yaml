@@ -1,4 +1,4 @@
-# Home Assistant integration quality-scale attestations for Energy Split.
+# Home Assistant integration quality-scale attestations for Shared Energy Ledger.
 #
 # Each rule maps to either "done" (implemented and covered by tests) or
 # "exempt" (with a rationale). "todo" is not used at v0.1: unmet rules keep
@@ -11,7 +11,7 @@
 
 rules:
   # ---------- Bronze ----------
-  action-setup: done                         # custom_components/energy_split/__init__.py::async_setup_entry
+  action-setup: done                         # custom_components/shared_energy_ledger/__init__.py::async_setup_entry
   appropriate-polling: done                  # DataUpdateCoordinator with UPDATE_INTERVAL, no per-entity polling
   brands: todo                               # Brand PR to home-assistant/brands pending
   common-modules: done                       # models.py, const.py, coordinator.py
@@ -24,7 +24,7 @@ rules:
   docs-removal-instructions: done            # docs/upgrade-guide.md
   entity-event-setup: done                   # CoordinatorEntity + entry.async_on_unload
   entity-unique-id: done                     # entity.py builds unique_id from entry_id + resource_slug + description.key
-  has-entity-name: done                      # EnergySplitEntity._attr_has_entity_name = True
+  has-entity-name: done                      # SharedEnergyLedgerEntity._attr_has_entity_name = True
   runtime-data: done                         # __init__.py sets entry.runtime_data
   test-before-configure: done                # config_flow validates currency, slug, tariff schedule at each step
   test-before-setup: done                    # coordinator._load_config_if_ready refuses to boot on bad schedule (issue_registry)
@@ -42,7 +42,7 @@ rules:
   log-when-unavailable: done                 # coordinator.py raises repairs, not log spam (issues.py)
   parallel-updates: done                     # coordinator drives updates; entities do not fetch
   reauthentication-flow: exempt
-  # ^ Energy Split has no external credentials. All inputs are internal HA
+  # ^ Shared Energy Ledger has no external credentials. All inputs are internal HA
   # entity selectors; async_step_reconfigure covers the rename case.
   test-coverage: done                        # pytest --cov-fail-under=90 (176 tests, 91% coverage)
 
@@ -50,7 +50,7 @@ rules:
   devices: done                              # entity.py registers DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
   diagnostics: done                          # diagnostics.py returns redacted config + coordinator payload
   discovery: exempt
-  # ^ Energy Split is a configuration-only hub; there is nothing on the
+  # ^ Shared Energy Ledger is a configuration-only hub; there is nothing on the
   # network to discover. All sources are user-supplied entity IDs.
   discovery-update-info: exempt              # see discovery
   docs-data-update: done                     # docs/configuration.md documents update cadence
@@ -74,7 +74,7 @@ rules:
   # ---------- Platinum ----------
   async-dependency: done                     # all dependencies (recorder, aiohttp, util.dt) are async-first
   inject-websession: exempt                  # no HTTP client is used
-  strict-typing: done                        # mypy --strict passes on custom_components/energy_split
+  strict-typing: done                        # mypy --strict passes on custom_components/shared_energy_ledger
 
 quality_scale: silver
 # ^ Bump to "gold" or "platinum" only after the todo rules above resolve

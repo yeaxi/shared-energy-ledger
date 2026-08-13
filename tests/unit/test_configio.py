@@ -13,19 +13,19 @@ from datetime import UTC, datetime
 
 import pytest
 
-from custom_components.energy_split.configio import (
+from custom_components.shared_energy_ledger.configio import (
     ConfigError,
     config_from_entry,
     config_to_entry,
     with_freshness,
 )
-from custom_components.energy_split.models import (
+from custom_components.shared_energy_ledger.models import (
     AllocationPolicy,
     BatteryConfig,
-    EnergySplitConfig,
     FreshnessConfig,
     GridConfig,
     PvConfig,
+    SharedEnergyLedgerConfig,
     SharedLoad,
     TariffSchedule,
     TariffSlot,
@@ -160,7 +160,7 @@ def test_with_freshness_replaces_only_freshness_config() -> None:
 
 
 def test_config_to_entry_omits_optional_none() -> None:
-    minimal = EnergySplitConfig(
+    minimal = SharedEnergyLedgerConfig(
         currency="EUR",
         grid=GridConfig(import_energy_entity="sensor.grid"),
         tenants=(

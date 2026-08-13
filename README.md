@@ -1,6 +1,6 @@
-# Energy Split
+# Shared Energy Ledger
 
-**Energy Split** is a Home Assistant custom integration for **cooperative
+**Shared Energy Ledger** is a Home Assistant custom integration for **cooperative
 buildings** where one grid connection, optionally one PV array, and optionally
 one battery are shared by `N` metered flats or houses. It answers a single
 operational question:
@@ -38,7 +38,7 @@ sensors stay `unavailable`. The integration never invents a zero.
 ## Repository layout
 
 ```
-custom_components/energy_split/     # the integration
+custom_components/shared_energy_ledger/     # the integration
 dashboard/                          # companion Lovelace cards
 tests/                              # pytest suite (unit + integration)
 docs/                               # mkdocs site
@@ -58,7 +58,7 @@ For architectural context, invariants, and the Cursor workflow, read:
 ## Installation (once released)
 
 Add this repository as a custom integration in HACS, then add the
-**Energy Split** integration from *Settings → Devices & Services → Add
+**Shared Energy Ledger** integration from *Settings → Devices & Services → Add
 Integration*. The config flow walks through currency, grid, optional PV,
 optional battery, and per-tenant meters.
 

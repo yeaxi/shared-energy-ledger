@@ -9,7 +9,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.energy_split.const import (
+from custom_components.shared_energy_ledger.const import (
     CONF_BATTERY,
     CONF_CURRENCY,
     CONF_IMPORT_ENERGY,

@@ -20,8 +20,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import CoordinatorPayload, EnergySplitCoordinator
-from .entity import EnergySplitEntity
+from .coordinator import CoordinatorPayload, SharedEnergyLedgerCoordinator
+from .entity import SharedEnergyLedgerEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -51,14 +51,14 @@ BATTERY_DATA_FRESH = FreshnessDescription(
 )
 
 
-class FreshnessBinarySensor(EnergySplitEntity, BinarySensorEntity):
+class FreshnessBinarySensor(SharedEnergyLedgerEntity, BinarySensorEntity):
     """Global freshness gate binary sensor."""
 
     entity_description: FreshnessDescription
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         description: FreshnessDescription,
     ) -> None:
         super().__init__(coordinator, description.translation_key or description.key, "hub")
@@ -69,12 +69,12 @@ class FreshnessBinarySensor(EnergySplitEntity, BinarySensorEntity):
         return bool(self.entity_description.value_fn(self.coordinator.data))
 
 
-class TenantFreshnessBinarySensor(EnergySplitEntity, BinarySensorEntity):
+class TenantFreshnessBinarySensor(SharedEnergyLedgerEntity, BinarySensorEntity):
     """Freshness gate for a single tenant meter."""
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
-    def __init__(self, coordinator: EnergySplitCoordinator, slug: str) -> None:
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str) -> None:
         super().__init__(coordinator, "tenant_data_fresh", slug)
         self._slug = slug
 
@@ -89,7 +89,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up freshness binary sensors for this config entry."""
-    coordinator: EnergySplitCoordinator = entry.runtime_data
+    coordinator: SharedEnergyLedgerCoordinator = entry.runtime_data
     entities: list[BinarySensorEntity] = [FreshnessBinarySensor(coordinator, GRID_DATA_FRESH)]
     config = coordinator.energy_config
     if config is None:

@@ -11,7 +11,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.energy_split.const import CONFIG_ENTRY_VERSION, DOMAIN
+from custom_components.shared_energy_ledger.const import CONFIG_ENTRY_VERSION, DOMAIN
 
 
 def _entry_with_battery() -> dict:

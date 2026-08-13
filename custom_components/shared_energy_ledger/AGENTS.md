@@ -1,6 +1,6 @@
-# custom_components/energy_split — agent rules
+# custom_components/shared_energy_ledger — agent rules
 
-This folder holds the `energy_split` Home Assistant custom integration. Every
+This folder holds the `shared_energy_ledger` Home Assistant custom integration. Every
 change here is user-facing code that must reach and stay at
 `quality_scale: platinum`.
 
@@ -65,9 +65,9 @@ Before requesting review, the following must all pass locally:
 
 ```bash
 python -m homeassistant.scripts.hassfest --requirements --action validate
-python -m mypy --strict custom_components/energy_split
-python -m ruff check custom_components/energy_split
-python -m pytest tests/ -q --cov=custom_components.energy_split --cov-fail-under=90
+python -m mypy --strict custom_components/shared_energy_ledger
+python -m ruff check custom_components/shared_energy_ledger
+python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90
 ```
 
 CI reruns the same commands on every supported HA version declared in

@@ -1,6 +1,6 @@
 # docs — agent rules
 
-This folder holds the public documentation site for the `energy_split`
+This folder holds the public documentation site for the `shared_energy_ledger`
 integration and its companion cards.
 
 ## Scope
@@ -29,7 +29,7 @@ Agents editing this folder must follow:
   the integration's config or options flow. Undocumented flow fields are a
   release blocker; documented-but-unimplemented fields are a release blocker.
 - Every service documented on the site has a matching entry in
-  `custom_components/energy_split/services.yaml` and a matching translation
+  `custom_components/shared_energy_ledger/services.yaml` and a matching translation
   under `strings.json`.
 - All examples use synthetic tenants (`Flat 1`, `Flat 2`, `House A`, etc.)
   and generic currencies. No example names a real building, address,

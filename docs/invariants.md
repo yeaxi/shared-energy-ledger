@@ -1,11 +1,11 @@
 # Invariants
 
-Energy Split ships ten non-functional invariants, labelled `I1` through
+Shared Energy Ledger ships ten non-functional invariants, labelled `I1` through
 `I10`. They are testable, and each one is exercised by at least one
 contract test. See [Traceability](traceability.md) for the mapping.
 
 The wording below mirrors
-[`REQUIREMENTS.md#a3`](https://github.com/yeaxi/energy-split-dashboard/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
+[`REQUIREMENTS.md#a3`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
 exactly; the plain-language notes are additive and never override the
 specification.
 

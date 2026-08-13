@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant, State
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.energy_split.const import CONFIG_ENTRY_VERSION, DOMAIN
+from custom_components.shared_energy_ledger.const import CONFIG_ENTRY_VERSION, DOMAIN
 
 from .test_setup import _happy_entry_data
 
@@ -53,7 +53,7 @@ async def test_rebuild_period_report_end_to_end(hass: HomeAssistant) -> None:
         return {eid: _fake_states_for_entity(eid) for eid in entity_ids}
 
     with patch(
-        "custom_components.energy_split.report_builder.history.get_significant_states",
+        "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
         side_effect=_fake_get,
     ):
         response = await hass.services.async_call(
@@ -83,7 +83,7 @@ async def test_rebuild_period_report_end_to_end(hass: HomeAssistant) -> None:
     # Filtering by unknown tenant slug must fail closed.
     with (
         patch(
-            "custom_components.energy_split.report_builder.history.get_significant_states",
+            "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
             side_effect=_fake_get,
         ),
         pytest.raises(HomeAssistantError),
@@ -115,7 +115,7 @@ async def test_rebuild_period_report_scoped_to_single_tenant(hass: HomeAssistant
         return {eid: _fake_states_for_entity(eid) for eid in entity_ids}
 
     with patch(
-        "custom_components.energy_split.report_builder.history.get_significant_states",
+        "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
         side_effect=_fake_get,
     ):
         response = await hass.services.async_call(

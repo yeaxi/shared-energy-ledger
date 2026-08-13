@@ -1,6 +1,6 @@
 ---
 name: energy-accounting-invariants
-description: Enforce the fail-closed accounting invariants of the energy_split integration: no silent zero, closed allocation enum, unit metadata gates, residual alignment window, ledger boundary-pair coherence, DST-safe reports, and transition-excluded reconciliation. Use whenever ledger.py, allocation.py, tariff.py, report.py, or their tests are touched.
+description: Enforce the fail-closed accounting invariants of the shared_energy_ledger integration: no silent zero, closed allocation enum, unit metadata gates, residual alignment window, ledger boundary-pair coherence, DST-safe reports, and transition-excluded reconciliation. Use whenever ledger.py, allocation.py, tariff.py, report.py, or their tests are touched.
 ---
 
 # Energy accounting invariants
@@ -14,12 +14,12 @@ never fabricate a zero cost can adopt the same rule set.
 
 Invoke this skill when a PR touches any of:
 
-- `custom_components/energy_split/ledger.py`
-- `custom_components/energy_split/allocation.py`
-- `custom_components/energy_split/tariff.py`
-- `custom_components/energy_split/report.py`
-- `custom_components/energy_split/coordinator.py`
-- `custom_components/energy_split/config_flow.py`
+- `custom_components/shared_energy_ledger/ledger.py`
+- `custom_components/shared_energy_ledger/allocation.py`
+- `custom_components/shared_energy_ledger/tariff.py`
+- `custom_components/shared_energy_ledger/report.py`
+- `custom_components/shared_energy_ledger/coordinator.py`
+- `custom_components/shared_energy_ledger/config_flow.py`
 - `tests/unit/test_ledger.py`, `test_allocation.py`, `test_tariff.py`,
   `test_report.py`
 
@@ -140,8 +140,8 @@ Run all contract tests plus the invariant lints:
 ```bash
 python -m pytest tests/unit/test_ledger.py tests/unit/test_allocation.py \
                  tests/unit/test_tariff.py tests/unit/test_report.py -q
-python -m ruff check custom_components/energy_split
-python scripts/lint_no_silent_zero.py custom_components/energy_split
+python -m ruff check custom_components/shared_energy_ledger
+python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 ```
 
 The last script scans for `float\(([^,]+), *0\)` and `\|\s*float\(0\)`

@@ -23,8 +23,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     CONF_BATTERY,
 )
-from .coordinator import EnergySplitCoordinator
-from .entity import EnergySplitEntity
+from .coordinator import SharedEnergyLedgerCoordinator
+from .entity import SharedEnergyLedgerEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,12 +32,12 @@ CONF_DAY_RATE_OPTION: Final = "day_rate"
 CONF_NIGHT_RATE_OPTION: Final = "night_rate"
 
 
-class _OptionsNumberEntity(EnergySplitEntity, NumberEntity):
+class _OptionsNumberEntity(SharedEnergyLedgerEntity, NumberEntity):
     """Base class for number entities backed by ``entry.options``."""
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         description: NumberEntityDescription,
         section: str | None,
         option_key: str,
@@ -131,7 +131,7 @@ class TariffRateNumber(_OptionsNumberEntity):
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         description: NumberEntityDescription,
     ) -> None:
         super().__init__(
@@ -149,7 +149,7 @@ class BatteryTunableNumber(_OptionsNumberEntity):
 
     def __init__(
         self,
-        coordinator: EnergySplitCoordinator,
+        coordinator: SharedEnergyLedgerCoordinator,
         description: NumberEntityDescription,
         default: float,
     ) -> None:
@@ -168,7 +168,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up number entities for this config entry."""
-    coordinator: EnergySplitCoordinator = entry.runtime_data
+    coordinator: SharedEnergyLedgerCoordinator = entry.runtime_data
     config = coordinator.energy_config
     entities: list[Any] = []
     if config is not None:

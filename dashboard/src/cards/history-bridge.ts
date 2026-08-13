@@ -1,10 +1,10 @@
 /**
- * `energy-split-history-bridge` custom card.
+ * `shared-energy-ledger-history-bridge` custom card.
  *
  * The bridge is an invisible data adapter. It fetches a validated report
  * on a schedule and publishes it to sibling cards through two channels:
  *
- * 1. A `CustomEvent` named `energy-split-report` that bubbles through the
+ * 1. A `CustomEvent` named `shared-energy-ledger-report` that bubbles through the
  *    DOM. Sibling cards can listen with `addEventListener` on any common
  *    ancestor.
  * 2. A global registry `window.__energySplitReports` keyed by the bridge's
@@ -51,8 +51,8 @@ interface WindowWithRegistry {
   __energySplitReports?: Record<string, BridgeRegistryEntry>;
 }
 
-const CARD_TYPE = "energy-split-history-bridge";
-const EVENT_NAME = "energy-split-report";
+const CARD_TYPE = "shared-energy-ledger-history-bridge";
+const EVENT_NAME = "shared-energy-ledger-report";
 const DEFAULT_POLL_SECONDS = 300;
 
 function isValidConfig(raw: unknown): raw is HistoryBridgeConfig {
@@ -75,7 +75,7 @@ function isValidConfig(raw: unknown): raw is HistoryBridgeConfig {
   return true;
 }
 
-export class EnergySplitHistoryBridge extends HTMLElement {
+export class SharedEnergyLedgerHistoryBridge extends HTMLElement {
   private _hass: HassLike | null = null;
   private _config: HistoryBridgeConfig | null = null;
   private _selection: SelectionState = INITIAL_SELECTION;
@@ -97,7 +97,7 @@ export class EnergySplitHistoryBridge extends HTMLElement {
     return {
       type: `custom:${CARD_TYPE}`,
       id: "primary",
-      url: "/local/energy_split/report.json",
+      url: "/local/shared_energy_ledger/report.json",
       poll_interval_seconds: DEFAULT_POLL_SECONDS,
     };
   }
@@ -241,7 +241,7 @@ export class EnergySplitHistoryBridge extends HTMLElement {
   }
 }
 
-defineCustomElementOnce(CARD_TYPE, EnergySplitHistoryBridge);
+defineCustomElementOnce(CARD_TYPE, SharedEnergyLedgerHistoryBridge);
 registerCustomCard({
   type: CARD_TYPE,
   name: t("card.history_bridge.name"),

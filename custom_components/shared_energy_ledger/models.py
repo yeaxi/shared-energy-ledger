@@ -1,4 +1,4 @@
-"""Typed data model for the Energy Split integration.
+"""Typed data model for the Shared Energy Ledger integration.
 
 Everything in this module is a plain, framework-agnostic dataclass or enum.
 The integration's coordinator, config flow, and services translate config
@@ -152,7 +152,7 @@ class FreshnessConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class EnergySplitConfig:
+class SharedEnergyLedgerConfig:
     """The full configuration entry."""
 
     currency: str

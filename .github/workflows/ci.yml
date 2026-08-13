@@ -28,7 +28,7 @@ jobs:
       - name: Ruff
         run: python -m ruff check .
       - name: mypy (strict)
-        run: python -m mypy custom_components/energy_split
+        run: python -m mypy custom_components/shared_energy_ledger
       - name: JSON validation
         run: |
           python - <<'PY'
@@ -44,7 +44,7 @@ jobs:
       - name: No silent zero
         run: python scripts/lint_no_silent_zero.py
       - name: Translations
-        run: python scripts/check_translations.py custom_components/energy_split
+        run: python scripts/check_translations.py custom_components/shared_energy_ledger
       - name: Private denylist
         run: python scripts/check_private_denylist.py
       - name: Requirements traceability
@@ -74,7 +74,7 @@ jobs:
       - name: Run pytest
         run: >-
           python -m pytest tests/ -q -W error
-          --cov=custom_components.energy_split
+          --cov=custom_components.shared_energy_ledger
           --cov-report=term-missing
           --cov-fail-under=90
 

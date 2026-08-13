@@ -1,6 +1,6 @@
 # tests — agent rules
 
-This folder holds the automated test suite for the `energy_split` integration
+This folder holds the automated test suite for the `shared_energy_ledger` integration
 and its accounting modules. Every test must run in isolation without touching
 a real Home Assistant instance.
 
@@ -59,7 +59,7 @@ Agents editing this folder must follow:
 ## Verification gate
 
 ```bash
-python -m pytest tests/ -q --cov=custom_components.energy_split --cov-report=term-missing --cov-fail-under=90 -W error
+python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-report=term-missing --cov-fail-under=90 -W error
 ```
 
 CI runs the same command on every supported Home Assistant version.

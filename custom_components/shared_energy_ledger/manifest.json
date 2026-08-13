@@ -1,14 +1,14 @@
 {
-  "domain": "energy_split",
-  "name": "Energy Split",
+  "domain": "shared_energy_ledger",
+  "name": "Shared Energy Ledger",
   "after_dependencies": ["recorder", "utility_meter"],
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/yeaxi/energy-split-dashboard",
+  "documentation": "https://github.com/yeaxi/shared-energy-ledger",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/yeaxi/energy-split-dashboard/issues",
+  "issue_tracker": "https://github.com/yeaxi/shared-energy-ledger/issues",
   "quality_scale": "silver",
   "requirements": [],
   "version": "0.1.0"
