@@ -37,6 +37,10 @@ FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bstate\s+or\s+0\b"),
     re.compile(r"\bvalue\s+or\s+0\b"),
     re.compile(r"\.get\([^)]+,\s*0(?:\.0*)?\s*\)"),
+    # Idiomatic silent zeros the earlier regexes missed: a conditional
+    # expression that substitutes 0 when an input is missing.
+    re.compile(r"is\s+not\s+None\s+else\s+0(?:\.0*)?\b"),
+    re.compile(r"\bif\s+[\w.\[\]']+\s+else\s+0(?:\.0*)?\b"),
 )
 
 ALLOW_LIST_MARKER = "no-silent-zero: allow"

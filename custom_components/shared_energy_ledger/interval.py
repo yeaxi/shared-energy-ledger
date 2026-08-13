@@ -176,8 +176,11 @@ def price_interval(inputs: IntervalInputs) -> IntervalResult:
     if pv_to_load > _EPS and not _is_finite_non_negative(inputs.pv_price):
         return _unavailable("pv_price_unavailable")
 
-    grid_price = float(inputs.grid_price) if inputs.grid_price is not None else 0.0
-    pv_price = float(inputs.pv_price) if inputs.pv_price is not None else 0.0
+    # Defaults are only ever multiplied by an energy that is provably 0 when
+    # the price is missing: a source that actually serves load without a price
+    # already returned unavailable above (fail-closed).
+    grid_price = float(inputs.grid_price) if inputs.grid_price is not None else 0.0  # no-silent-zero: allow
+    pv_price = float(inputs.pv_price) if inputs.pv_price is not None else 0.0  # no-silent-zero: allow
 
     tenants: list[TenantSourceCost] = []
     for slug, energy in zip(slugs, energies, strict=True):
@@ -185,7 +188,9 @@ def price_interval(inputs: IntervalInputs) -> IntervalResult:
         grid_kwh = grid_to_load * share
         pv_kwh = pv_to_load * share
         battery_kwh = battery_to_load * share
-        battery_cost = battery_kwh * battery_unit_cost if battery_unit_cost is not None else 0.0
+        # Empty priced stock -> battery energy is unpriced (tracked separately),
+        # never folded into cost as a fabricated zero (requirement I7).
+        battery_cost = battery_kwh * battery_unit_cost if battery_unit_cost is not None else 0.0  # no-silent-zero: allow
         tenants.append(
             TenantSourceCost(
                 slug=slug,

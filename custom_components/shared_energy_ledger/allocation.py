@@ -45,8 +45,8 @@ class TenantInput:
     slug: str
     policy: AllocationPolicy
     direct_load: float | None
-    owned_not_on_meter: float | None = None
-    borrowed_on_meter: float | None = None
+    owned_not_on_meter: float | None = 0.0
+    borrowed_on_meter: float | None = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,15 +77,16 @@ def _is_finite_non_negative(value: float | None) -> bool:
 
 
 def _direct_accounting_load(inp: TenantInput) -> float | None:
+    # ``None`` on any shared-load field means "configured but unavailable this
+    # interval" and fails closed (requirement I1). A tenant with no shared
+    # loads carries the ``0.0`` default and is unaffected.
     if not _is_finite_non_negative(inp.direct_load):
         return None
-    owned = inp.owned_not_on_meter if inp.owned_not_on_meter is not None else 0.0
-    borrowed = inp.borrowed_on_meter if inp.borrowed_on_meter is not None else 0.0
-    if inp.owned_not_on_meter is not None and not _is_finite_non_negative(owned):
+    if inp.owned_not_on_meter is None or not _is_finite_non_negative(inp.owned_not_on_meter):
         return None
-    if inp.borrowed_on_meter is not None and not _is_finite_non_negative(borrowed):
+    if inp.borrowed_on_meter is None or not _is_finite_non_negative(inp.borrowed_on_meter):
         return None
-    result = float(inp.direct_load) + float(owned) - float(borrowed)  # type: ignore[arg-type]
+    result = float(inp.direct_load) + float(inp.owned_not_on_meter) - float(inp.borrowed_on_meter)
     if not isfinite(result) or result < 0:
         return None
     return result

@@ -11,8 +11,6 @@ from custom_components.shared_energy_ledger.models import AllocationPolicy
 
 
 def _direct(slug: str, load: float | None, **kwargs) -> TenantInput:
-    kwargs.setdefault("owned_not_on_meter", None)
-    kwargs.setdefault("borrowed_on_meter", None)
     return TenantInput(slug=slug, policy=AllocationPolicy.DIRECT_METER, direct_load=load, **kwargs)
 
 
@@ -47,10 +45,18 @@ def test_i1_owned_shared_load_missing_makes_tenant_unavailable() -> None:
         slug="a",
         policy=AllocationPolicy.DIRECT_METER,
         direct_load=5.0,
-        owned_not_on_meter=None,
+        owned_not_on_meter=None,  # configured but unavailable this interval
     )
-    # owned_not_on_meter None means "not configured" -> 0 contribution, available.
     results = allocate(AllocationInput(tenants=(tenant, _direct("b", 4.0))))
+    by = _by_slug(results)
+    assert by["a"].accounting_energy is None
+    assert by["a"].provenance == "unavailable"
+    # sibling with no shared loads is unaffected
+    assert by["b"].accounting_energy == 4.0
+
+
+def test_no_shared_loads_uses_zero_default_and_is_available() -> None:
+    results = allocate(AllocationInput(tenants=(_direct("a", 5.0), _direct("b", 4.0))))
     assert _by_slug(results)["a"].accounting_energy == 5.0
 
 
