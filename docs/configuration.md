@@ -95,8 +95,6 @@ Entered from **Settings** > **Devices & services** > **Shared Energy Ledger** >
 - **Freshness windows** — per-data-class maximum sample age, including
   `price_max_age_s` and `alignment_skew_s`.
 
-There is no tariff editor: change the price sensor instead.
-
 ## Related services
 
 - `shared_energy_ledger.rebuild_period_report` — deterministic Recorder-based

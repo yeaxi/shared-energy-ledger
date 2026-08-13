@@ -14,21 +14,20 @@ link is broken, the sensor stays `unavailable` on purpose, per
 ```mermaid
 flowchart LR
     A["Upstream entities (grid, PV, battery, tenant meters)"] --> B["Per-data-class freshness gates"]
-    B --> C["Allocation output"]
-    B --> D["Tariff rate"]
-    C --> E["Cost rate per tenant"]
+    B --> C["Price sensors"]
+    B --> D["Allocation"]
+    C --> E["Cumulative source costs"]
     D --> E
-    E --> F["Cumulative total cost per tenant"]
-    F --> G["Dashboard card"]
+    E --> F["Dashboard card"]
 ```
 
 Read the diagram left to right when diagnosing:
 
 1. Check the upstream entities first.
 2. Check the freshness gate for that data class.
-3. Check the allocation output.
-4. Check the tariff.
-5. Only then check the cost sensor itself.
+3. Check the price sensors.
+4. Check the allocation output.
+5. Check the cumulative source-cost sensors, then the card.
 
 ## Common causes
 

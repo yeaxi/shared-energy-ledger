@@ -59,7 +59,7 @@ When the battery **discharges**:
   discharge into *stock consumed* using the discharge efficiency.
 - The stock consumed is priced at the current weighted cost.
 - If the stock reaches zero mid-interval, the remainder is reported as
-  **unpriced discharge** rather than being priced at grid tariff or
+  **unpriced discharge** rather than being priced at the grid price or
   clamped to zero.
 
 ## Ledger safety rules
@@ -80,8 +80,8 @@ The ledger only updates when **all** of the following hold, per
     - `stock_kwh == 0 ⇒ stock_cost == 0`.
 
 Any violation freezes the ledger and pushes the ledger-status entity
-into `unavailable`. Subsequent battery cost rates evaluate to
-`unavailable` until the operator resolves the underlying issue.
+into `unavailable`. Subsequent battery cost sensors stay `unavailable`
+until the operator resolves the underlying issue.
 
 ## Ledger status values
 
