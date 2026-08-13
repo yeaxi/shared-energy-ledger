@@ -26,8 +26,7 @@ Invoke this skill when:
 - The integration exposes a `DataUpdateCoordinator` (or a documented reason it
   does not, for pure-service integrations).
 - `strict-typing` is declared in `manifest.json`.
-- The repository has a CI matrix over the Home Assistant versions listed in
-  `manifest.json`.
+- CI tests the supported Home Assistant floor declared in `hacs.json`.
 
 ## Platinum checklist
 
@@ -71,9 +70,8 @@ Every item must be verifiable in code review or CI.
 11. **Diagnostics.** `async_get_config_entry_diagnostics` returns a redacted
     payload. Redaction is enforced by unit test.
 12. **`iot_class` and `integration_type`** in `manifest.json` are accurate.
-13. **Brand PR.** A pull request to `home-assistant/brands` with icon and logo
-    is prepared. Missing brand assets do not block Platinum, but the PR is
-    tracked in `docs/`.
+13. **Brand assets.** The integration ships validated `brand/icon.png` and
+    `brand/icon@2x.png` files. Missing local brand assets block release.
 14. **Docs.** `docs/` has a quickstart, an "invariants" page, and a
     troubleshooting page. Every option in the config/options flow is
     documented.

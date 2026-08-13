@@ -5,43 +5,71 @@ on:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  validate:
+  verification:
+    name: Full verification gate
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  docs:
+    name: Documentation gate
+    uses: ./.github/workflows/docs.yml
+
+  metadata:
+    name: Validate release metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [verification, docs]
+    outputs:
+      prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.13"
-      - name: Confirm manifest.json version matches the tag
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          tag = os.environ["GITHUB_REF_NAME"]
-          expected = tag.lstrip("v")
-          data = json.loads(open("custom_components/shared_energy_ledger/manifest.json").read())
-          if data["version"] != expected:
-              raise SystemExit(
-                  f"manifest.json version {data['version']!r} does not match tag {tag!r}"
-              )
-          print(f"manifest.json version matches tag {tag!r}")
-          PY
-      - uses: home-assistant/actions/hassfest@master
-      - uses: hacs/action@main
+          python-version: "3.14"
+      - name: Validate tag and prepare release notes
+        id: release
+        run: >-
+          python scripts/prepare_release.py
+          "${GITHUB_REF_NAME}"
+          --notes release-notes.md
+          --github-output "${GITHUB_OUTPUT}"
+      - name: Upload release metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          category: integration
+          name: release-metadata
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 14
 
   publish:
+    name: Publish GitHub release
     runs-on: ubuntu-latest
-    needs: validate
+    timeout-minutes: 10
+    needs: metadata
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-metadata
+          path: release-metadata
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: dashboard-bundles
+          path: release-assets
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
         with:
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release-metadata/release-notes.md
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ needs.metadata.outputs.prerelease }}
+          files: release-assets/*
+          fail_on_unmatched_files: true
