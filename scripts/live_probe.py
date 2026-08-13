@@ -55,7 +55,6 @@ ENTRY_DATA: dict[str, Any] = {
             "name": "Flat 1",
             "allocation_policy": "direct_meter",
             "energy_entity": "sensor.fake_flat_1_energy",
-            "power_entity": "sensor.fake_flat_1_power",
             "shared_loads": [],
         },
         {
@@ -64,7 +63,6 @@ ENTRY_DATA: dict[str, Any] = {
             "name": "Flat 2",
             "allocation_policy": "direct_meter",
             "energy_entity": "sensor.fake_flat_2_energy",
-            "power_entity": "sensor.fake_flat_2_power",
             "shared_loads": [],
         },
     ],

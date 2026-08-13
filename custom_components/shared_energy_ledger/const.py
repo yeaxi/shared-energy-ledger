@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "shared_energy_ledger"
-CONFIG_ENTRY_VERSION: Final = 2
+CONFIG_ENTRY_VERSION: Final = 3
 
 PLATFORMS: Final = ("binary_sensor", "sensor")
 
@@ -18,7 +18,6 @@ CONF_TENANTS: Final = "tenants"
 CONF_FRESHNESS: Final = "freshness"
 
 CONF_IMPORT_ENERGY: Final = "import_energy_entity"
-CONF_EXPORT_ENERGY: Final = "export_energy_entity"
 CONF_IMPORT_PRICE: Final = "import_price_entity"
 CONF_POWER: Final = "power_entity"
 CONF_ENERGY: Final = "energy_entity"
@@ -36,6 +35,7 @@ CONF_TENANT_NAME: Final = "name"
 CONF_TENANT_SHARED_LOADS: Final = "shared_loads"
 CONF_TENANT_ALLOCATION: Final = "allocation_policy"
 CONF_SHARED_LOAD_HOST: Final = "host_slug"
+CONF_LOAD_ID: Final = "load_id"
 
 CONF_FRESHNESS_POWER: Final = "power_max_age_s"
 CONF_FRESHNESS_ENERGY: Final = "energy_max_age_s"

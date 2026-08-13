@@ -35,7 +35,6 @@ Three checkboxes choose which optional sections follow: `include_pv`,
 | `energy_entity` | entity | **Required.** PV aggregate energy in `kWh`. |
 | `zero_cost` | boolean | When on, self-consumed PV is priced at `0` and no price sensor is needed. |
 | `price_entity` | entity | Required unless `zero_cost` is on. PV price in `currency/kWh` (for example `EUR/kWh`). |
-| `power_entity` | entity | Optional; freshness and dashboards only. |
 
 Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
 
@@ -54,7 +53,6 @@ Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `energy_entity` | entity | Optional. Whole-building energy in `kWh`. Enables the `residual_of_total_minus_others` policy. |
-| `power_entity` | entity | Optional. Whole-building power in `W`. |
 
 ### `tenant` step (repeated)
 
@@ -67,7 +65,6 @@ gets a stable internal `tenant_id` used in entity `unique_id`s.
 | `name` | string | Display name; translatable. |
 | `allocation_policy` | enum | One of `direct_meter`, `residual_of_total_minus_others`, `proportional_by_direct_meters`. |
 | `energy_entity` | entity | Optional. `kWh` monotonic. Required for the direct-meter and proportional policies. |
-| `power_entity` | entity | Optional. `W`; freshness only. |
 | `add_another` | boolean | Keep ticked until every tenant is entered. |
 
 The enum is closed at the type-system level; any other value keeps the tenant's

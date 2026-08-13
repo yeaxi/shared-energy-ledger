@@ -155,8 +155,8 @@ def _tenant_anchor(tenant: Tenant) -> str:
     return f"tenant:{tenant.tenant_id}"
 
 
-def _load_anchor(tenant: Tenant, index: int) -> str:
-    return f"load:{tenant.tenant_id}:{index}"
+def _load_anchor(tenant: Tenant, load_id: str) -> str:
+    return f"load:{tenant.tenant_id}:{load_id}"
 
 
 class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
@@ -311,23 +311,25 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 tenant.energy_entity is None or direct_delta[tenant.slug] is not None
             )
 
-        load_deltas: dict[str, dict[int, float | None]] = {}
+        load_deltas: dict[str, dict[str, float | None]] = {}
         for tenant in config.tenants:
             load_deltas[tenant.slug] = {}
-            for index, load in enumerate(tenant.shared_loads):
-                load_deltas[tenant.slug][index] = self._delta(
-                    anchors, current_samples, _load_anchor(tenant, index),
+            for load in tenant.shared_loads:
+                load_deltas[tenant.slug][load.load_id] = self._delta(
+                    anchors,
+                    current_samples,
+                    _load_anchor(tenant, load.load_id),
                     _read_energy(self.hass, load.energy_entity, now, f.energy_max_age_s),
                 )
 
         # Accumulate borrowed-on-meter per host from every owner's shared loads.
         for tenant in config.tenants:
-            for index, load in enumerate(tenant.shared_loads):
+            for load in tenant.shared_loads:
                 host = load.host_slug
                 if host is None or host == tenant.slug or host not in borrowed_by_host:
                     continue
                 borrowed_by_host[host] = _add_optional(
-                    borrowed_by_host[host], load_deltas[tenant.slug][index]
+                    borrowed_by_host[host], load_deltas[tenant.slug][load.load_id]
                 )
 
         for tenant in config.tenants:
@@ -554,14 +556,14 @@ def _add_optional(a: float | None, b: float | None) -> float | None:
 
 
 def _owned_extra(
-    tenant: Tenant, deltas: dict[int, float | None]
+    tenant: Tenant, deltas: dict[str, float | None]
 ) -> float | None:
     """Sum the tenant's shared loads that are not on the tenant's own meter."""
     total = 0.0
-    for index, load in enumerate(tenant.shared_loads):
+    for load in tenant.shared_loads:
         if load.host_slug == tenant.slug:
             continue
-        value = deltas.get(index)
+        value = deltas.get(load.load_id)
         if value is None:
             return None
         total += value

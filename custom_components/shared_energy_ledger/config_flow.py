@@ -38,6 +38,7 @@ from .const import (
     CONF_ENERGY,
     CONF_IMPORT_ENERGY,
     CONF_IMPORT_PRICE,
+    CONF_LOAD_ID,
     CONF_POWER,
     CONF_PV_PRICE,
     CONF_PV_ZERO_COST,
@@ -102,7 +103,7 @@ def _policy_selector() -> selector.SelectSelector:
 class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Shared Energy Ledger."""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         self._user_input: dict[str, Any] = {}
@@ -187,7 +188,6 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
                     energy_entity=str(user_input[CONF_ENERGY]),
                     price_entity=price_entity,
                     zero_cost=zero_cost,
-                    power_entity=user_input.get(CONF_POWER),
                 )
                 return await self._advance_optional()
         schema = vol.Schema(
@@ -195,7 +195,6 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_ENERGY): _energy_selector(),
                 vol.Optional(CONF_PV_ZERO_COST, default=False): bool,
                 vol.Optional(CONF_PV_PRICE): _price_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
             }
         )
         return self.async_show_form(step_id="pv", data_schema=schema, errors=errors)
@@ -243,13 +242,11 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._whole_building = WholeBuildingConfig(
                 energy_entity=user_input.get(CONF_ENERGY),
-                power_entity=user_input.get(CONF_POWER),
             )
             return await self._advance_optional()
         schema = vol.Schema(
             {
                 vol.Optional(CONF_ENERGY): _energy_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
             }
         )
         return self.async_show_form(step_id="whole_building", data_schema=schema)
@@ -274,7 +271,6 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
                         name=str(user_input[CONF_TENANT_NAME]).strip() or slug,
                         allocation_policy=AllocationPolicy(str(user_input[CONF_TENANT_ALLOCATION])),
                         energy_entity=user_input.get(CONF_ENERGY),
-                        power_entity=user_input.get(CONF_POWER),
                     )
                 )
                 if user_input.get("add_another", True) or len(self._tenants) < _MIN_TENANTS:
@@ -289,7 +285,6 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_TENANT_ALLOCATION, default=AllocationPolicy.DIRECT_METER.value
                 ): _policy_selector(),
                 vol.Optional(CONF_ENERGY): _energy_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
                 vol.Optional("add_another", default=True): bool,
             }
         )
@@ -394,7 +389,6 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
                         CONF_TENANT_NAME: str(user_input[CONF_TENANT_NAME]).strip() or slug,
                         CONF_TENANT_ALLOCATION: user_input[CONF_TENANT_ALLOCATION],
                         CONF_ENERGY: user_input.get(CONF_ENERGY),
-                        CONF_POWER: user_input.get(CONF_POWER),
                         "shared_loads": [],
                     }
                 )
@@ -407,7 +401,6 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
                     CONF_TENANT_ALLOCATION, default=AllocationPolicy.DIRECT_METER.value
                 ): _policy_selector(),
                 vol.Optional(CONF_ENERGY): _energy_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
             }
         )
         return self.async_show_form(step_id="add_tenant", data_schema=schema, errors=errors)
@@ -452,8 +445,7 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
             target[CONF_TENANT_ALLOCATION] = user_input[CONF_TENANT_ALLOCATION]
             if user_input.get(CONF_ENERGY) is not None:
                 target[CONF_ENERGY] = user_input.get(CONF_ENERGY)
-            if user_input.get(CONF_POWER) is not None:
-                target[CONF_POWER] = user_input.get(CONF_POWER)
+            target.pop(CONF_POWER, None)
             self._selected_slug = None
             return self._finalize(tenants=tenants)
         schema = vol.Schema(
@@ -464,7 +456,6 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
                     default=target.get("allocation_policy", AllocationPolicy.DIRECT_METER.value),
                 ): _policy_selector(),
                 vol.Optional(CONF_ENERGY): _energy_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
             }
         )
         return self.async_show_form(
@@ -565,8 +556,8 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
             host = user_input.get(CONF_SHARED_LOAD_HOST)
             load: dict[str, Any] = {
                 "label": str(user_input["label"]).strip() or "shared-load",
+                CONF_LOAD_ID: uuid4().hex,
                 CONF_ENERGY: user_input.get(CONF_ENERGY),
-                CONF_POWER: user_input.get(CONF_POWER),
             }
             if host:
                 load[CONF_SHARED_LOAD_HOST] = str(host)
@@ -583,7 +574,6 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
             {
                 vol.Required("label"): str,
                 vol.Optional(CONF_ENERGY): _energy_selector(),
-                vol.Optional(CONF_POWER): _power_selector(),
                 vol.Optional(CONF_SHARED_LOAD_HOST): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=host_options, mode=selector.SelectSelectorMode.DROPDOWN
