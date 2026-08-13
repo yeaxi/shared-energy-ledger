@@ -1,119 +1,70 @@
-# Tariffs and currency
+# Pricing and currency
 
-This page describes how to configure a time-of-use (ToU) tariff, how the
-day/night preset works, how to choose a currency, and how the
-**accounting-epoch rule** protects historical data from being silently
-re-priced.
+Shared Energy Ledger prices energy from **operator-provided price sensors**, not
+from a built-in tariff schedule. Whatever your supplier's tariff logic is, model
+it in a Home Assistant sensor that reports the current price per kWh; the
+integration reads that sensor and prices each accounting interval with it.
 
 ## Currency
 
-- The currency is chosen in the `user` step of the config flow.
-- The value must be a valid [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217)
-  three-letter code. Supported examples include `EUR`, `USD`, `UAH`,
-  `PLN`, and `GBP`.
-- The chosen code becomes the unit of measurement for every monetary
-  sensor (`sensor.shared_energy_ledger_tenant_<slug>_total_cost`,
-  `..._grid_cost_rate`, `..._battery_cost_rate`,
-  `..._total_cost_rate`) and is written into the accounting-epoch
-  metadata.
-- Changing the currency in the options flow creates a **new accounting
-  epoch**. Historical intervals stay in the old currency and are not
-  silently converted or re-priced.
+- The currency is chosen in the first step of the config flow.
+- It must be a valid [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217)
+  three-letter code, for example `EUR`, `USD`, `UAH`, `PLN`, or `GBP`.
+- The code becomes the unit of measurement for every monetary sensor
+  (`sensor.shared_energy_ledger_*_total_cost` and the per-source
+  `*_grid_cost` / `*_pv_cost` / `*_battery_cost` sensors) and the expected unit
+  of the price sensors (`<currency>/kWh`).
+- Changing the currency starts a **new accounting epoch**: the running cost
+  totals reset so amounts in different currencies are never mixed (invariant
+  I9). Historical recorder data is never rewritten.
 
-## Tariff schedule
+## The grid price sensor
 
-The tariff schedule is a list of daily windows keyed by weekday. Each
-window references a **tariff slot** with a per-`kWh` rate. Schedules are
-validated at save time:
+The grid section requires a price sensor reporting the effective import price
+per kWh, with `unit_of_measurement` set to exactly `<currency>/kWh` (for example
+`EUR/kWh`). This is validated on every read (invariant I5): a bare currency
+unit, a missing unit, or a stale value makes the affected interval unavailable
+rather than pricing it at zero (invariant I1).
 
-- Windows must partition each configured weekday **exactly once**
-  (no gaps, no overlaps).
-- Every window must reference a defined tariff slot.
-- Schedule editing is DST-safe. Windows are stored in the local
-  timezone and converted through `homeassistant.util.dt.as_local`, so
-  daylight-saving transitions do not double-count or drop time.
+Model whatever tariff you have as this sensor:
 
-### Day/night preset
+- **Flat rate:** a `template` or `input_number` sensor holding a constant.
+- **Day/night or time-of-use:** a `template` sensor that returns the current
+  slot's rate based on `now()`.
+- **Dynamic / spot pricing:** the price entity from your market integration
+  (Nord Pool, Tibber, EPEX, and similar), converted to `<currency>/kWh` if
+  needed.
 
-The default preset defines two slots and a single window per weekday:
+Because pricing is a sensor, its history is in the recorder. A period report
+re-reads the price at each hour boundary, so historical intervals are always
+priced with the rate that was in effect then. There is no separate tariff
+editor and no `set_tariff_rate` service.
 
-| Slot | Local hours (example) | Rate (per kWh, example) |
-| --- | --- | --- |
-| `day` | 07:00 to 23:00 | `0.30 EUR/kWh` |
-| `night` | 23:00 to 07:00 | `0.15 EUR/kWh` |
+## The PV price sensor
 
-Rates in the table are illustrative. Real rates are entered by the
-operator during config-flow completion or via the
-`shared_energy_ledger.set_tariff_rate` service. Use rates from your own supply
-contract; do not copy the numbers above verbatim.
+When PV is configured you either:
 
-### Custom windows
+- provide a **PV price sensor** in `<currency>/kWh` (for example the levelised
+  cost of your PV, or an internal transfer price the cooperative agreed on), or
+- tick **"Price self-consumed PV at zero cost"**, an explicit choice that
+  prices self-consumed PV energy at `0`.
 
-You can define arbitrary windows in the options flow. For example, a
-three-slot ToU schedule for `flat-1` and `flat-2` could look like:
+If PV is configured, not marked zero-cost, and no price sensor is provided, the
+configuration is rejected: the integration never invents a PV price.
 
-```yaml
-tariff:
-  slots:
-    peak:
-      rate_per_kwh: 0.45
-    shoulder:
-      rate_per_kwh: 0.28
-    off_peak:
-      rate_per_kwh: 0.12
-  schedule:
-    monday:
-      - { start: "00:00", end: "07:00", slot: off_peak }
-      - { start: "07:00", end: "17:00", slot: shoulder }
-      - { start: "17:00", end: "21:00", slot: peak }
-      - { start: "21:00", end: "24:00", slot: shoulder }
-    tuesday: []  # falls back to Monday if left empty
-```
+## How a source price becomes a tenant cost
 
-The YAML above is a schematic representation of the state stored by the
-options flow. Users do not edit YAML directly; the options flow provides
-a form-based editor.
+For each interval the engine distributes the building's grid, PV, and battery
+energy across tenants in proportion to their accounting energy, and prices each
+tenant's share at that source's per-kWh price. See
+[Allocation policies](allocation-policies.md) for how accounting energy is
+derived and [Battery ledger](battery-ledger.md) for how the battery's weighted
+cost is maintained from the measured grid/PV charging mix.
 
-## The accounting-epoch rule
+## Recommended practices
 
-Every change to the tariff schedule, tariff slot rate, or currency is
-persisted as an **accounting epoch** entry. Epochs are append-only and
-each one carries:
-
-- an effective-from timestamp,
-- the full tariff and currency snapshot at that moment,
-- a monotonic epoch id used by the report generator.
-
-Consequences:
-
-- **Previous epochs are never re-priced.** Historical intervals keep
-  their original rate and currency. Reports rebuilt for a past window
-  reproduce the same numbers whether they are generated today or a
-  year from now, up to rounding.
-- Live rate changes take effect at the epoch boundary. The
-  `shared_energy_ledger.set_tariff_rate` service requires an
-  `effective_from` timestamp and journals the change as a new epoch.
-- Rolling averages and cost rates displayed on the dashboard use the
-  **current** epoch. They do not backfill.
-
-This behaviour matches [invariant I7](invariants.md) and
-[invariant I9](invariants.md): report deterministic-ness and
-migration-safe schema changes both depend on epochs being immutable.
-
-## Import-cost history sensor
-
-Shared Energy Ledger publishes the effective per-kWh cost of grid import as a
-first-class sensor. This makes historical intervals re-priceable
-across the *displayed* period without rewriting recorder history:
-you can compute what the same period would cost under a hypothetical
-tariff by consuming the sensor along with a saved `_ImportEnergy_`
-statistic. The stored recorder totals never change.
-
-## Recommended defaults
-
-- One weekday-shared schedule is enough for most cooperatives.
-- Prefer round-hour boundaries; sub-minute boundaries make the
-  schedule harder to reason about and stress the alignment window in
-  [invariant I4](invariants.md).
-- If the supplier introduces a new slot, edit the schedule **before**
-  the effective date so the new epoch starts cleanly.
+- Keep the price sensor fresh. If it goes stale beyond the configured price
+  window, dependent costs go unavailable on purpose.
+- Use the same currency for the grid and PV price sensors and the config entry.
+- For spot pricing, make sure the sensor updates at least hourly so period
+  reports have a price anchor for every hour boundary.

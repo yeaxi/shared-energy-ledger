@@ -2,8 +2,8 @@
 
 The suite is deliberately split into two halves:
 
-* ``tests/unit/`` — pure-Python tests for the accounting core (``ledger``,
-  ``allocation``, ``tariff``, ``report``). They never import
+* ``tests/unit/`` — pure-Python tests for the accounting core (``interval``,
+  ``ledger``, ``allocation``, ``report``, ``samples``). They never import
   ``homeassistant``. The project runs them on Python 3.14 with the integration
   suite so local and hosted checks use one supported runtime.
 * ``tests/integration/`` — tests that use

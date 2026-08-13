@@ -89,9 +89,11 @@ deterministic: no wall-clock waits, no real network, no real database.
 
 ## Pull requests
 
-- Use a topic branch. This repository follows the naming convention
-  `cursor/<descriptive-name>-c99d`.
-- Keep each pull request focused on one logical change.
+- Use a topic branch under the `cursor/` prefix. Automated agents append a
+  per-run suffix, so the exact suffix varies; the stable rule is the `cursor/`
+  prefix plus a descriptive kebab-case name.
+- Keep each pull request focused on one logical change. Ship the code and its
+  matching tests in the same pull request.
 - Fill in the [pull request template](.github/PULL_REQUEST_TEMPLATE.md),
   including which invariants (`I1`-`I10`) the change touches and the
   verification commands you ran.

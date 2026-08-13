@@ -61,12 +61,12 @@ rules:
   docs-troubleshooting: done                 # docs/troubleshooting.md
   docs-use-cases: done                       # docs/allocation-policies.md, docs/battery-ledger.md
   dynamic-devices: exempt                    # no runtime device discovery
-  entity-category: done                      # tariff select is diagnostic; grid-import-cost-per-kwh has state_class measurement
-  entity-device-class: done                  # sensor.py declares device_class per description
+  entity-category: done                      # ledger/reconciliation/price hub sensors use EntityCategory.DIAGNOSTIC
+  entity-device-class: done                  # sensor.py declares device_class per description (monetary, energy, enum)
   entity-disabled-by-default: exempt         # every entity is user-visible; there are no low-value diagnostics that need hiding
   entity-translations: done                  # every entity uses translation_key from strings.json
-  exception-translations: done               # HomeAssistantError messages backed by strings.json.services / options.error
-  icon-translations: done                    # icons declared per NumberEntityDescription / SelectEntity
+  exception-translations: done               # HomeAssistantError messages backed by strings.json.services / issues
+  icon-translations: exempt                  # no custom icon translations shipped; default entity icons are used
   reconfiguration-flow: done                 # config_flow.async_step_reconfigure
   repair-issues: done                        # issues.py + strings.json.issues
   stale-devices: exempt                      # devices are one-per-entry; no auto-expire path

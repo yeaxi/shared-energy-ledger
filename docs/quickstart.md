@@ -60,18 +60,26 @@ and no vendor-specific ID.
   sensor and is written into the accounting-epoch metadata. See
   [Tariffs and currency](tariffs-and-currency.md).
 
-### Step 2: Grid
+### Step 1b: Grid (same screen)
 
 - **Grid import energy** — required. Pick a `kWh` monotonic
   total-increasing sensor.
-- **Grid export energy** — optional. Used only for reporting.
-- **Grid power sensor** — optional. Used only for freshness gating and
-  dashboards; never for accounting.
+- **Grid import price** — required. A sensor reporting the price per kWh
+  in `<currency>/kWh` (for example `EUR/kWh`). Model flat, day/night, or
+  dynamic pricing behind this sensor; see
+  [Pricing and currency](tariffs-and-currency.md).
+
+### Step 2: Optional sections
+
+- Tick which of **PV**, **battery**, and **whole-building boundary** you
+  want to configure. Each ticked box adds one screen.
 
 ### Step 3: Photovoltaic (optional)
 
-- **PV aggregate power** (`W`) and/or **PV aggregate energy** (`kWh`).
-- Skip this step if the building has no PV.
+- **PV aggregate energy** (`kWh`), required for this section.
+- Either a **PV price** sensor (`<currency>/kWh`) or tick **"Price
+  self-consumed PV at zero cost"**.
+- Optional **PV aggregate power** (`W`) for freshness only.
 
 ### Step 4: Battery (optional)
 
@@ -91,55 +99,50 @@ and no vendor-specific ID.
 
 ### Step 6: Tenants
 
-Add at least two tenants. A minimal generic configuration is:
+Add tenants one screen at a time (minimum two). Keep **Add another**
+ticked until every tenant is entered. A minimal generic configuration:
 
 | Slug | Display name | Allocation policy | Direct meter |
 | --- | --- | --- | --- |
 | `flat-1` | `Flat 1` | `direct_meter` | tenant energy sensor |
 | `flat-2` | `Flat 2` | `direct_meter` | tenant energy sensor |
 
-- **Slug** — kebab-case, ASCII, lowercase. Used in `unique_id`s and
-  entity names; stable across renames.
+- **Slug** — kebab-case, ASCII, lowercase. Editable later; a stable
+  internal id (not the slug) anchors entity `unique_id`s.
 - **Display name** — free text, translatable.
 - **Direct energy sensor** (`kWh`) — required for the `direct_meter`
   and `proportional_by_direct_meters` policies.
-- **Direct power sensor** (`W`) — optional; improves live cost-rate
-  accuracy.
-- **Shared loads** — a list of sensors that are physically upstream of
-  another tenant but are financially owned by this tenant. Generic
-  examples include shelter utilities, staircase lighting, storage
-  rooms, workshops, EV chargers, and shared heating.
+- **Direct power sensor** (`W`) — optional; freshness only.
 - **Allocation policy** — one of `direct_meter`,
-  `residual_of_total_minus_others`, or
-  `proportional_by_direct_meters`. See
-  [Allocation policies](allocation-policies.md).
-
-### Step 7: Tariff
-
-- The default preset is a simple **day/night** pair.
-- The window editor validates that the windows partition a 24-hour day
-  exactly once per weekday and that every window references a defined
-  tariff slot. See [Tariffs and currency](tariffs-and-currency.md).
+  `residual_of_total_minus_others`, or `proportional_by_direct_meters`.
+  See [Allocation policies](allocation-policies.md).
 
 ## After setup
 
 Once the config flow finishes, Shared Energy Ledger creates:
 
-- Per-tenant sensors for accounting power, share, grid cost rate,
-  battery cost rate, total cost rate, and cumulative total cost.
-- Utility-meter helpers for each tenant's total cost cycled hourly,
-  daily, monthly, and yearly.
+- Per-tenant sensors for share and cumulative cost, split into total,
+  grid, PV (if configured), and battery (if configured).
+- Hub sensors for the grid and PV price, grid reconciliation, and the
+  battery ledger (priced stock, weighted cost, status, unpriced energy).
 - Freshness `binary_sensor` gates for grid, PV, battery, and each
   tenant meter.
-- Battery ledger diagnostics when battery is configured.
 
 You can reopen the integration from **Settings** > **Devices &
 services** > **Shared Energy Ledger** > **Configure** to enter the options
 flow. See [Configuration reference](configuration.md).
 
-## Optional Lovelace cards
+## Getting the "who owes how much" answer
 
-HACS installs the integration, not the companion cards. Tagged GitHub releases
-attach the three JavaScript bundles. Download the bundles for the same release
-as the integration and follow the
-[manual card instructions](https://github.com/yeaxi/shared-energy-ledger/blob/main/dashboard/README.md).
+Call the `shared_energy_ledger.rebuild_period_report` service (from Developer
+Tools, an automation, or the report card) with a start and end. It returns each
+tenant's cost for the period, split by grid, PV, and battery, recomputed from
+your meter and price history.
+
+## Optional Lovelace card
+
+HACS installs the integration, not the companion card. A tagged GitHub release
+attaches one `shared-energy-ledger-report.js` bundle. Add it as a Lovelace
+resource and place the **Shared Energy Ledger report** card; it calls the
+report service directly, so there is no file to host. See the
+[card instructions](https://github.com/yeaxi/shared-energy-ledger/blob/main/dashboard/README.md).

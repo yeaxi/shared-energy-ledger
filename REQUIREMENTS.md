@@ -45,11 +45,17 @@ Scope non-goals:
   sensors and is written into the accounting-epoch metadata.
 - **Grid.**
   - Required: grid import energy sensor (`kWh`, monotonic total-increasing).
+  - Required: grid import price sensor (`<currency>/kWh`). Whatever the
+    operator's tariff logic is (flat, time-of-use, or dynamic spot pricing) it
+    is modelled as this sensor; the integration ships no tariff schedule.
   - Optional: grid export energy sensor (`kWh`, monotonic total-increasing).
   - Optional: grid power sensor (`W`), used only for freshness gating and
     dashboards; never for accounting integration.
-- **Photovoltaic (optional).** PV aggregate power sensor (`W`) and/or PV
-  aggregate energy sensor (`kWh`).
+- **Photovoltaic (optional).** PV aggregate energy sensor (`kWh`), optional PV
+  aggregate power sensor (`W`), and either a PV price sensor (`<currency>/kWh`)
+  or an explicit "PV is zero cost" choice. If PV is configured, not marked
+  zero-cost, and no price sensor is supplied, the configuration is rejected;
+  PV-sourced energy is never priced at an invented zero.
 - **Whole-building AC-load boundary (optional).** A single sensor that
   represents the sum of all downstream loads inside the shared boundary. When
   provided, the residual allocation policy becomes selectable for tenants that
@@ -76,31 +82,32 @@ Scope non-goals:
     - `direct_meter`
     - `residual_of_total_minus_others`
     - `proportional_by_direct_meters`
-- **Tariff schedule.** Arbitrary daily windows with day-of-week overrides,
-  DST-safe. The default preset is a simple day/night pair. The schedule editor
-  validates that the windows partition a 24-hour day exactly once per weekday
-  and that every window references a defined tariff slot.
+- **Pricing.** Pricing is sourced from the operator-provided grid and PV price
+  sensors described above, not from a built-in tariff schedule. Each accounting
+  interval is priced with the price sensor value in effect at that interval, so
+  time-of-use and dynamic pricing are supported by whatever logic the operator
+  puts behind the sensor, and period reports re-read the recorded price history
+  to re-price past intervals correctly.
 
 ### A2.2 Options flow
 
-- Add, rename, and remove tenants (never breaks `unique_id`s for tenants that
-  keep the same slug; slug changes go through a documented migration path).
-- Reassign shared loads between tenants.
-- Change the tariff schedule or the currency. Both changes create a new
-  *accounting epoch* record; historical cost totals from previous epochs are
-  not silently re-priced.
-- Adjust battery charge/discharge efficiency and seed or reset the priced
-  battery stock.
-- Enable or disable individual optional inputs (PV, battery, whole-building
-  boundary) at runtime; sensors that depend on a disabled input become
-  `unavailable` cleanly.
+- Add, edit, remove, and reorder tenants. Editing never changes a tenant's
+  immutable `tenant_id`, so entity `unique_id`s stay stable across slug and
+  name changes.
+- Adjust the per-data-class freshness windows, including the price window.
+- Reseed or reset the priced battery stock via the
+  `reset_battery_ledger` service.
+
+Currency and price changes are made by reconfiguring the entry or changing the
+price sensor; a currency change starts a new accounting epoch and historical
+recorder data is not silently re-priced.
 
 ### A2.3 Runtime entities
 
-All entities live under the `shared_energy_ledger` namespace. All entities expose stable
-`unique_id`s tied to the config-entry id and, where applicable, the tenant
-slug. No entity name is hard-coded to a specific manufacturer, device model, or
-private installation.
+All entities live under the `shared_energy_ledger` namespace. Every entity
+exposes a stable `unique_id` tied to the config-entry id and, for tenant
+entities, the immutable `tenant_id` (never the editable slug). No entity name is
+hard-coded to a specific manufacturer, device model, or private installation.
 
 - **Freshness gates**, one per data class:
   - `binary_sensor.shared_energy_ledger_grid_data_fresh`
@@ -108,41 +115,42 @@ private installation.
   - `binary_sensor.shared_energy_ledger_battery_data_fresh`
   - `binary_sensor.shared_energy_ledger_tenant_<slug>_data_fresh`
 - **Per-tenant sensors**:
-  - Accounting power (`W`, `device_class: power`, `state_class: measurement`).
   - Share (`%`, `state_class: measurement`).
-  - Grid cost rate (`<currency>/h`, `state_class: measurement`).
-  - Battery cost rate (`<currency>/h`, `state_class: measurement`).
-  - Total cost rate (`<currency>/h`, `state_class: measurement`).
   - Cumulative total cost (`<currency>`, `device_class: monetary`,
-    `state_class: total`).
-- **Utility-meter helpers** for each tenant total: hourly, daily, monthly,
-  yearly cycles wired through Home Assistant's built-in `utility_meter`.
-- **Battery ledger diagnostics** (when battery is configured):
-  - Priced stock (`kWh`).
-  - Weighted cost per stored kWh (`<currency>/kWh`).
-  - Ledger status: enumerated `active | priced | empty | unavailable`.
+    `state_class: total`), accrued once per priced interval from meter deltas.
+  - Per-source cumulative cost: grid, PV (when configured), and battery (when
+    configured), same unit and state class as the total.
+- **Hub sensors**:
+  - Grid import price and PV price (`<currency>/kWh`, `state_class: measurement`).
+  - Grid reconciliation (`kWh`, diagnostic).
+  - Battery priced stock (`kWh`), weighted cost per stored kWh
+    (`<currency>/kWh`), ledger status (`active | priced | empty | unavailable`),
+    and cumulative unpriced battery energy (`kWh`), all diagnostic, when battery
+    is configured.
 - **Diagnostics**. `async_get_config_entry_diagnostics` returns a redacted
-  YAML export of the config entry, coordinator state, and last report metadata
-  suitable for community issue reports.
+  export of the config entry and coordinator state suitable for community issue
+  reports.
 
 ### A2.4 Services
 
 - `shared_energy_ledger.rebuild_period_report(start, end, tenant?)` — deterministic
   Recorder-based JSON report matching the schema in
-  [A3](#a3-non-functional-invariants). Schema-versioned, revision-hashed, and
-  finalized-as-of timestamped. Never mutates recorder state.
+  [A3](#a3-non-functional-invariants). Recomputed from meter and price history
+  via the same interval engine as the live path. Schema-versioned,
+  revision-hashed, and finalized-as-of timestamped. Never mutates recorder
+  state.
 - `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)` — journaled admin
-  action. Requires `admin`; refuses to run when the battery data-fresh gate is
-  off; enforces the boundary-pair coherence rule.
-- `shared_energy_ledger.set_tariff_rate(rate, tariff_slot, effective_from)` — journaled
-  tariff change; requires `admin`; creates a new accounting epoch entry so past
-  intervals keep their original price.
+  action. Requires `admin`; enforces the boundary-pair coherence rule.
+
+There is no `set_tariff_rate` service: pricing is an operator-owned sensor, so a
+rate change is made by changing the price sensor's value.
 
 ### A2.5 Import-cost history
 
-The integration publishes the effective per-kWh cost of grid import as a
-first-class sensor so historical intervals can be re-priced correctly across
-tariff or currency changes without rewriting recorder history.
+The operator-provided grid import price sensor is the first-class record of the
+effective per-kWh cost. Because it lives in the recorder, historical intervals
+are re-priced correctly from its history across tariff or currency changes
+without rewriting recorder totals.
 
 ## A3. Non-functional invariants
 
@@ -188,21 +196,24 @@ cross-referencing from tests, docs, and the traceability matrix.
   - both non-negative,
   - `stock_kwh > 0 ⇒ stock_cost >= 0`,
   - `stock_kwh == 0 ⇒ stock_cost == 0`.
-- **I7. Report v2 contract.** The Recorder-based JSON report must:
+- **I7. Report source-split contract.** The Recorder-based JSON report must:
   - use DST-safe exact local-day boundaries computed via
     `homeassistant.util.dt.as_local`;
-  - encode numbers as strict JSON numbers (no `NaN`, no `Infinity`, no strings);
+  - never contain `NaN` or `Infinity`; currency and kWh amounts are emitted as
+    fixed-point decimal strings (so the revision hash is identical in Python and
+    JavaScript), while seconds are strict JSON integers;
   - carry a `finalized_as_of` timestamp and an immutable revision hash covering
     the full payload;
+  - split every tenant's cost into `grid_cost`, `pv_cost`, and `battery_cost`
+    per hour and in total, with `known_cost` equal to their sum;
   - list hourly rows sorted and in-period;
-  - satisfy `direct + derived = coverage` for every tenant;
-  - track transition-excluded seconds as a distinct field that reconciles with
-    the hourly rows;
-  - report unpriced battery kWh as a distinct field, never folded into total
-    cost.
+  - track `transition_excluded_seconds` and `unavailable_seconds` as distinct
+    fields, and report unpriced battery kWh and the source reconciliation
+    difference as distinct fields, never folded into total cost.
 - **I8. Async selection ordering.** Newer asynchronous report selections are never
-  overwritten by an older completed report. The card must key on a monotonic
-  selection id.
+  overwritten by an older completed result. The report card keys on a local
+  monotonic request id and discards stale responses; the report's
+  `finalized_as_of` is monotonic per build.
 - **I9. Config-entry migration.** `CONFIG_ENTRY_VERSION` is bumped for every schema
   change. `async_migrate_entry` is exhaustive. Entity `unique_id`s are stable
   across renames and translation changes.
@@ -240,8 +251,8 @@ audited, `manifest.json` and `quality_scale.yaml` remain at Silver.
   `home-assistant/brands` repository.
 - Test suite runs via `pytest-homeassistant-custom-component`. Coverage floor
   is ≥ 90 %. Required test modules:
-  - `test_ledger.py`, `test_allocation.py`, `test_tariff.py`, `test_report.py`
-    for pure-Python module invariants,
+  - `test_interval.py`, `test_ledger.py`, `test_allocation.py`,
+    `test_report.py`, `test_samples.py` for pure-Python module invariants,
   - `test_config_flow.py`, `test_entities.py`, `test_services.py` for
     integration behavior booting a mock Home Assistant with fixtures.
 - The supported floor tracks the latest stable Home Assistant release and is
@@ -256,17 +267,16 @@ audited, `manifest.json` and `quality_scale.yaml` remain at Silver.
 custom_components/shared_energy_ledger/
   __init__.py  manifest.json  const.py  models.py  coordinator.py
   config_flow.py  diagnostics.py  services.yaml  services.py
-  sensor.py  binary_sensor.py  number.py  select.py
-  ledger.py  allocation.py  tariff.py  report.py
+  sensor.py  binary_sensor.py
+  ledger.py  ledger_store.py  allocation.py  interval.py
+  cost_store.py  samples.py  report.py  report_builder.py
   translations/en.json
   brand/{icon.png,icon@2x.png}
 dashboard/
-  shared-energy-ledger-period-summary/
-  shared-energy-ledger-history-report/
-  shared-energy-ledger-history-bridge/
+  src/cards/report-card.ts       # one service-backed report card
 tests/
-  unit/{test_ledger,test_allocation,test_tariff,test_report}.py
-  integration/{test_config_flow,test_entities,test_services}.py
+  unit/{test_interval,test_ledger,test_allocation,test_report,test_samples}.py
+  integration/{test_config_flow,test_setup,test_services}.py
   fixtures/                     # fully synthetic recorder dumps; never real data
 scripts/                        # dev helpers (typing, release, hacs-validate)
 docs/                           # mkdocs site (quickstart, examples, invariants)
@@ -290,9 +300,9 @@ reviewable in isolation.
 2. Scaffold `custom_components/shared_energy_ledger/` with `manifest.json`, an empty
    config flow, and the N-tenant data model in `models.py`. Ship a stub
    coordinator that always yields empty data so entities can register.
-3. Implement `tariff.py`, `allocation.py`, `ledger.py`, and `report.py` as pure
-   Python modules with 100 % unit coverage of the [A3](#a3-non-functional-invariants)
-   invariants using synthetic fixtures.
+3. Implement `interval.py`, `allocation.py`, `ledger.py`, and `report.py` as
+   pure Python modules with high unit coverage of the
+   [A3](#a3-non-functional-invariants) invariants using synthetic fixtures.
 4. Wire the coordinator, sensors, binary sensors, number/select helpers, and
    services. Add the config- and options-flow UX with entity selectors and
    translation keys.

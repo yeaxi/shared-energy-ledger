@@ -53,15 +53,13 @@ nav:
   - Quickstart: quickstart.md
   - Configuration: configuration.md
   - Allocation policies: allocation-policies.md
-  - Tariffs and currency: tariffs-and-currency.md
+  - Pricing and currency: tariffs-and-currency.md
   - Battery ledger: battery-ledger.md
   - Invariants: invariants.md
   - Troubleshooting: troubleshooting.md
   - Upgrade guide: upgrade-guide.md
-  - Live validation: live-validation.md
   - Traceability: traceability.md
   - History: history.md
-  - Cursor agents: cursor-agents.md
 
 markdown_extensions:
   - admonition

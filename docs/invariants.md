@@ -102,33 +102,34 @@ Why it matters: the battery ledger accumulates state over time; a
 single bad frame can silently poison it for months. `I6` refuses to
 update on suspicious inputs and keeps the ledger honest.
 
-## `I7`. Report v2 contract
+## `I7`. Report source-split contract
 
 > The Recorder-based JSON report must:
 >
 > - use DST-safe exact local-day boundaries computed via
 >   `homeassistant.util.dt.as_local`;
-> - encode numbers as strict JSON numbers (no `NaN`, no `Infinity`, no
->   strings);
+> - never contain `NaN` or `Infinity`; currency and kWh amounts are
+>   fixed-point decimal strings and seconds are strict JSON integers;
 > - carry a `finalized_as_of` timestamp and an immutable revision hash
 >   covering the full payload;
+> - split every tenant's cost into `grid_cost`, `pv_cost`, and
+>   `battery_cost`, with `known_cost` equal to their sum;
 > - list hourly rows sorted and in-period;
-> - satisfy `direct + derived = coverage` for every tenant;
-> - track transition-excluded seconds as a distinct field that
->   reconciles with the hourly rows;
-> - report unpriced battery kWh as a distinct field, never folded into
->   total cost.
+> - track `transition_excluded_seconds` and `unavailable_seconds`, and
+>   report unpriced battery kWh and the source reconciliation difference
+>   as distinct fields, never folded into total cost.
 
 Why it matters: reports are legal-ish documents. They must be
-reproducible, machine-readable, and self-describing. `I7` guarantees
-that a report generated today can be regenerated tomorrow and
-compared byte-for-byte.
+reproducible, machine-readable, and self-describing. Emitting money and
+kWh as decimal strings keeps the revision hash identical in Python and
+JavaScript, so a report built today can be re-verified tomorrow.
 
 ## `I8`. Async selection ordering
 
 > Newer asynchronous report selections are never overwritten by an
-> older completed report. The card must key on a monotonic selection
-> id.
+> older completed result. The report card keys on a local monotonic
+> request id and discards stale responses; the report's
+> `finalized_as_of` is monotonic per build.
 
 Why it matters: users often change the report range faster than
 the backend can finish computing. Without a monotonic selection id

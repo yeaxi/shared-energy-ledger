@@ -30,6 +30,28 @@ Pre-1.0 releases (`0.x.y`) are considered *initial development*. The
 project treats every `MINOR` bump before `1.0.0` as potentially
 breaking and calls out breaking changes explicitly.
 
+## Breaking change: schema v1 to v2 (source-cost pricing)
+
+Version 2 replaces the built-in day/night tariff schedule with
+operator-provided **price sensors** and prices energy from cumulative-meter
+deltas split by source (grid, PV, battery). What changed for operators:
+
+- **Grid pricing is now a sensor.** Add a grid import price sensor in
+  `<currency>/kWh`. The `set_tariff_rate` service and the tariff editor are
+  removed; model day/night or dynamic pricing in the price sensor instead (see
+  [Pricing and currency](tariffs-and-currency.md)).
+- **PV pricing is a sensor or an explicit zero-cost choice.**
+- **New and renamed entities.** Per-tenant cost is now split into
+  `total_cost`, `grid_cost`, `pv_cost`, and `battery_cost`. The old
+  cost-rate and accounting-power sensors and the day/night `number` and tariff
+  `select` entities are gone.
+- **Automatic migration.** `async_migrate_entry` assigns each tenant a stable
+  `tenant_id` and drops the tariff schedule. Because prices cannot be
+  reconstructed from the old schedule, the migrated entry raises a repair issue
+  asking you to open the integration and supply the grid (and PV) price
+  sensors. Supplying them starts a fresh accounting epoch; historical recorder
+  data is not re-priced.
+
 ## What triggers a config-entry migration
 
 Any change to the config-entry schema or the storage layout requires a
