@@ -23,7 +23,7 @@ Invoke this skill when:
 - `pytest-homeassistant-custom-component` and `pytest-asyncio` are in
   `requirements_test.txt`.
 - `conftest.py` sets `pytest.ini_options` to enable auto-async mode.
-- CI runs pytest against the HA versions declared in `manifest.json`.
+- CI runs pytest against the supported HA floor declared in `hacs.json`.
 
 ## Test layout
 
@@ -97,7 +97,7 @@ At minimum, every integration must cover:
 
 - `--cov-fail-under=90` at the repo level.
 - New public functions ship with tests in the same PR.
-- A `codecov.yaml` blocks PRs that lower total coverage more than 1 %.
+- CI blocks any run below the repository's 90% coverage floor.
 
 ## Forbidden patterns
 
@@ -117,5 +117,4 @@ At minimum, every integration must cover:
 python -m pytest tests/ -q --cov=custom_components.<domain> --cov-report=term-missing --cov-fail-under=90
 ```
 
-CI runs the same command on every supported HA version. All targets must be
-green.
+CI runs the same command against the supported HA floor. It must be green.

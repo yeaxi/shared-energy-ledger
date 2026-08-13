@@ -1,14 +1,13 @@
 ---
 name: hacs-release-and-brands
-description: Cut a HACS-compatible release of a Home Assistant custom integration and prepare the required brand PR. Covers hacs.json, semver tagging, changelog format, HACS validation, and the home-assistant/brands submission. Use when preparing v0.x pre-releases, v1.0.0, or any subsequent tag.
+description: Cut a HACS-compatible release of a Home Assistant custom integration with validated local brand assets. Covers hacs.json, semver tagging, changelog format, HACS validation, and release metadata. Use when preparing v0.x pre-releases, v1.0.0, or any subsequent tag.
 ---
 
 # HACS release and brands
 
-HACS-installable integrations rely on GitHub releases plus a small metadata
-surface (`hacs.json`, `info.md`, `README.md`, an OSI license) and, for the
-default HACS listing, a brand entry in `home-assistant/brands`. This skill
-walks through a clean release.
+HACS-installable integrations rely on GitHub releases, a small metadata
+surface (`hacs.json`, `info.md`, `README.md`, an OSI license), and local brand
+assets. This skill walks through a clean release.
 
 ## Trigger
 
@@ -67,7 +66,7 @@ Minimum contents:
 ```json
 {
   "name": "<Human name>",
-  "homeassistant": "<minimum HA version, e.g. 2025.4.0>",
+  "homeassistant": "<minimum HA version, e.g. 2026.8.1>",
   "content_in_root": false,
   "render_readme": true
 }
@@ -79,7 +78,8 @@ Set `homeassistant` to the minimum tested version in CI.
 
 `.github/workflows/release.yml` must:
 
-- Run hassfest, HACS validate, and the test matrix on the tag.
+- Run hassfest, HACS validate, and the supported Home Assistant test gate on
+  the tag.
 - Publish the GitHub release from the tag.
 - Never publish to PyPI (the integration is delivered through HACS/GitHub, not
   PyPI).
@@ -87,8 +87,7 @@ Set `homeassistant` to the minimum tested version in CI.
 
 ## Communication
 
-- Announce releases in `docs/CHANGELOG.md` and in the GitHub Discussions
-  category for the repository (if enabled).
+- Record releases in the root `CHANGELOG.md`.
 - Do not tag GitHub users in release notes without their consent.
 
 ## Forbidden patterns

@@ -39,8 +39,7 @@ Before making changes:
   `config_flow.py`, `sensor.py`, `binary_sensor.py`, `diagnostics.py`.
 - Create or update the repository-root HACS surface: `hacs.json`, `info.md`,
   `README.md`, `LICENSE`.
-- Create or update `.github/workflows/hassfest.yml` and
-  `.github/workflows/hacs.yml`.
+- Create or update the workflow jobs that run hassfest and HACS validation.
 
 ## Required manifest fields
 
@@ -88,13 +87,13 @@ packages; wheels-in-repo dependencies are not allowed.
 
 ## CI wiring
 
-Ship two workflows:
+CI must include:
 
-- `.github/workflows/hassfest.yml` uses `home-assistant/actions/hassfest`.
-- `.github/workflows/hacs.yml` uses `hacs/action` with `category: integration`
-  and `ignore` set to zero (fix issues rather than ignore them).
+- a job using `home-assistant/actions/hassfest`;
+- a job using `hacs/action` with `category: integration` and no ignored checks.
 
-Both workflows run on every PR and on `main` push.
+Both jobs run on every PR and on `main` push. They may share one consolidated
+workflow with the repository's other required checks.
 
 ## Forbidden patterns
 
@@ -122,4 +121,4 @@ python -m json.tool custom_components/<domain>/translations/en.json > /dev/null
 python -m json.tool hacs.json > /dev/null
 ```
 
-Plus the two GitHub Actions (hassfest, hacs) must show green on the PR.
+The hassfest and HACS jobs must show green on the PR.
