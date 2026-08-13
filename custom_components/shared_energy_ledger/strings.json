@@ -100,14 +100,17 @@
     "step": {
       "init": {
         "title": "Shared Energy Ledger options",
-        "description": "Add, edit, remove, or reorder tenants, attach shared loads, or adjust freshness windows.",
+        "description": "Add, edit, remove, or reorder tenants; manage shared loads; or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
           "edit_tenant": "Edit a tenant",
           "remove_tenant": "Remove a tenant",
           "reorder": "Reorder tenants",
           "shared_load": "Add a shared load",
-          "freshness": "Freshness windows"
+          "freshness": "Freshness windows",
+          "edit_shared_load": "Edit a shared load",
+          "remove_shared_load": "Remove a shared load",
+          "reassign_owner": "Reassign shared-load owner"
         }
       },
       "shared_load": {
@@ -165,9 +168,10 @@
       },
       "remove_tenant": {
         "title": "Remove a tenant",
-        "description": "Pick a tenant to remove. At least two tenants must remain configured.",
+        "description": "Pick a tenant to remove. At least two tenants must remain. Confirm before the tenant and its owned shared loads are deleted.",
         "data": {
-          "slug": "Tenant"
+          "slug": "Tenant",
+          "confirm": "I understand this removes the tenant and its owned shared loads"
         }
       },
       "reorder": {
@@ -187,17 +191,66 @@
           "battery_ledger_max_age_s": "Battery ledger max age (s)",
           "alignment_skew_s": "Alignment skew (s)"
         }
+      },
+      "edit_shared_load": {
+        "title": "Edit a shared load",
+        "description": "Pick a shared load to edit. The load id stays stable so accounting anchors are preserved.",
+        "data": {
+          "load_id": "Shared load"
+        }
+      },
+      "edit_shared_load_details": {
+        "title": "Edit shared load {load_id}",
+        "description": "Update the label, meter, or host for this load owned by {owner}. The load id stays stable.",
+        "data": {
+          "label": "Label",
+          "energy_entity": "Shared load energy meter (kWh)",
+          "host_slug": "Host tenant meter (optional)"
+        },
+        "data_description": {
+          "label": "Short name shown in diagnostics and reports.",
+          "energy_entity": "Cumulative kWh counter for this shared load.",
+          "host_slug": "Tenant whose direct meter physically includes this load. Leave empty when the load has its own dedicated meter."
+        }
+      },
+      "remove_shared_load": {
+        "title": "Remove a shared load",
+        "description": "Pick a shared load to remove. Confirm before it is deleted from the owning tenant.",
+        "data": {
+          "load_id": "Shared load",
+          "confirm": "I understand this removes the shared load"
+        }
+      },
+      "reassign_owner": {
+        "title": "Reassign shared-load owner",
+        "description": "Pick a shared load whose financial owner should change. The load id stays stable.",
+        "data": {
+          "load_id": "Shared load"
+        }
+      },
+      "reassign_owner_details": {
+        "title": "Reassign owner for {load_id}",
+        "description": "Choose the new owning tenant for this load (currently owned by {owner}).",
+        "data": {
+          "owner": "New owning tenant"
+        }
       }
     },
     "error": {
       "invalid_slug": "Slugs must be lowercase, ASCII, and kebab-case.",
-      "duplicate_slug": "That slug is already in use."
+      "duplicate_slug": "That slug is already in use.",
+      "invalid_host": "Host tenant must be one of the configured tenants.",
+      "confirm_required": "Tick the confirmation box to continue with this destructive action.",
+      "unknown_tenant": "That tenant is not configured."
     },
     "abort": {
       "no_tenants": "There are no tenants to edit.",
       "unknown_tenant": "That tenant no longer exists; the action was aborted.",
       "minimum_tenants": "At least two tenants must remain; add a tenant before removing one.",
-      "reorder_incomplete": "The reorder must include every tenant exactly once."
+      "reorder_incomplete": "The reorder must include every tenant exactly once.",
+      "no_shared_loads": "There are no shared loads to edit or remove.",
+      "unknown_shared_load": "That shared load no longer exists; the action was aborted.",
+      "tenant_is_shared_load_host": "Another tenant's shared load still lists this tenant as its host. Reassign or clear that host first."
     }
   },
   "selector": {
