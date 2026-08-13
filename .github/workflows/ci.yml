@@ -47,6 +47,8 @@ jobs:
         run: python scripts/check_translations.py custom_components/shared_energy_ledger
       - name: Private denylist
         run: python scripts/check_private_denylist.py
+      - name: Brand assets
+        run: python scripts/check_brand_assets.py custom_components/shared_energy_ledger
       - name: Requirements traceability
         run: python scripts/check_requirements_traceability.py
 
