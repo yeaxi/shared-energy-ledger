@@ -1,76 +1,85 @@
 # Shared Energy Ledger
 
-**Shared Energy Ledger** is a Home Assistant custom integration for **cooperative
-buildings** where one grid connection, optionally one PV array, and optionally
-one battery are shared by `N` metered flats or houses. It answers a single
-operational question:
+[![CI](https://github.com/yeaxi/shared-energy-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/yeaxi/shared-energy-ledger/actions/workflows/ci.yml)
+[![Docs](https://github.com/yeaxi/shared-energy-ledger/actions/workflows/docs.yml/badge.svg)](https://yeaxi.github.io/shared-energy-ledger/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Who owes how much for any timeframe?
+A [Home Assistant](https://www.home-assistant.io/) add-on for buildings that
+**share one electricity connection** between several flats or houses. It works
+out **who owes how much** for any period of time, in your own currency.
 
-...in the operator's chosen currency, with a strict **fail-closed** contract:
-when upstream data is missing, stale, or otherwise unusable, dependent cost
-sensors stay `unavailable`. The integration never invents a zero.
+> Who owes how much, for any date range?
 
-- **Scope.** Public, generic, HACS-installable. No hard-coded device models,
-  brand identifiers, or private installation names. All inputs are supplied
-  by the operator via entity selectors in the UI config flow.
-- **Quality target.** [Home Assistant Platinum tier](https://developers.home-assistant.io/docs/core/integration-quality-scale/).
-- **Status.** Under active migration from a personal proof-of-concept. See
-  [`REQUIREMENTS.md`](REQUIREMENTS.md) for the full public spec and the
-  migration phases.
+If you have one shared grid meter (and, optionally, shared solar panels or a
+shared battery) plus a meter for each home, Shared Energy Ledger keeps a fair,
+per-home running cost. It only reads your meters and does the maths. It never
+switches anything on or off.
 
-## Highlights
+## What it does
 
-- N tenants (minimum 2). Each tenant has a direct energy meter or an
-  allocated share of a shared boundary.
-- Optional battery accounting with a weighted-cost ledger. Priced stock is
-  separated from raw kWh so PV-charged and grid-charged energy are priced
-  differently.
-- Optional PV. When PV is configured, PV serves accounting loads first, then
-  the active AC source, then the battery.
-- Time-of-use tariffs. Arbitrary daily windows with day-of-week overrides;
-  DST-safe.
-- Currency-agnostic. ISO 4217 selector at config time; historical intervals
-  keep their original tariff and currency via a stored accounting epoch.
-- Deterministic Recorder-based reports for any timeframe. Reports are
-  finalized-as-of, revision-hashed, and reconcile with the hourly rows.
+- Splits the shared bill between two or more homes, based on the meters you
+  provide.
+- Optionally includes shared **solar panels** and a shared **battery**, and
+  prices solar energy and grid energy separately.
+- Supports **day/night** (time-of-use) pricing.
+- Works in **any currency**.
+- Gives you accurate cost reports for any date range.
+- **Never guesses.** If a meter is missing or reporting bad data, the cost
+  shows as `unavailable` instead of a wrong number.
 
-## Repository layout
+## What you need
 
-```
-custom_components/shared_energy_ledger/     # the integration
-dashboard/                          # companion Lovelace cards
-tests/                              # pytest suite (unit + integration)
-docs/                               # mkdocs site
-scripts/                            # dev helpers (lint, traceability, i18n)
-legacy/                             # read-only pre-migration archive
-.cursor/skills/                     # reusable HA-development skills
-REQUIREMENTS.md                     # public specification (source of truth)
-```
+- A working Home Assistant with [HACS](https://www.hacs.xyz/) installed.
+- A grid **import** energy meter (in `kWh`) in Home Assistant.
+- One energy meter per home, or a whole-building meter to split from.
+- Optional: solar and/or battery meters if you have them.
 
-For architectural context, invariants, and the Cursor workflow, read:
+## Install
 
-- [`REQUIREMENTS.md`](REQUIREMENTS.md) — public specification.
-- [`docs/`](docs/) — mkdocs site (quickstart, invariants, examples).
-- [`docs/cursor-agents.md`](docs/cursor-agents.md) — Cursor agent identities
-  and their bound skills.
+1. In Home Assistant, open **HACS**.
+2. Open the menu (top right) and choose **Custom repositories**.
+3. Paste `https://github.com/yeaxi/shared-energy-ledger` and pick the
+   **Integration** category, then click **Add**.
+4. **Restart Home Assistant.**
 
-## Installation (once released)
+Full step-by-step instructions with screenshots are in the
+[Quickstart guide](https://yeaxi.github.io/shared-energy-ledger/quickstart/).
 
-Add this repository as a custom integration in HACS, then add the
-**Shared Energy Ledger** integration from *Settings → Devices & Services → Add
-Integration*. The config flow walks through currency, grid, optional PV,
-optional battery, and per-tenant meters.
+## Set it up
+
+1. Go to **Settings -> Devices & services -> Add integration**.
+2. Search for **Shared Energy Ledger** and follow the setup wizard. It asks
+   for your currency, your grid meter, optional solar and battery, and a meter
+   for each home.
+
+Every option is explained in the
+[Configuration reference](https://yeaxi.github.io/shared-energy-ledger/configuration/).
+No YAML editing is required.
+
+## Get help and report a bug
+
+- Have a question? Check the
+  [documentation](https://yeaxi.github.io/shared-energy-ledger/) and the
+  [Troubleshooting guide](https://yeaxi.github.io/shared-energy-ledger/troubleshooting/)
+  first.
+- Found a bug? [Open a bug report](https://github.com/yeaxi/shared-energy-ledger/issues/new/choose).
+  The form asks for your Home Assistant version, the integration version, what
+  you expected, what happened, and the steps to reproduce it. Please remove any
+  personal data before submitting.
+- Found a security issue? Do not open a public issue. Follow
+  [`SECURITY.md`](SECURITY.md) instead.
+
+## Documentation
+
+The full documentation site is at
+**<https://yeaxi.github.io/shared-energy-ledger/>**. The source lives in
+[`docs/`](docs/).
 
 ## Contributing
 
-- Read [`REQUIREMENTS.md`](REQUIREMENTS.md) first.
-- Every contribution runs `hassfest`, `mypy --strict`, `ruff`, and the pytest
-  suite with a coverage floor of 90 %.
-- No PR regresses an invariant without a matching test and documentation
-  update.
-- No PR references private installation entity IDs. See
-  [`legacy/README.md`](legacy/README.md).
+Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+developer setup and checks, and [`ARCHITECTURE.md`](ARCHITECTURE.md) for how
+the project is put together.
 
 ## License
 
