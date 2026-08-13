@@ -53,8 +53,14 @@ from .ledger import (
     validate_boundary,
 )
 from .ledger_store import LedgerPersisted, LedgerStore, to_ledger_state
-from .models import BatteryConfig, SharedEnergyLedgerConfig, Tenant
+from .models import (
+    AllocationPolicy,
+    BatteryConfig,
+    SharedEnergyLedgerConfig,
+    Tenant,
+)
 from .samples import (
+    samples_are_aligned,
     validate_energy_sample,
     validate_price_sample,
     validate_signed_power_sample,
@@ -157,6 +163,38 @@ def _tenant_anchor(tenant: Tenant) -> str:
 
 def _load_anchor(tenant: Tenant, load_id: str) -> str:
     return f"load:{tenant.tenant_id}:{load_id}"
+
+
+def residual_meter_entity_ids(config: SharedEnergyLedgerConfig) -> tuple[str, ...] | None:
+    """Entity ids whose timestamps must align for residual allocation (I4)."""
+    if not any(
+        t.allocation_policy == AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS
+        for t in config.tenants
+    ):
+        return None
+    ids: list[str] = []
+    if (
+        config.whole_building is not None
+        and config.whole_building.energy_entity is not None
+    ):
+        ids.append(config.whole_building.energy_entity)
+    for tenant in config.tenants:
+        if (
+            tenant.allocation_policy != AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS
+            and tenant.energy_entity is not None
+        ):
+            ids.append(tenant.energy_entity)
+        for load in tenant.shared_loads:
+            if load.energy_entity is not None:
+                ids.append(load.energy_entity)
+    return tuple(ids)
+
+
+def _last_updated(hass: HomeAssistant, entity_id: str) -> datetime | None:
+    state = _state(hass, entity_id)
+    if state is None:
+        return None
+    return state.last_updated
 
 
 class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
@@ -352,6 +390,15 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                     self.hass, config.whole_building.energy_entity, now, f.energy_max_age_s
                 ),
             )
+
+        residual_ids = residual_meter_entity_ids(config)
+        if residual_ids is not None:
+            residual_stamps = [
+                _last_updated(self.hass, entity_id) for entity_id in residual_ids
+            ]
+            if not samples_are_aligned(residual_stamps, f.alignment_skew_s):
+                # Fail residual closed at the boundary; allocate stays timestamp-free.
+                whole_building_delta = None
 
         results = allocate(
             AllocationInput(
@@ -595,4 +642,9 @@ def _dump_totals(totals: TenantCostTotals) -> dict[str, float]:
     }
 
 
-__all__ = ["CoordinatorPayload", "SharedEnergyLedgerCoordinator", "TenantCostTotals"]
+__all__ = [
+    "CoordinatorPayload",
+    "SharedEnergyLedgerCoordinator",
+    "TenantCostTotals",
+    "residual_meter_entity_ids",
+]
