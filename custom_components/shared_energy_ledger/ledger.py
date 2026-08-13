@@ -9,9 +9,11 @@ Every ledger tick consumes:
 
 * ``delta_charge_kwh`` — kWh charged since the previous tick.
 * ``delta_discharge_kwh`` — kWh discharged since the previous tick.
-* ``grid_share_of_charge`` — fraction of the charge that came from the grid
-  (0..1). The remainder is treated as zero-cost PV.
-* ``tariff_rate`` — the per-kWh grid tariff during the tick.
+* ``charge_unit_cost`` — the blended per-kWh cost of this tick's charge in the
+  configured currency, computed by :mod:`.interval` from the measured grid and
+  PV charging split and their price sensors. The caller passes this only when
+  every charging source has a valid price; otherwise it leaves the ledger
+  unchanged (fail-closed, requirement I1).
 * ``charge_efficiency`` / ``discharge_efficiency`` — 0.5..1.0 round-trip
   factors.
 
@@ -54,8 +56,7 @@ class LedgerInputs:
 
     delta_charge_kwh: float
     delta_discharge_kwh: float
-    grid_share_of_charge: float
-    tariff_rate: float
+    charge_unit_cost: float
     charge_efficiency: float
     discharge_efficiency: float
 
@@ -117,9 +118,7 @@ def _inputs_valid(inputs: LedgerInputs) -> bool:
         return False
     if not _is_finite_non_negative(inputs.delta_discharge_kwh):
         return False
-    if not (isfinite(inputs.grid_share_of_charge) and 0.0 <= inputs.grid_share_of_charge <= 1.0):
-        return False
-    if not _is_finite_non_negative(inputs.tariff_rate):
+    if not _is_finite_non_negative(inputs.charge_unit_cost):
         return False
     if not (isfinite(inputs.charge_efficiency) and 0.5 <= inputs.charge_efficiency <= 1.0):
         return False
@@ -144,7 +143,7 @@ def update_ledger(previous: LedgerState, inputs: LedgerInputs) -> LedgerState:
 
     Charge cost:
 
-    * ``charge_cost = delta_charge * grid_share * tariff_rate / charge_efficiency``.
+    * ``charge_cost = delta_charge * charge_unit_cost / charge_efficiency``.
     """
     if not validate_boundary(previous.stock_kwh, previous.stock_cost):
         return unavailable_state()
@@ -156,8 +155,7 @@ def update_ledger(previous: LedgerState, inputs: LedgerInputs) -> LedgerState:
 
     charge_cost = (
         inputs.delta_charge_kwh
-        * inputs.grid_share_of_charge
-        * inputs.tariff_rate
+        * inputs.charge_unit_cost
         / inputs.charge_efficiency
     )
 
