@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """Fail the build if any identifier from the private-installation denylist
-reappears outside the ``legacy/`` archive.
+reappears in the public tree.
 
 The list below is a snapshot of the private entity IDs, device slugs, and
 proper nouns that surfaced in the pre-migration deployment this repository
-originated from. They are safe to keep under ``legacy/`` as historical
-context but must not leak into the public integration, dashboard, tests,
-docs, or CI.
+originated from. They must not appear in the public integration, dashboard,
+tests, docs, or CI.
 
 Usage:
 
     python scripts/check_private_denylist.py [<path> ...]
 
 If no path is given, the script scans the whole repository (excluding
-``legacy/``, ``.git``, ``node_modules``, ``.venv``, and build output
-directories).
+``.git``, ``node_modules``, ``.venv``, and build output directories).
 """
 
 from __future__ import annotations
@@ -133,7 +131,7 @@ def main(argv: list[str]) -> int:
     for path, lineno, needle, line in findings:
         print(f"{path}:{lineno}: private identifier {needle!r} leaked: {line}")
     print(
-        f"\nFound {len(findings)} private-installation identifier(s) outside legacy/.",
+        f"\nFound {len(findings)} private-installation identifier(s).",
         file=sys.stderr,
     )
     return 1

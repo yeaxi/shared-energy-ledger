@@ -64,5 +64,3 @@ check the matching docs references when an invariant changes.
 
 - English is the primary docs language. Translations are additive and never
   drop keys.
-- Locale files live under `docs/locales/<locale>/`. Missing pages fall back
-  to English silently.

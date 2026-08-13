@@ -33,7 +33,7 @@ tests/
   unit/
     test_ledger.py
     test_allocation.py
-    test_tariff.py
+    test_interval.py
     test_report.py
   integration/
     test_config_flow.py
@@ -43,7 +43,7 @@ tests/
     test_diagnostics.py
   fixtures/
     recorder_dump_<scenario>.json
-    tariff_schedule_<scenario>.json
+    interval_source_mix_<scenario>.json
 ```
 
 ## Required fixtures
