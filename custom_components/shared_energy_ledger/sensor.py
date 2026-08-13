@@ -1,213 +1,199 @@
-"""Sensor platform: per-tenant accounting power, share, and cost rates.
+"""Sensor platform: per-tenant source costs, shares, and hub diagnostics.
 
-Cumulative-total cost sensors survive Home Assistant restarts via
-:class:`RestoreSensor`. When the underlying accounting chain is unavailable,
-each sensor reports ``STATE_UNAVAILABLE`` rather than a fabricated ``0`` per
-requirement I1 and I10.
+Every sensor is a pure renderer of the coordinator snapshot. Money is accrued
+once per priced interval inside the coordinator (from cumulative-meter deltas),
+so no sensor mutates state when Home Assistant reads its value. When the
+accounting chain is unavailable a live sensor reports ``unavailable`` rather
+than a fabricated ``0`` (requirements I1, I10); the cumulative cost total keeps
+its last known value because it is a running total, not a live rate.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from decimal import Decimal
 
 from homeassistant.components.sensor import (
-    RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfPower
+from homeassistant.const import PERCENTAGE, UnitOfEnergy
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import price_unit
 from .coordinator import CoordinatorPayload, SharedEnergyLedgerCoordinator
 from .entity import SharedEnergyLedgerEntity
+from .models import Tenant
 
 
 @dataclass(frozen=True, kw_only=True)
-class TenantSensorDescription(SensorEntityDescription):
-    """Description for a per-tenant sensor."""
+class TenantCostDescription(SensorEntityDescription):
+    """Description for a per-tenant cumulative cost sensor."""
 
-    value_fn: Callable[[CoordinatorPayload, str], float | None]
-
-
-def _accounting_power(payload: CoordinatorPayload, slug: str) -> float | None:
-    result = payload.allocations.get(slug)
-    if result is None:
-        return None
-    return result.accounting_power
+    source: str
 
 
-def _share_percent(payload: CoordinatorPayload, slug: str) -> float | None:
-    result = payload.allocations.get(slug)
-    if result is None or result.share is None:
-        return None
-    return result.share * 100.0
+@dataclass(frozen=True, kw_only=True)
+class HubSensorDescription(SensorEntityDescription):
+    """Description for a hub-level sensor."""
+
+    value_fn: Callable[[CoordinatorPayload], float | str | None]
 
 
-TENANT_ACCOUNTING_POWER = TenantSensorDescription(
-    key="tenant_accounting_power",
-    translation_key="tenant_accounting_power",
-    native_unit_of_measurement=UnitOfPower.WATT,
-    device_class=SensorDeviceClass.POWER,
-    state_class=SensorStateClass.MEASUREMENT,
-    value_fn=_accounting_power,
+TENANT_TOTAL_COST = TenantCostDescription(
+    key="tenant_total_cost",
+    translation_key="tenant_total_cost",
+    device_class=SensorDeviceClass.MONETARY,
+    state_class=SensorStateClass.TOTAL,
+    source="total",
 )
-TENANT_SHARE = TenantSensorDescription(
-    key="tenant_share",
-    translation_key="tenant_share",
-    native_unit_of_measurement=PERCENTAGE,
-    state_class=SensorStateClass.MEASUREMENT,
-    value_fn=_share_percent,
+TENANT_GRID_COST = TenantCostDescription(
+    key="tenant_grid_cost",
+    translation_key="tenant_grid_cost",
+    device_class=SensorDeviceClass.MONETARY,
+    state_class=SensorStateClass.TOTAL,
+    source="grid",
+)
+TENANT_PV_COST = TenantCostDescription(
+    key="tenant_pv_cost",
+    translation_key="tenant_pv_cost",
+    device_class=SensorDeviceClass.MONETARY,
+    state_class=SensorStateClass.TOTAL,
+    source="pv",
+)
+TENANT_BATTERY_COST = TenantCostDescription(
+    key="tenant_battery_cost",
+    translation_key="tenant_battery_cost",
+    device_class=SensorDeviceClass.MONETARY,
+    state_class=SensorStateClass.TOTAL,
+    source="battery",
 )
 
 
-class TenantSensor(SharedEnergyLedgerEntity, SensorEntity):
-    """One measurement sensor for a single tenant."""
+class TenantShareSensor(SharedEnergyLedgerEntity, SensorEntity):
+    """Live per-tenant share of building consumption for the last interval."""
 
-    entity_description: TenantSensorDescription
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_translation_key = "tenant_share"
+
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant: Tenant) -> None:
+        super().__init__(coordinator, "tenant_share", tenant.tenant_id)
+        self._slug = tenant.slug
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        result = self.coordinator.data.allocations.get(self._slug)
+        return result is not None and result.share is not None
+
+    @property
+    def native_value(self) -> float | None:
+        result = self.coordinator.data.allocations.get(self._slug)
+        if result is None or result.share is None:
+            return None
+        return round(result.share * 100.0, 3)
+
+
+class TenantCostSensor(SharedEnergyLedgerEntity, SensorEntity):
+    """Cumulative per-tenant cost for one source (restart-safe running total)."""
+
+    entity_description: TenantCostDescription
 
     def __init__(
         self,
         coordinator: SharedEnergyLedgerCoordinator,
-        description: TenantSensorDescription,
+        description: TenantCostDescription,
         slug: str,
+        tenant: Tenant,
+        currency: str,
     ) -> None:
-        super().__init__(coordinator, description.translation_key or description.key, slug)
+        super().__init__(
+            coordinator, description.translation_key or description.key, tenant.tenant_id
+        )
         self.entity_description = description
-        self._slug = slug
-
-    @property
-    def available(self) -> bool:
-        if not super().available:
-            return False
-        value = self.entity_description.value_fn(self.coordinator.data, self._slug)
-        return value is not None
-
-    @property
-    def native_value(self) -> float | None:
-        return self.entity_description.value_fn(self.coordinator.data, self._slug)
-
-
-class TenantCostRateSensor(SharedEnergyLedgerEntity, SensorEntity):
-    """Live per-tenant cost rate in currency/h."""
-
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_translation_key = "tenant_total_cost_rate"
-
-    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str, currency: str) -> None:
-        super().__init__(coordinator, "tenant_total_cost_rate", slug)
-        self._slug = slug
-        self._attr_native_unit_of_measurement = f"{currency}/h"
-
-    @property
-    def available(self) -> bool:
-        if not super().available:
-            return False
-        return self.coordinator.data.tenants_cost_rate.get(self._slug) is not None
-
-    @property
-    def native_value(self) -> float | None:
-        return self.coordinator.data.tenants_cost_rate.get(self._slug)
-
-
-class GridImportCostPerKwhSensor(SharedEnergyLedgerEntity, SensorEntity):
-    """Effective grid-import per-kWh cost, exposed for historical re-pricing.
-
-    Publishes the tariff rate the coordinator resolved for the moment of the
-    last successful update. Home Assistant's Recorder captures long-term
-    statistics for this sensor because it declares
-    ``state_class: measurement`` with a monetary-per-energy unit — a hint
-    that survives currency swaps because the accounting-epoch metadata
-    marks the change explicitly (invariant I9).
-    """
-
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_translation_key = "grid_import_cost_per_kwh"
-
-    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, currency: str) -> None:
-        super().__init__(coordinator, "grid_import_cost_per_kwh", "hub")
-        self._attr_native_unit_of_measurement = f"{currency}/kWh"
-
-    @property
-    def available(self) -> bool:
-        if not super().available:
-            return False
-        return self.coordinator.data.tariff_rate is not None
-
-    @property
-    def native_value(self) -> float | None:
-        return self.coordinator.data.tariff_rate
-
-
-class TenantCumulativeCostSensor(SharedEnergyLedgerEntity, RestoreSensor):
-    """Cumulative per-tenant total cost.
-
-    Uses ``RestoreSensor`` so the running total survives restarts. When the
-    accounting chain is unavailable the sensor reports the last known total
-    (with ``last_reset`` unchanged) rather than a fabricated ``0``.
-    """
-
-    _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.TOTAL
-    _attr_translation_key = "tenant_total_cost"
-
-    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str, currency: str) -> None:
-        super().__init__(coordinator, "tenant_total_cost", slug)
-        self._slug = slug
+        self._slug = tenant.slug
         self._attr_native_unit_of_measurement = currency
-        self._total: Decimal = Decimal("0")
-        self._last_rate: float | None = None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # Prefer the typed ``RestoreSensor`` API so we can detect a unit
-        # change and start a new accounting epoch cleanly per requirement
-        # I9.
-        stored = await self.async_get_last_sensor_data()
-        if stored is not None and stored.native_value is not None:
-            stored_unit = stored.native_unit_of_measurement
-            if stored_unit is None or stored_unit == self._attr_native_unit_of_measurement:
-                try:
-                    self._total = Decimal(str(stored.native_value))
-                    return
-                except (ValueError, ArithmeticError):
-                    pass
-            else:
-                # Currency changed since the last save; start a new epoch.
-                self._total = Decimal("0")
-                return
-        # Fall back to the untyped last-state string; on failure keep zero.
-        last_state = await self.async_get_last_state()
-        if last_state is None or last_state.state in ("unknown", "unavailable"):
-            return
-        try:
-            self._total = Decimal(last_state.state)
-        except (ValueError, ArithmeticError):
-            self._total = Decimal("0")
 
     @property
-    def native_value(self) -> Decimal | None:
-        payload = self.coordinator.data
-        rate = payload.tenants_cost_rate.get(self._slug)
-        if rate is None:
-            self._last_rate = None
-            return self._total
-        # Integrate cost over the update interval. The coordinator runs on a
-        # timedelta interval; multiply by hours-elapsed since last successful
-        # update. Use a coarse approximation from update_interval.
-        interval = self.coordinator.update_interval
-        if interval is None:
-            return self._total
-        hours = interval.total_seconds() / 3600.0
-        increment = Decimal(str(rate)) * Decimal(str(hours))
-        if increment > 0:
-            self._total += increment
-        return self._total
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self._slug in self.coordinator.data.tenant_costs
+
+    @property
+    def native_value(self) -> float | None:
+        totals = self.coordinator.data.tenant_costs.get(self._slug)
+        if totals is None:
+            return None
+        value = getattr(totals, self.entity_description.source)
+        return round(float(value), 4)
+
+
+class HubSensor(SharedEnergyLedgerEntity, SensorEntity):
+    """A hub-level diagnostic or price sensor rendered from the snapshot."""
+
+    entity_description: HubSensorDescription
+
+    def __init__(
+        self,
+        coordinator: SharedEnergyLedgerCoordinator,
+        description: HubSensorDescription,
+        unit: str | None = None,
+    ) -> None:
+        super().__init__(coordinator, description.translation_key or description.key, "hub")
+        self.entity_description = description
+        if unit is not None:
+            self._attr_native_unit_of_measurement = unit
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self.entity_description.value_fn(self.coordinator.data) is not None
+
+    @property
+    def native_value(self) -> float | str | None:
+        return self.entity_description.value_fn(self.coordinator.data)
+
+
+def _grid_price(payload: CoordinatorPayload) -> float | None:
+    return payload.grid_price
+
+
+def _pv_price(payload: CoordinatorPayload) -> float | None:
+    return payload.pv_price
+
+
+def _battery_stock(payload: CoordinatorPayload) -> float | None:
+    if payload.ledger is None or payload.ledger.status == "unavailable":
+        return None
+    return round(payload.ledger.stock_kwh, 4)
+
+
+def _battery_weighted(payload: CoordinatorPayload) -> float | None:
+    if payload.ledger is None:
+        return None
+    weighted = payload.ledger.weighted_cost_per_kwh
+    return round(weighted, 6) if weighted is not None else None
+
+
+def _battery_status(payload: CoordinatorPayload) -> str | None:
+    return payload.ledger.status if payload.ledger is not None else None
+
+
+def _unpriced_battery(payload: CoordinatorPayload) -> float | None:
+    return round(payload.unpriced_battery_kwh, 6)
+
+
+def _reconciliation(payload: CoordinatorPayload) -> float | None:
+    return round(payload.reconciliation_kwh, 6) if payload.reconciliation_kwh is not None else None
 
 
 async def async_setup_entry(
@@ -221,26 +207,116 @@ async def async_setup_entry(
     if config is None:
         async_add_entities([])
         return
+
+    currency = config.currency
     entities: list[SensorEntity] = [
-        GridImportCostPerKwhSensor(coordinator, config.currency),
+        HubSensor(
+            coordinator,
+            HubSensorDescription(
+                key="grid_import_price",
+                translation_key="grid_import_price",
+                state_class=SensorStateClass.MEASUREMENT,
+                value_fn=_grid_price,
+            ),
+            unit=price_unit(currency),
+        ),
+        HubSensor(
+            coordinator,
+            HubSensorDescription(
+                key="grid_reconciliation",
+                translation_key="grid_reconciliation",
+                state_class=SensorStateClass.MEASUREMENT,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=_reconciliation,
+            ),
+            unit=UnitOfEnergy.KILO_WATT_HOUR,
+        ),
     ]
-    for tenant in config.tenants:
+
+    if config.pv is not None:
+        entities.append(
+            HubSensor(
+                coordinator,
+                HubSensorDescription(
+                    key="pv_price",
+                    translation_key="pv_price",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=_pv_price,
+                ),
+                unit=price_unit(currency),
+            )
+        )
+
+    if config.battery is not None:
         entities.extend(
             [
-                TenantSensor(coordinator, TENANT_ACCOUNTING_POWER, tenant.slug),
-                TenantSensor(coordinator, TENANT_SHARE, tenant.slug),
-                TenantCostRateSensor(coordinator, tenant.slug, config.currency),
-                TenantCumulativeCostSensor(coordinator, tenant.slug, config.currency),
+                HubSensor(
+                    coordinator,
+                    HubSensorDescription(
+                        key="battery_stock_kwh",
+                        translation_key="battery_stock_kwh",
+                        state_class=SensorStateClass.MEASUREMENT,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        value_fn=_battery_stock,
+                    ),
+                    unit=UnitOfEnergy.KILO_WATT_HOUR,
+                ),
+                HubSensor(
+                    coordinator,
+                    HubSensorDescription(
+                        key="battery_weighted_cost",
+                        translation_key="battery_weighted_cost",
+                        state_class=SensorStateClass.MEASUREMENT,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        value_fn=_battery_weighted,
+                    ),
+                    unit=price_unit(currency),
+                ),
+                HubSensor(
+                    coordinator,
+                    HubSensorDescription(
+                        key="battery_ledger_status",
+                        translation_key="battery_ledger_status",
+                        device_class=SensorDeviceClass.ENUM,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        options=["active", "priced", "empty", "unavailable"],
+                        value_fn=_battery_status,
+                    ),
+                ),
+                HubSensor(
+                    coordinator,
+                    HubSensorDescription(
+                        key="unpriced_battery_kwh",
+                        translation_key="unpriced_battery_kwh",
+                        state_class=SensorStateClass.TOTAL,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        value_fn=_unpriced_battery,
+                    ),
+                    unit=UnitOfEnergy.KILO_WATT_HOUR,
+                ),
             ]
         )
+
+    tenant_cost_descriptions = [TENANT_TOTAL_COST, TENANT_GRID_COST]
+    if config.pv is not None:
+        tenant_cost_descriptions.append(TENANT_PV_COST)
+    if config.battery is not None:
+        tenant_cost_descriptions.append(TENANT_BATTERY_COST)
+
+    for tenant in config.tenants:
+        entities.append(TenantShareSensor(coordinator, tenant))
+        for description in tenant_cost_descriptions:
+            entities.append(TenantCostSensor(coordinator, description, tenant, currency))
+
     async_add_entities(entities)
 
 
 __all__ = [
-    "TENANT_ACCOUNTING_POWER",
-    "TENANT_SHARE",
-    "GridImportCostPerKwhSensor",
-    "TenantCostRateSensor",
-    "TenantCumulativeCostSensor",
-    "TenantSensor",
+    "TENANT_BATTERY_COST",
+    "TENANT_GRID_COST",
+    "TENANT_PV_COST",
+    "TENANT_TOTAL_COST",
+    "HubSensor",
+    "TenantCostSensor",
+    "TenantShareSensor",
 ]

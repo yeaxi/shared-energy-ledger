@@ -74,8 +74,8 @@ class TenantFreshnessBinarySensor(SharedEnergyLedgerEntity, BinarySensorEntity):
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
-    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, slug: str) -> None:
-        super().__init__(coordinator, "tenant_data_fresh", slug)
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant_id: str, slug: str) -> None:
+        super().__init__(coordinator, "tenant_data_fresh", tenant_id)
         self._slug = slug
 
     @property
@@ -100,7 +100,9 @@ async def async_setup_entry(
     if config.battery is not None:
         entities.append(FreshnessBinarySensor(coordinator, BATTERY_DATA_FRESH))
     for tenant in config.tenants:
-        entities.append(TenantFreshnessBinarySensor(coordinator, tenant.slug))
+        entities.append(
+            TenantFreshnessBinarySensor(coordinator, tenant.tenant_id, tenant.slug)
+        )
     async_add_entities(entities)
 
 

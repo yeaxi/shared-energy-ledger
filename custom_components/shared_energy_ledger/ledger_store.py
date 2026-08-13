@@ -1,11 +1,14 @@
 """Persistent state for the battery weighted-cost ledger.
 
 The ledger's per-tick math is pure (see :mod:`.ledger`). To evolve it across
-Home Assistant restarts we need a small persistent store that remembers:
+Home Assistant restarts we persist the priced stock only:
 
-* the last observed cumulative charge and discharge counter values,
 * the current priced stock (``stock_kwh``) and its cost (``stock_cost``),
 * the ISO 8601 timestamp of the last successful update.
+
+Counter anchors (the last observed cumulative charge/discharge values) live in
+:mod:`.cost_store` alongside every other meter anchor, so the ledger store is
+concerned purely with priced-stock evolution.
 
 The store uses :class:`homeassistant.helpers.storage.Store` so the file lives
 under ``.storage/shared_energy_ledger.ledger.<entry_id>`` and is JSON-serialisable.
@@ -32,8 +35,6 @@ STORAGE_KEY_FMT = f"{DOMAIN}.ledger.{{entry_id}}"
 class LedgerPersisted(TypedDict, total=False):
     """Shape of the JSON payload persisted per config entry."""
 
-    last_charge_kwh: float
-    last_discharge_kwh: float
     stock_kwh: float
     stock_cost: float
     updated_at: str
