@@ -26,8 +26,8 @@ rules:
   entity-unique-id: done                     # entity.py builds unique_id from entry_id + resource_slug + description.key
   has-entity-name: done                      # SharedEnergyLedgerEntity._attr_has_entity_name = True
   runtime-data: done                         # __init__.py sets entry.runtime_data
-  test-before-configure: done                # config_flow validates currency, slug, tariff schedule at each step
-  test-before-setup: done                    # coordinator._load_config_if_ready refuses to boot on bad schedule (issue_registry)
+  test-before-configure: done                # config_flow validates currency, slug, price sensors at each step
+  test-before-setup: done                    # coordinator._load_config_if_ready refuses to boot on invalid config (issue_registry)
   unique-config-entry: done                  # _async_current_entries + single_instance_allowed abort
 
   # ---------- Silver ----------
@@ -44,7 +44,7 @@ rules:
   reauthentication-flow: exempt
   # ^ Shared Energy Ledger has no external credentials. All inputs are internal HA
   # entity selectors; async_step_reconfigure covers the rename case.
-  test-coverage: done                        # pytest --cov-fail-under=90 (176 tests, 91% coverage)
+  test-coverage: done                        # pytest --cov-fail-under=90 (117 tests)
 
   # ---------- Gold ----------
   devices: done                              # entity.py registers DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})

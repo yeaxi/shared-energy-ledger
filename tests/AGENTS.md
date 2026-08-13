@@ -7,13 +7,13 @@ a real Home Assistant instance.
 ## Scope
 
 - `tests/unit/` — pure-Python unit tests for `ledger`, `allocation`,
-  `tariff`, `report`, and other modules that do not depend on Home Assistant
+  `interval`, `report`, and other modules that do not depend on Home Assistant
   runtime.
 - `tests/integration/` — tests booted via
   `pytest-homeassistant-custom-component` that exercise config flow, setup,
   entity behavior, services, and diagnostics.
-- `tests/fixtures/` — fully synthetic data files (recorder dumps, tariff
-  schedules, ledger seeds) used by the tests above.
+- `tests/fixtures/` — fully synthetic data files (recorder dumps, interval
+  and source-mix scenarios, ledger seeds) used by the tests above.
 - `tests/conftest.py` — shared fixtures and pytest configuration.
 
 ## Bound skills

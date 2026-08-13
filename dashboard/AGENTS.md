@@ -6,8 +6,8 @@ installation in Home Assistant dashboards. HACS installs only the integration.
 
 ## Scope
 
-- JavaScript, TypeScript, HTML, and CSS for the cards.
-- Per-card `README.md` and per-card localized string files.
+- JavaScript, TypeScript, HTML, and CSS for the card.
+- One card folder `README.md` and localized string files.
 - Build tooling (`package.json`, `tsconfig.json`, bundler config) at the
   folder root.
 - No Python, no integration code, and no test-runner code lives here beyond
