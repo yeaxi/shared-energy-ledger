@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import asdict, replace
 from typing import Any
+from uuid import uuid4
 
 from .const import (
     CONF_BATTERY,
@@ -22,7 +23,6 @@ from .const import (
     CONF_DISCHARGE_EFFICIENCY,
     CONF_DISCHARGE_ENERGY,
     CONF_ENERGY,
-    CONF_EXPORT_ENERGY,
     CONF_FRESHNESS,
     CONF_FRESHNESS_ALIGNMENT,
     CONF_FRESHNESS_BATTERY_LEDGER,
@@ -34,6 +34,7 @@ from .const import (
     CONF_IMPORT_PRICE,
     CONF_INITIAL_STOCK_COST,
     CONF_INITIAL_STOCK_KWH,
+    CONF_LOAD_ID,
     CONF_POWER,
     CONF_PV,
     CONF_PV_PRICE,
@@ -73,10 +74,13 @@ class ConfigError(ValueError):
 
 
 def _load_shared_load(payload: Mapping[str, Any]) -> SharedLoad:
+    load_id = payload.get(CONF_LOAD_ID)
+    if not load_id:
+        load_id = uuid4().hex
     return SharedLoad(
         label=str(payload["label"]),
+        load_id=str(load_id),
         energy_entity=payload.get(CONF_ENERGY),
-        power_entity=payload.get(CONF_POWER),
         host_slug=payload.get(CONF_SHARED_LOAD_HOST),
     )
 
@@ -97,7 +101,6 @@ def _load_tenant(payload: Mapping[str, Any]) -> Tenant:
         name=str(payload[CONF_TENANT_NAME]),
         allocation_policy=allocation,
         energy_entity=payload.get(CONF_ENERGY),
-        power_entity=payload.get(CONF_POWER),
         shared_loads=shared_loads,
     )
 
@@ -108,8 +111,6 @@ def _load_grid(payload: Mapping[str, Any]) -> GridConfig:
     return GridConfig(
         import_energy_entity=str(payload[CONF_IMPORT_ENERGY]),
         import_price_entity=str(payload[CONF_IMPORT_PRICE]),
-        export_energy_entity=payload.get(CONF_EXPORT_ENERGY),
-        power_entity=payload.get(CONF_POWER),
     )
 
 
@@ -128,7 +129,6 @@ def _load_pv(payload: Mapping[str, Any] | None) -> PvConfig | None:
         energy_entity=str(payload[CONF_ENERGY]),
         price_entity=price_entity,
         zero_cost=zero_cost,
-        power_entity=payload.get(CONF_POWER),
     )
 
 
@@ -153,7 +153,6 @@ def _load_whole_building(payload: Mapping[str, Any] | None) -> WholeBuildingConf
         return None
     return WholeBuildingConfig(
         energy_entity=payload.get(CONF_ENERGY),
-        power_entity=payload.get(CONF_POWER),
     )
 
 
@@ -206,11 +205,12 @@ def config_from_entry(
 
 
 def _dump_shared_load(load: SharedLoad) -> dict[str, Any]:
-    payload: dict[str, Any] = {"label": load.label}
+    payload: dict[str, Any] = {
+        "label": load.label,
+        CONF_LOAD_ID: load.load_id,
+    }
     if load.energy_entity is not None:
         payload[CONF_ENERGY] = load.energy_entity
-    if load.power_entity is not None:
-        payload[CONF_POWER] = load.power_entity
     if load.host_slug is not None:
         payload[CONF_SHARED_LOAD_HOST] = load.host_slug
     return payload
@@ -237,7 +237,6 @@ def config_to_entry(config: SharedEnergyLedgerConfig) -> dict[str, Any]:
                 CONF_TENANT_NAME: tenant.name,
                 CONF_TENANT_ALLOCATION: tenant.allocation_policy.value,
                 CONF_ENERGY: tenant.energy_entity,
-                CONF_POWER: tenant.power_entity,
                 CONF_TENANT_SHARED_LOADS: [
                     _dump_shared_load(sl) for sl in tenant.shared_loads
                 ],

@@ -135,6 +135,7 @@ async def test_report_with_pv_battery_and_shared_load(hass: HomeAssistant) -> No
     data["tenants"][0]["shared_loads"] = [
         {
             "label": "staircase",
+            "load_id": "load-stair",
             "energy_entity": "sensor.stair_e",
             "host_slug": "flat-2",
         }

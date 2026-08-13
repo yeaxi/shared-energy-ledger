@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 
 from custom_components.shared_energy_ledger.samples import (
     validate_energy_sample,
-    validate_power_sample,
     validate_price_sample,
     validate_signed_power_sample,
 )
@@ -25,9 +24,9 @@ def test_i5_energy_requires_exact_kwh_unit() -> None:
     assert validate_energy_sample("12.5", None, _fresh(), NOW, 1800) is None
 
 
-def test_i5_power_requires_exact_w_unit() -> None:
-    assert validate_power_sample("500", "W", _fresh(), NOW, 180) == 500.0
-    assert validate_power_sample("0.5", "kW", _fresh(), NOW, 180) is None
+def test_i5_signed_power_requires_exact_w_unit() -> None:
+    assert validate_signed_power_sample("500", "W", _fresh(), NOW, 180) == 500.0
+    assert validate_signed_power_sample("0.5", "kW", _fresh(), NOW, 180) is None
 
 
 def test_i2_stale_sample_rejected() -> None:

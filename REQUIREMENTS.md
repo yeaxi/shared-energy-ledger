@@ -46,18 +46,15 @@ Scope non-goals:
   - Required: grid import price sensor (`<currency>/kWh`). Whatever the
     operator's tariff logic is (flat, time-of-use, or dynamic spot pricing) it
     is modelled as this sensor; the integration ships no tariff schedule.
-  - Optional: grid export energy sensor (`kWh`, monotonic total-increasing).
-  - Optional: grid power sensor (`W`), used only for freshness gating and
-    dashboards; never for accounting integration.
-- **Photovoltaic (optional).** PV aggregate energy sensor (`kWh`), optional PV
-  aggregate power sensor (`W`), and either a PV price sensor (`<currency>/kWh`)
-  or an explicit "PV is zero cost" choice. If PV is configured, not marked
-  zero-cost, and no price sensor is supplied, the configuration is rejected;
-  PV-sourced energy is never priced at an invented zero.
-- **Whole-building AC-load boundary (optional).** A single sensor that
-  represents the sum of all downstream loads inside the shared boundary. When
-  provided, the residual allocation policy becomes selectable for tenants that
-  do not have a direct meter.
+- **Photovoltaic (optional).** PV aggregate energy sensor (`kWh`) and either a
+  PV price sensor (`<currency>/kWh`) or an explicit "PV is zero cost" choice.
+  If PV is configured, not marked zero-cost, and no price sensor is supplied,
+  the configuration is rejected; PV-sourced energy is never priced at an
+  invented zero.
+- **Whole-building AC-load boundary (optional).** A single cumulative energy
+  sensor (`kWh`) that represents the sum of all downstream loads inside the
+  shared boundary. When provided, the residual allocation policy becomes
+  selectable for tenants that do not have a direct meter.
 - **Battery (optional).**
   - Charge counter (`kWh`, monotonic total-increasing).
   - Discharge counter (`kWh`, monotonic total-increasing).
@@ -69,12 +66,12 @@ Scope non-goals:
     in `unique_id`s and entity names).
   - Direct energy sensor (`kWh`) — optional if the allocation policy does not
     require it.
-  - Optional direct power sensor (`W`) — freshness and dashboards only.
-  - Optional list of *shared load* sensors: loads that are physically upstream
-    of a neighbor's feeder but are financially owned by this tenant. The
-    integration treats this as a generic pattern; use cases include shelter
-    utilities, staircase lighting, storage rooms, workshops, EV chargers,
-    heating accumulators, and shared appliances.
+  - Optional list of *shared loads*: each has a stable `load_id`, an optional
+    energy meter, and an optional host tenant whose feeder physically includes
+    the load. Shared loads are financially owned by this tenant even when
+    measured upstream of a neighbor. Use cases include shelter utilities,
+    staircase lighting, storage rooms, workshops, EV chargers, heating
+    accumulators, and shared appliances.
   - Allocation policy — one of the three values defined in
     [A3](#a3-non-functional-invariants):
     - `direct_meter`

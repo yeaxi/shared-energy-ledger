@@ -184,6 +184,7 @@ async def test_shared_load_attaches_to_owner_with_host(hass: HomeAssistant) -> N
     assert loads[0]["label"] == "staircase"
     assert loads[0]["energy_entity"] == "sensor.staircase_e"
     assert loads[0]["host_slug"] == "flat-2"
+    assert loads[0]["load_id"]
 
 
 @pytest.mark.asyncio
