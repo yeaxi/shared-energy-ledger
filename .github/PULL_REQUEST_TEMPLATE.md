@@ -20,7 +20,6 @@ commit sequence.
 
 ## Verification
 
-- [ ] `python -m homeassistant.scripts.hassfest --requirements --action validate`
 - [ ] `python -m mypy --strict custom_components/shared_energy_ledger`
 - [ ] `python -m ruff check .`
 - [ ] `python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error`
@@ -34,6 +33,7 @@ commit sequence.
 - [ ] `npm --prefix dashboard ci && npm --prefix dashboard run lint && npm --prefix dashboard run typecheck && npm --prefix dashboard test && npm --prefix dashboard run build`
 - [ ] `python -m mkdocs build --strict`
 - [ ] `git diff --check`
+- [ ] Hosted `Hassfest` and `HACS` jobs are green
 
 ## Screenshots
 

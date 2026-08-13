@@ -108,8 +108,8 @@ Before publishing the tag:
 python -m json.tool hacs.json
 python -m json.tool custom_components/<domain>/manifest.json
 python scripts/check_brand_assets.py custom_components/<domain>
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m pytest tests/ -q --cov=custom_components.<domain> --cov-fail-under=90
 ```
 
-The release workflow reruns all of the above on the tag before publishing.
+The release workflow reruns all of the above and the pinned hassfest action on
+the tag before publishing.

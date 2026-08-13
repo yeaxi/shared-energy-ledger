@@ -101,11 +101,11 @@ Every item must be verifiable in code review or CI.
 Run in this order:
 
 ```bash
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m mypy --strict custom_components/<domain>
 python -m ruff check custom_components/<domain>
 python -m pytest tests/ --cov=custom_components.<domain> --cov-fail-under=90
 ```
 
-Hassfest, mypy, ruff, and pytest must all pass. Coverage must be at least
-90 %. The PR must not lower coverage below the current baseline.
+The pinned CI hassfest action, mypy, ruff, and pytest must all pass. Coverage
+must be at least 90 %. The PR must not lower coverage below the current
+baseline.

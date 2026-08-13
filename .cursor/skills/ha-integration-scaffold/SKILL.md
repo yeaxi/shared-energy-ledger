@@ -115,10 +115,10 @@ Run all of the following locally and in CI; the skill is not complete until
 they all pass:
 
 ```bash
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m json.tool custom_components/<domain>/manifest.json > /dev/null
 python -m json.tool custom_components/<domain>/translations/en.json > /dev/null
 python -m json.tool hacs.json > /dev/null
 ```
 
-The hassfest and HACS jobs must show green on the PR.
+The pinned hassfest and HACS jobs must show green on the PR. Hassfest is not
+included in the Home Assistant PyPI package, so the CI action is authoritative.
