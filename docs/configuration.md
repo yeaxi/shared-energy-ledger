@@ -85,10 +85,17 @@ Entered from **Settings** > **Devices & services** > **Shared Energy Ledger** >
 - **Add a tenant** — appends a tenant with a freshly generated `tenant_id`.
 - **Edit a tenant** — change display name, allocation policy, or meters. The
   `tenant_id` and entity `unique_id`s stay stable.
-- **Remove a tenant** — retires a tenant; at least two must remain.
+- **Remove a tenant** — retires a tenant after confirmation; at least two must
+  remain. Blocked while another tenant's shared load still lists the tenant as
+  `host_slug`. Owned shared loads are dropped with the tenant.
 - **Reorder tenants** — set the display order.
-- **Add a shared load** — attach a shared load to an owning tenant, with an
-  optional host tenant whose meter physically includes the load.
+- **Add a shared load** — attach a shared load (with a stable `load_id`) to an
+  owning tenant, with an optional host tenant whose meter physically includes
+  the load.
+- **Edit a shared load** — change label, meter, or host; `load_id` stays stable.
+- **Remove a shared load** — delete a load after confirmation.
+- **Reassign shared-load owner** — move a load to another tenant without
+  changing `load_id`.
 - **Freshness windows** — per-data-class maximum sample age, including
   `price_max_age_s` and `alignment_skew_s`.
 
