@@ -1,27 +1,32 @@
 /**
- * TypeScript surface for the v2 report envelope produced by
+ * TypeScript surface for the v3 report envelope produced by
  * `custom_components/shared_energy_ledger/report.py`.
  *
- * These types are intentionally the smallest shape the cards need. They MUST
- * stay in lock-step with the Python report builder; see REQUIREMENTS.md
- * invariant I7 ("Report v2 contract"). Any field marked required here is a
- * hard requirement for the cards, and its absence forces the card into the
- * fail-closed "unavailable" state (invariant I10).
+ * These types are the smallest shape the card needs. They MUST stay in
+ * lock-step with the Python report builder; see REQUIREMENTS.md invariant I7.
+ * Any field marked required here is a hard requirement for the card, and its
+ * absence forces the card into the fail-closed "unavailable" state (I10).
+ *
+ * Currency and kWh amounts are decimal strings (not JSON floats) so the
+ * canonical revision hash is identical in Python and JavaScript.
  */
 
-export const REPORT_SCHEMA_VERSION = 2 as const;
-
-export type HourSource = "direct" | "derived";
+export const REPORT_SCHEMA_VERSION = 3 as const;
 
 export interface HourlyRow {
   readonly hour_local: string;
   readonly cost: string;
+  readonly grid_cost: string;
+  readonly pv_cost: string;
+  readonly battery_cost: string;
   readonly coverage_seconds: number;
-  readonly source: HourSource;
 }
 
 export interface TenantSection {
   readonly known_cost: string;
+  readonly grid_cost: string;
+  readonly pv_cost: string;
+  readonly battery_cost: string;
   readonly coverage_seconds: number;
   readonly hourly: readonly HourlyRow[];
 }
@@ -42,15 +47,16 @@ export interface ReportEnvelope {
   readonly period: ReportPeriod;
   readonly coverage_seconds: number;
   readonly transition_excluded_seconds: number;
-  readonly unpriced_battery_kwh: number;
+  readonly unavailable_seconds: number;
+  readonly unpriced_battery_kwh: string;
+  readonly reconciliation_kwh: string | null;
   readonly tenants: Readonly<Record<string, TenantSection>>;
 }
 
 /**
  * A conservative Result discriminated union used by the report parser and by
- * the cards. Nothing outside this module should throw for validation errors;
- * callers pattern-match on `ok` and fall back to `unavailable` when `ok` is
- * `false`.
+ * the card. Nothing outside this module throws for validation errors; callers
+ * pattern-match on `ok` and fall back to `unavailable` when `ok` is `false`.
  */
 export type Result<T> =
   | { readonly ok: true; readonly value: T }

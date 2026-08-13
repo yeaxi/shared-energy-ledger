@@ -1,21 +1,19 @@
 /**
- * Pure `parseReport` function used by every card that consumes report JSON.
+ * Pure `parseReport` function used by the report card.
  *
- * The parser fails closed: any structural, type, or numeric anomaly returns
- * a `Result` with `ok: false`. Callers MUST render "unavailable" in that
- * case (REQUIREMENTS.md invariants I1, I7, I10). The parser never fabricates
- * a `0` for a missing or wrong-typed field.
+ * The parser fails closed: any structural, type, or numeric anomaly returns a
+ * `Result` with `ok: false`. Callers MUST render "unavailable" in that case
+ * (REQUIREMENTS.md invariants I1, I7, I10). The parser never fabricates a `0`
+ * for a missing or wrong-typed field.
  *
- * Verification of the report revision hash uses `sha256Hex` from
- * `./canonical`, which prefers WebCrypto and falls back to a small
- * self-contained SHA-256 implementation.
+ * Verification of the report revision hash uses `sha256Hex` from `./canonical`,
+ * which prefers WebCrypto and falls back to a self-contained SHA-256.
  */
 
 import {
   REPORT_SCHEMA_VERSION,
   err,
   ok,
-  type HourSource,
   type HourlyRow,
   type ReportEnvelope,
   type ReportPeriod,
@@ -42,10 +40,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
 function isNonNegativeInteger(value: unknown): value is number {
   return (
     typeof value === "number" &&
@@ -55,30 +49,22 @@ function isNonNegativeInteger(value: unknown): value is number {
   );
 }
 
-function isNonNegativeFiniteNumber(value: unknown): value is number {
-  return isFiniteNumber(value) && value >= 0;
-}
-
-function isDecimalString(value: unknown): value is string {
-  if (typeof value !== "string") {
-    return false;
-  }
-  if (!DECIMAL_RE.test(value)) {
+function isNonNegativeDecimalString(value: unknown): value is string {
+  if (typeof value !== "string" || !DECIMAL_RE.test(value)) {
     return false;
   }
   return !value.startsWith("-");
+}
+
+function isSignedDecimalString(value: unknown): value is string {
+  return typeof value === "string" && DECIMAL_RE.test(value);
 }
 
 function parsePeriod(raw: unknown): Result<ReportPeriod> {
   if (!isPlainObject(raw)) {
     return err("period must be an object");
   }
-  const fields: (keyof ReportPeriod)[] = [
-    "start_local",
-    "end_local",
-    "start_utc",
-    "end_utc",
-  ];
+  const fields: (keyof ReportPeriod)[] = ["start_local", "end_local", "start_utc", "end_utc"];
   for (const field of fields) {
     const value = raw[field];
     if (typeof value !== "string" || value.length === 0) {
@@ -106,29 +92,22 @@ function parseHourlyRow(raw: unknown, index: number, slug: string): Result<Hourl
   if (typeof hourLocal !== "string" || hourLocal.length === 0) {
     return err(`tenants.${slug}.hourly[${index}].hour_local must be a string`);
   }
-  const cost = raw["cost"];
-  if (!isDecimalString(cost)) {
-    return err(
-      `tenants.${slug}.hourly[${index}].cost must be a non-negative decimal string`,
-    );
+  for (const field of ["cost", "grid_cost", "pv_cost", "battery_cost"] as const) {
+    if (!isNonNegativeDecimalString(raw[field])) {
+      return err(`tenants.${slug}.hourly[${index}].${field} must be a non-negative decimal string`);
+    }
   }
   const coverage = raw["coverage_seconds"];
   if (!isNonNegativeInteger(coverage) || coverage > 3600) {
-    return err(
-      `tenants.${slug}.hourly[${index}].coverage_seconds must be in [0, 3600]`,
-    );
-  }
-  const source = raw["source"];
-  if (source !== "direct" && source !== "derived") {
-    return err(
-      `tenants.${slug}.hourly[${index}].source must be 'direct' or 'derived'`,
-    );
+    return err(`tenants.${slug}.hourly[${index}].coverage_seconds must be in [0, 3600]`);
   }
   return ok({
     hour_local: hourLocal,
-    cost,
+    cost: raw["cost"] as string,
+    grid_cost: raw["grid_cost"] as string,
+    pv_cost: raw["pv_cost"] as string,
+    battery_cost: raw["battery_cost"] as string,
     coverage_seconds: coverage,
-    source: source as HourSource,
   });
 }
 
@@ -136,9 +115,10 @@ function parseTenantSection(raw: unknown, slug: string): Result<TenantSection> {
   if (!isPlainObject(raw)) {
     return err(`tenants.${slug} must be an object`);
   }
-  const knownCost = raw["known_cost"];
-  if (!isDecimalString(knownCost)) {
-    return err(`tenants.${slug}.known_cost must be a non-negative decimal string`);
+  for (const field of ["known_cost", "grid_cost", "pv_cost", "battery_cost"] as const) {
+    if (!isNonNegativeDecimalString(raw[field])) {
+      return err(`tenants.${slug}.${field} must be a non-negative decimal string`);
+    }
   }
   const coverage = raw["coverage_seconds"];
   if (!isNonNegativeInteger(coverage)) {
@@ -157,15 +137,16 @@ function parseTenantSection(raw: unknown, slug: string): Result<TenantSection> {
     rows.push(rowResult.value);
   }
   return ok({
-    known_cost: knownCost,
+    known_cost: raw["known_cost"] as string,
+    grid_cost: raw["grid_cost"] as string,
+    pv_cost: raw["pv_cost"] as string,
+    battery_cost: raw["battery_cost"] as string,
     coverage_seconds: coverage,
     hourly: rows,
   });
 }
 
-function parseTenants(
-  raw: unknown,
-): Result<Readonly<Record<string, TenantSection>>> {
+function parseTenants(raw: unknown): Result<Readonly<Record<string, TenantSection>>> {
   if (!isPlainObject(raw)) {
     return err("tenants must be an object keyed by slug");
   }
@@ -189,9 +170,7 @@ function structuralParse(raw: unknown): Result<ReportEnvelope> {
   }
   const schemaVersion = raw["schema_version"];
   if (schemaVersion !== REPORT_SCHEMA_VERSION) {
-    return err(
-      `schema_version must equal ${REPORT_SCHEMA_VERSION}, got ${String(schemaVersion)}`,
-    );
+    return err(`schema_version must equal ${REPORT_SCHEMA_VERSION}, got ${String(schemaVersion)}`);
   }
   const revision = raw["revision"];
   if (typeof revision !== "string" || !REVISION_HEX_RE.test(revision)) {
@@ -213,17 +192,21 @@ function structuralParse(raw: unknown): Result<ReportEnvelope> {
   if (!periodResult.ok) {
     return err(periodResult.reason);
   }
-  const coverage = raw["coverage_seconds"];
-  if (!isNonNegativeInteger(coverage)) {
-    return err("coverage_seconds must be a non-negative integer");
+  for (const field of [
+    "coverage_seconds",
+    "transition_excluded_seconds",
+    "unavailable_seconds",
+  ] as const) {
+    if (!isNonNegativeInteger(raw[field])) {
+      return err(`${field} must be a non-negative integer`);
+    }
   }
-  const transitionExcluded = raw["transition_excluded_seconds"];
-  if (!isNonNegativeInteger(transitionExcluded)) {
-    return err("transition_excluded_seconds must be a non-negative integer");
+  if (!isNonNegativeDecimalString(raw["unpriced_battery_kwh"])) {
+    return err("unpriced_battery_kwh must be a non-negative decimal string");
   }
-  const unpricedBattery = raw["unpriced_battery_kwh"];
-  if (!isNonNegativeFiniteNumber(unpricedBattery)) {
-    return err("unpriced_battery_kwh must be a non-negative finite number");
+  const reconciliation = raw["reconciliation_kwh"];
+  if (reconciliation !== null && !isSignedDecimalString(reconciliation)) {
+    return err("reconciliation_kwh must be null or a decimal string");
   }
   const tenantsResult = parseTenants(raw["tenants"]);
   if (!tenantsResult.ok) {
@@ -236,9 +219,11 @@ function structuralParse(raw: unknown): Result<ReportEnvelope> {
     timezone,
     currency,
     period: periodResult.value,
-    coverage_seconds: coverage,
-    transition_excluded_seconds: transitionExcluded,
-    unpriced_battery_kwh: unpricedBattery,
+    coverage_seconds: raw["coverage_seconds"] as number,
+    transition_excluded_seconds: raw["transition_excluded_seconds"] as number,
+    unavailable_seconds: raw["unavailable_seconds"] as number,
+    unpriced_battery_kwh: raw["unpriced_battery_kwh"] as string,
+    reconciliation_kwh: reconciliation as string | null,
     tenants: tenantsResult.value,
   });
 }
@@ -248,7 +233,7 @@ function structuralParse(raw: unknown): Result<ReportEnvelope> {
  * field is stripped exactly as the Python side does.
  */
 export function canonicalBody(envelope: ReportEnvelope): CanonicalValue {
-  const clone: Record<string, CanonicalValue> = {
+  return {
     schema_version: envelope.schema_version,
     finalized_as_of: envelope.finalized_as_of,
     timezone: envelope.timezone,
@@ -261,33 +246,36 @@ export function canonicalBody(envelope: ReportEnvelope): CanonicalValue {
     },
     coverage_seconds: envelope.coverage_seconds,
     transition_excluded_seconds: envelope.transition_excluded_seconds,
+    unavailable_seconds: envelope.unavailable_seconds,
     unpriced_battery_kwh: envelope.unpriced_battery_kwh,
+    reconciliation_kwh: envelope.reconciliation_kwh,
     tenants: Object.fromEntries(
       Object.entries(envelope.tenants).map(([slug, section]) => [
         slug,
         {
           known_cost: section.known_cost,
+          grid_cost: section.grid_cost,
+          pv_cost: section.pv_cost,
+          battery_cost: section.battery_cost,
           coverage_seconds: section.coverage_seconds,
           hourly: section.hourly.map((row) => ({
             hour_local: row.hour_local,
             cost: row.cost,
+            grid_cost: row.grid_cost,
+            pv_cost: row.pv_cost,
+            battery_cost: row.battery_cost,
             coverage_seconds: row.coverage_seconds,
-            source: row.source,
           })),
         },
       ]),
     ),
   };
-  return clone;
 }
 
 /**
- * Public entry point. Consumes an untyped value (for example
- * `await fetch(url).then((r) => r.json())`) and returns a `Result`.
- *
- * When `ok: false`, the caller MUST render the fail-closed "unavailable"
- * state; the returned `reason` is intended for developer diagnostics only
- * and MUST NOT be shown to end users verbatim.
+ * Public entry point. Consumes an untyped value (for example a service
+ * response) and returns a `Result`. When `ok: false`, the caller MUST render
+ * the fail-closed "unavailable" state.
  */
 export async function parseReport(input: unknown): Promise<Result<ReportEnvelope>> {
   if (input instanceof Error) {
@@ -315,9 +303,7 @@ export async function parseReport(input: unknown): Promise<Result<ReportEnvelope
   }
   const computed = await sha256Hex(canonical);
   if (computed !== envelope.revision) {
-    return err(
-      `revision mismatch: expected ${envelope.revision}, computed ${computed}`,
-    );
+    return err(`revision mismatch: expected ${envelope.revision}, computed ${computed}`);
   }
   return ok(envelope);
 }
@@ -327,20 +313,10 @@ function containsNonFiniteNumber(value: unknown): boolean {
     return !Number.isFinite(value);
   }
   if (Array.isArray(value)) {
-    for (const item of value) {
-      if (containsNonFiniteNumber(item)) {
-        return true;
-      }
-    }
-    return false;
+    return value.some((item) => containsNonFiniteNumber(item));
   }
   if (isPlainObject(value)) {
-    for (const key of Object.keys(value)) {
-      if (containsNonFiniteNumber(value[key])) {
-        return true;
-      }
-    }
-    return false;
+    return Object.keys(value).some((key) => containsNonFiniteNumber(value[key]));
   }
   return false;
 }

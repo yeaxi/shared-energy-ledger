@@ -1,6 +1,6 @@
 {
-  "revision": "245c9e91f0913ae483f2cc193c034110378586ebc5a224cf45eda28fa744342c",
-  "schema_version": 2,
+  "revision": "350f70bebcd69c97c0f18b263fd1b18bbda315ad4ea3762874f58b3eb82f0fee",
+  "schema_version": 3,
   "finalized_as_of": "2026-06-16T00:00:05Z",
   "timezone": "Europe/Berlin",
   "currency": "EUR",
@@ -12,305 +12,409 @@
   },
   "coverage_seconds": 86400,
   "transition_excluded_seconds": 0,
-  "unpriced_battery_kwh": 0,
+  "unavailable_seconds": 0,
+  "unpriced_battery_kwh": "0.000000",
+  "reconciliation_kwh": null,
   "tenants": {
     "tenant-a": {
-      "known_cost": "3.60",
+      "known_cost": "2.40",
+      "grid_cost": "2.40",
+      "pv_cost": "0.00",
+      "battery_cost": "0.00",
       "coverage_seconds": 86400,
       "hourly": [
         {
           "hour_local": "2026-06-15T00:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T01:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T02:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T03:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T04:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T05:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T06:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T07:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T08:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T09:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T10:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T11:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T12:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T13:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T14:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T15:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T16:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T17:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T18:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T19:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T20:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T21:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T22:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T23:00:00+02:00",
-          "cost": "0.15",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.10",
+          "grid_cost": "0.10",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         }
       ]
     },
     "tenant-b": {
-      "known_cost": "5.28",
+      "known_cost": "1.20",
+      "grid_cost": "1.20",
+      "pv_cost": "0.00",
+      "battery_cost": "0.00",
       "coverage_seconds": 86400,
       "hourly": [
         {
           "hour_local": "2026-06-15T00:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T01:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T02:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T03:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T04:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T05:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T06:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T07:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T08:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T09:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T10:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T11:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T12:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T13:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T14:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T15:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T16:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T17:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T18:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T19:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T20:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T21:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T22:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "derived"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         },
         {
           "hour_local": "2026-06-15T23:00:00+02:00",
-          "cost": "0.22",
-          "coverage_seconds": 3600,
-          "source": "direct"
+          "cost": "0.05",
+          "grid_cost": "0.05",
+          "pv_cost": "0.00",
+          "battery_cost": "0.00",
+          "coverage_seconds": 3600
         }
       ]
     }

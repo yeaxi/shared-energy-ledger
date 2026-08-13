@@ -9,10 +9,8 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
-    "build": "npm run build:period-summary && npm run build:history-report && npm run build:history-bridge",
-    "build:period-summary": "CARD_ENTRY=shared-energy-ledger-period-summary vite build",
-    "build:history-report": "CARD_ENTRY=shared-energy-ledger-history-report CARD_KEEP_DIST=1 vite build",
-    "build:history-bridge": "CARD_ENTRY=shared-energy-ledger-history-bridge CARD_KEEP_DIST=1 vite build"
+    "build": "npm run build:report",
+    "build:report": "CARD_ENTRY=shared-energy-ledger-report vite build"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

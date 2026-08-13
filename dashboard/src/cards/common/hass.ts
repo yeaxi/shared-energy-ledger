@@ -22,10 +22,22 @@ export interface HassEntityState {
   readonly last_changed?: string;
 }
 
+export interface ServiceCallResponse {
+  readonly response?: unknown;
+}
+
 export interface HassLike {
   readonly states: Readonly<Record<string, HassEntityState>>;
   readonly locale?: { readonly language?: string };
   readonly language?: string;
+  readonly callService?: (
+    domain: string,
+    service: string,
+    serviceData?: Readonly<Record<string, unknown>>,
+    target?: unknown,
+    notifyOnError?: boolean,
+    returnResponse?: boolean,
+  ) => Promise<ServiceCallResponse>;
 }
 
 export const INVALID_STATES = new Set(["", "unknown", "unavailable", "none"]);
