@@ -8,14 +8,11 @@ element is published as an IIFE bundle:
 |---|---|
 | `shared-energy-ledger-report` | Per-tenant cost for a period, split by grid, PV, and battery. |
 
-The card calls the `shared_energy_ledger.rebuild_period_report` service over the
-Home Assistant connection and renders the response. There is no static report
-file to host and no cross-origin fetch.
-
-The card contract (fail-closed rendering, `unavailable` never treated as `0`,
-revision-hash verification, monotonic request-id guard) is enforced in
-`src/report/` and covered by `tests/report.test.ts`. See `../REQUIREMENTS.md`
-invariants **I1**, **I7**, **I8**, and **I10**.
+The card calls `shared_energy_ledger.rebuild_period_report` over the Home
+Assistant connection and renders the response. Fail closed: malformed schema,
+bad revision hash, or non-finite numbers render `unavailable`; an older async
+response never overwrites a newer request. Enforced in `src/report/` and
+covered by `tests/report.test.ts` (I1, I7, I8, I10).
 
 ## Build
 
@@ -48,17 +45,6 @@ GitHub release, or build it from source.
    ```
 
 The card exposes a static `getStubConfig()` for the Home Assistant card picker.
-
-## Fail-closed rendering
-
-- A service response whose `schema_version` is not `3`, whose `revision` does
-  not match the SHA-256 of the canonical body, or which contains a `NaN` or
-  `Infinity` renders as `unavailable`.
-- An older asynchronous response never overwrites a newer request; the card
-  keys on a local monotonic request id.
-
-See `.cursor/skills/energy-accounting-invariants/SKILL.md` for the full
-contract.
 
 ## Security posture
 

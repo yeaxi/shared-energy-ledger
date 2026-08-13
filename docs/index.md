@@ -22,12 +22,10 @@ Shared Energy Ledger never invents a zero.
   optionally one battery, and who provide the per-tenant meters through
   Home Assistant entities.
 - Home Assistant users who want a read-only accounting layer with
-  deterministic reports, without any side-effecting control of hardware.
+  deterministic reports from the meters and price sensors they select.
 
 ## What Shared Energy Ledger is not
 
-- It is not a physical controller. It does not call `turn_on`,
-  `turn_off`, `toggle`, or any inverter, ESS, or battery-mode service.
 - It is not a substitute for a certified sub-metering solution.
   Allocation between tenants is an accounting policy on top of the
   meters the operator supplies.
@@ -42,7 +40,7 @@ Shared Energy Ledger never invents a zero.
   config-flow and options-flow field.
 - [Allocation policies](allocation-policies.md) explains the three
   allocation policies with generic examples.
-- [Pricing and currency](tariffs-and-currency.md) covers the grid and PV
+- [Pricing and currency](pricing-and-currency.md) covers the grid and PV
   price sensors and the currency accounting-epoch rule.
 - [Battery ledger](battery-ledger.md) explains the weighted-cost ledger
   and how to seed initial priced stock.

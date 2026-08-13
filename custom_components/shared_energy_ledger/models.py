@@ -37,20 +37,19 @@ class SharedLoad:
     """A load physically upstream of a neighbor's feeder that is financially
     owned by a specific tenant.
 
+    ``load_id`` is a stable identifier assigned when the load is created; it
+    anchors accounting keys so edits to label or host never reset cost history.
     ``host_slug`` names the tenant whose direct meter physically includes this
     load. When ``host_slug`` is set and differs from the owning tenant, the
     coordinator subtracts the load from the host's accounting energy
     (``borrowed_on_meter``) and adds it to the owner's (``owned_not_on_meter``).
     When ``host_slug`` is ``None`` the load is measured on a dedicated meter
     that is not part of any tenant's direct meter.
-
-    Generic use cases include shelters, workshops, staircases, storage rooms,
-    heating accumulators, and EV chargers.
     """
 
     label: str
+    load_id: str
     energy_entity: str | None = None
-    power_entity: str | None = None
     host_slug: str | None = None
 
 
@@ -69,7 +68,6 @@ class Tenant:
     name: str
     allocation_policy: AllocationPolicy
     energy_entity: str | None = None
-    power_entity: str | None = None
     shared_loads: tuple[SharedLoad, ...] = ()
 
 
@@ -83,8 +81,6 @@ class GridConfig:
 
     import_energy_entity: str
     import_price_entity: str
-    export_energy_entity: str | None = None
-    power_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +97,6 @@ class PvConfig:
     energy_entity: str
     price_entity: str | None = None
     zero_cost: bool = False
-    power_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +125,6 @@ class WholeBuildingConfig:
     """
 
     energy_entity: str | None = None
-    power_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

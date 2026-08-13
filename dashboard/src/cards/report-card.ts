@@ -1,15 +1,10 @@
 /**
  * `shared-energy-ledger-report` custom card.
  *
- * Answers "who owes how much" for a period by calling the integration's
- * `shared_energy_ledger.rebuild_period_report` service directly over the Home
- * Assistant connection and rendering the per-tenant, per-source result. There
- * is no static report file and no cross-origin fetch: the card asks the
- * integration and the integration recomputes from the meters.
- *
- * Fail-closed (invariants I1, I8, I10): the response is validated with
- * `parseReport`; anything malformed renders "unavailable". A local monotonic
- * request id guards against a slow earlier response overwriting a newer one.
+ * Calls `shared_energy_ledger.rebuild_period_report` and renders the
+ * per-tenant, per-source result. Fail-closed: `parseReport` rejects anything
+ * malformed (I1, I10). A local monotonic request id guards against a slow
+ * earlier response overwriting a newer one (I8).
  */
 
 import { escapeHtml } from "./common/escape";

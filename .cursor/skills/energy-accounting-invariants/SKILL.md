@@ -1,6 +1,6 @@
 ---
 name: energy-accounting-invariants
-description: Enforce the fail-closed accounting invariants of the shared_energy_ledger integration: no silent zero, closed allocation enum, unit metadata gates, residual alignment window, ledger boundary-pair coherence, DST-safe reports, and transition-excluded reconciliation. Use whenever ledger.py, allocation.py, tariff.py, report.py, or their tests are touched.
+description: Enforce the fail-closed accounting invariants of the shared_energy_ledger integration: no silent zero, closed allocation enum, unit metadata gates, residual alignment window, ledger boundary-pair coherence, DST-safe reports, and transition-excluded reconciliation. Use whenever ledger.py, allocation.py, interval.py, report.py, or their tests are touched.
 ---
 
 # Energy accounting invariants
@@ -16,11 +16,11 @@ Invoke this skill when a PR touches any of:
 
 - `custom_components/shared_energy_ledger/ledger.py`
 - `custom_components/shared_energy_ledger/allocation.py`
-- `custom_components/shared_energy_ledger/tariff.py`
+- `custom_components/shared_energy_ledger/interval.py`
 - `custom_components/shared_energy_ledger/report.py`
 - `custom_components/shared_energy_ledger/coordinator.py`
 - `custom_components/shared_energy_ledger/config_flow.py`
-- `tests/unit/test_ledger.py`, `test_allocation.py`, `test_tariff.py`,
+- `tests/unit/test_ledger.py`, `test_allocation.py`, `test_interval.py`,
   `test_report.py`
 
 ## Preconditions
@@ -61,7 +61,7 @@ as `typing.Literal` or `enum.StrEnum`. Any other value returns `unavailable`.
 `residual_of_total_minus_others` is accepted only when:
 
 - total, all sibling loads, and shared loads are finite and non-negative,
-- all inputs share a unit class (all `W` or all `kWh`),
+- all inputs share a unit class (all `kWh`),
 - all inputs are time-aligned within a configurable skew window (default
   180 s),
 - and the computed residual is non-negative.
@@ -120,7 +120,7 @@ the card contract.
 - Any change that strengthens an invariant or adds new invariants.
 - Changes that swap one fail-closed check for a semantically equivalent
   fail-closed check.
-- Configuration knobs (freshness windows, tariff schedules) that stay within
+- Configuration knobs (freshness windows, price sensors) that stay within
   bounded, documented ranges.
 
 ## Forbidden patterns
@@ -139,7 +139,7 @@ Run all contract tests plus the invariant lints:
 
 ```bash
 python -m pytest tests/unit/test_ledger.py tests/unit/test_allocation.py \
-                 tests/unit/test_tariff.py tests/unit/test_report.py -q
+                 tests/unit/test_interval.py tests/unit/test_report.py -q
 python -m ruff check custom_components/shared_energy_ledger
 python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 ```

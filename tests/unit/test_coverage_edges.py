@@ -33,8 +33,8 @@ from custom_components.shared_energy_ledger.report import HourlyRow, ReportError
 from custom_components.shared_energy_ledger.samples import (
     as_utc,
     validate_energy_sample,
-    validate_power_sample,
     validate_price_sample,
+    validate_signed_power_sample,
 )
 from tests.unit.test_report import _inputs
 
@@ -108,7 +108,6 @@ def test_shared_load_round_trip_in_configio() -> None:
                     {
                         "label": "staircase",
                         "energy_entity": "sensor.stair_e",
-                        "power_entity": "sensor.stair_p",
                         "host_slug": "flat-2",
                     }
                 ],
@@ -124,7 +123,13 @@ def test_shared_load_round_trip_in_configio() -> None:
     }
     config = config_from_entry(entry, {})
     assert config.tenants[0].shared_loads[0].host_slug == "flat-2"
+    assert config.tenants[0].shared_loads[0].load_id
     dumped = config_to_entry(config)
+    assert "power_entity" not in dumped["tenants"][0]
+    assert "power_entity" not in dumped["tenants"][0]["shared_loads"][0]
+    assert "export_energy_entity" not in dumped["grid"]
+    assert dumped["battery"]["power_entity"] == "sensor.batt_p"
+    assert dumped["tenants"][0]["shared_loads"][0]["load_id"]
     reloaded = config_from_entry(dumped, {})
     assert reloaded.tenants[0].shared_loads[0].energy_entity == "sensor.stair_e"
     assert reloaded.battery is not None
@@ -162,7 +167,7 @@ def test_configio_rejects_duplicate_tenant_ids() -> None:
 def test_samples_reject_missing_timestamp_and_non_numeric() -> None:
     now = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
     assert validate_energy_sample("1.0", "kWh", None, now, 1800) is None
-    assert validate_power_sample("1.0", "W", None, now, 180) is None
+    assert validate_signed_power_sample("1.0", "W", None, now, 180) is None
     assert validate_price_sample("0.1", "EUR/kWh", None, now, 3600, "EUR/kWh") is None
     assert validate_price_sample(float("nan"), "EUR/kWh", now - timedelta(seconds=1), now, 3600, "EUR/kWh") is None
 

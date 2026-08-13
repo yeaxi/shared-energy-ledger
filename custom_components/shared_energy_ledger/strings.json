@@ -29,14 +29,12 @@
         "data": {
           "energy_entity": "PV aggregate energy (kWh)",
           "zero_cost": "Price self-consumed PV at zero cost",
-          "price_entity": "PV price sensor (currency/kWh)",
-          "power_entity": "PV aggregate power (optional)"
+          "price_entity": "PV price sensor (currency/kWh)"
         },
         "data_description": {
           "energy_entity": "Cumulative total-increasing kWh counter of PV generation.",
           "zero_cost": "When enabled, self-consumed PV energy is priced at zero and no PV price sensor is needed.",
-          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in currency/kWh (for example EUR/kWh).",
-          "power_entity": "Optional; used for freshness and dashboards only."
+          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in currency/kWh (for example EUR/kWh)."
         }
       },
       "battery": {
@@ -59,12 +57,10 @@
       "whole_building": {
         "title": "Whole-building boundary (optional)",
         "data": {
-          "energy_entity": "Whole-building energy (kWh)",
-          "power_entity": "Whole-building power (optional)"
+          "energy_entity": "Whole-building energy (kWh)"
         },
         "data_description": {
-          "energy_entity": "Cumulative kWh boundary meter enabling the residual_of_total_minus_others allocation policy.",
-          "power_entity": "Optional; reported alongside the energy boundary."
+          "energy_entity": "Cumulative kWh boundary meter enabling the residual_of_total_minus_others allocation policy."
         }
       },
       "tenant": {
@@ -75,15 +71,13 @@
           "name": "Display name",
           "allocation_policy": "Allocation policy",
           "energy_entity": "Direct energy meter (optional)",
-          "power_entity": "Direct power meter (optional)",
           "add_another": "Add another tenant after this one"
         },
         "data_description": {
           "slug": "Lowercase kebab-case label, e.g. flat-3. Editable later without breaking entities.",
           "name": "Human-visible name shown on the dashboard.",
           "allocation_policy": "How this tenant's accounting energy is computed.",
-          "energy_entity": "Cumulative energy sensor (kWh). Required for the direct-meter and proportional policies.",
-          "power_entity": "Optional instantaneous power sensor (W), used for freshness only."
+          "energy_entity": "Cumulative energy sensor (kWh). Required for the direct-meter and proportional policies."
         }
       }
     },
@@ -106,20 +100,25 @@
     "step": {
       "init": {
         "title": "Shared Energy Ledger options",
-        "description": "Add, edit, remove, or reorder tenants, attach shared loads, or adjust freshness windows.",
+        "description": "Add, edit, remove, or reorder tenants; manage shared loads; or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
           "edit_tenant": "Edit a tenant",
           "remove_tenant": "Remove a tenant",
           "reorder": "Reorder tenants",
           "shared_load": "Add a shared load",
-          "freshness": "Freshness windows"
+          "freshness": "Freshness windows",
+          "edit_shared_load": "Edit a shared load",
+          "remove_shared_load": "Remove a shared load",
+          "reassign_owner": "Reassign shared-load owner"
         }
       },
       "shared_load": {
         "title": "Shared load owner",
         "description": "Pick the tenant that financially owns the shared load.",
-        "data": {"owner": "Owning tenant"}
+        "data": {
+          "owner": "Owning tenant"
+        }
       },
       "shared_load_details": {
         "title": "Shared load for {owner}",
@@ -127,13 +126,11 @@
         "data": {
           "label": "Label",
           "energy_entity": "Shared load energy meter (kWh)",
-          "power_entity": "Shared load power meter (optional)",
           "host_slug": "Host tenant meter (optional)"
         },
         "data_description": {
           "label": "Short name shown in diagnostics and reports.",
           "energy_entity": "Cumulative kWh counter for this shared load.",
-          "power_entity": "Optional instantaneous power sensor.",
           "host_slug": "Tenant whose direct meter physically includes this load. Leave empty when the load has its own dedicated meter."
         }
       },
@@ -144,21 +141,21 @@
           "slug": "Slug",
           "name": "Display name",
           "allocation_policy": "Allocation policy",
-          "energy_entity": "Direct energy meter (optional)",
-          "power_entity": "Direct power meter (optional)"
+          "energy_entity": "Direct energy meter (optional)"
         },
         "data_description": {
           "slug": "Lowercase kebab-case identifier, e.g. flat-3.",
           "name": "Human-visible name shown on the dashboard.",
           "allocation_policy": "How this tenant's accounting energy is computed.",
-          "energy_entity": "Cumulative energy sensor (kWh).",
-          "power_entity": "Instantaneous power sensor (W)."
+          "energy_entity": "Cumulative energy sensor (kWh)."
         }
       },
       "edit_tenant": {
         "title": "Edit a tenant",
         "description": "Pick a tenant to edit.",
-        "data": {"slug": "Tenant"}
+        "data": {
+          "slug": "Tenant"
+        }
       },
       "edit_tenant_details": {
         "title": "Edit tenant {slug}",
@@ -166,19 +163,23 @@
         "data": {
           "name": "Display name",
           "allocation_policy": "Allocation policy",
-          "energy_entity": "Direct energy meter (optional)",
-          "power_entity": "Direct power meter (optional)"
+          "energy_entity": "Direct energy meter (optional)"
         }
       },
       "remove_tenant": {
         "title": "Remove a tenant",
-        "description": "Pick a tenant to remove. At least two tenants must remain configured.",
-        "data": {"slug": "Tenant"}
+        "description": "Pick a tenant to remove. At least two tenants must remain. Confirm before the tenant and its owned shared loads are deleted.",
+        "data": {
+          "slug": "Tenant",
+          "confirm": "I understand this removes the tenant and its owned shared loads"
+        }
       },
       "reorder": {
         "title": "Reorder tenants",
         "description": "Select every tenant in the desired display order.",
-        "data": {"order": "Tenant order"}
+        "data": {
+          "order": "Tenant order"
+        }
       },
       "freshness": {
         "title": "Freshness windows",
@@ -190,17 +191,66 @@
           "battery_ledger_max_age_s": "Battery ledger max age (s)",
           "alignment_skew_s": "Alignment skew (s)"
         }
+      },
+      "edit_shared_load": {
+        "title": "Edit a shared load",
+        "description": "Pick a shared load to edit. The load id stays stable so accounting anchors are preserved.",
+        "data": {
+          "load_id": "Shared load"
+        }
+      },
+      "edit_shared_load_details": {
+        "title": "Edit shared load {load_id}",
+        "description": "Update the label, meter, or host for this load owned by {owner}. The load id stays stable.",
+        "data": {
+          "label": "Label",
+          "energy_entity": "Shared load energy meter (kWh)",
+          "host_slug": "Host tenant meter (optional)"
+        },
+        "data_description": {
+          "label": "Short name shown in diagnostics and reports.",
+          "energy_entity": "Cumulative kWh counter for this shared load.",
+          "host_slug": "Tenant whose direct meter physically includes this load. Leave empty when the load has its own dedicated meter."
+        }
+      },
+      "remove_shared_load": {
+        "title": "Remove a shared load",
+        "description": "Pick a shared load to remove. Confirm before it is deleted from the owning tenant.",
+        "data": {
+          "load_id": "Shared load",
+          "confirm": "I understand this removes the shared load"
+        }
+      },
+      "reassign_owner": {
+        "title": "Reassign shared-load owner",
+        "description": "Pick a shared load whose financial owner should change. The load id stays stable.",
+        "data": {
+          "load_id": "Shared load"
+        }
+      },
+      "reassign_owner_details": {
+        "title": "Reassign owner for {load_id}",
+        "description": "Choose the new owning tenant for this load (currently owned by {owner}).",
+        "data": {
+          "owner": "New owning tenant"
+        }
       }
     },
     "error": {
       "invalid_slug": "Slugs must be lowercase, ASCII, and kebab-case.",
-      "duplicate_slug": "That slug is already in use."
+      "duplicate_slug": "That slug is already in use.",
+      "invalid_host": "Host tenant must be one of the configured tenants.",
+      "confirm_required": "Tick the confirmation box to continue with this destructive action.",
+      "unknown_tenant": "That tenant is not configured."
     },
     "abort": {
       "no_tenants": "There are no tenants to edit.",
       "unknown_tenant": "That tenant no longer exists; the action was aborted.",
       "minimum_tenants": "At least two tenants must remain; add a tenant before removing one.",
-      "reorder_incomplete": "The reorder must include every tenant exactly once."
+      "reorder_incomplete": "The reorder must include every tenant exactly once.",
+      "no_shared_loads": "There are no shared loads to edit or remove.",
+      "unknown_shared_load": "That shared load no longer exists; the action was aborted.",
+      "tenant_is_shared_load_host": "Another tenant's shared load still lists this tenant as its host. Reassign or clear that host first."
     }
   },
   "selector": {
@@ -214,22 +264,50 @@
   },
   "entity": {
     "binary_sensor": {
-      "grid_data_fresh": {"name": "Grid data fresh"},
-      "pv_data_fresh": {"name": "PV data fresh"},
-      "battery_data_fresh": {"name": "Battery data fresh"},
-      "tenant_data_fresh": {"name": "Tenant data fresh"}
+      "grid_data_fresh": {
+        "name": "Grid data fresh"
+      },
+      "pv_data_fresh": {
+        "name": "PV data fresh"
+      },
+      "battery_data_fresh": {
+        "name": "Battery data fresh"
+      },
+      "tenant_data_fresh": {
+        "name": "Tenant data fresh"
+      }
     },
     "sensor": {
-      "tenant_share": {"name": "Share"},
-      "tenant_total_cost": {"name": "Total cost"},
-      "tenant_grid_cost": {"name": "Grid cost"},
-      "tenant_pv_cost": {"name": "PV cost"},
-      "tenant_battery_cost": {"name": "Battery cost"},
-      "grid_import_price": {"name": "Grid import price"},
-      "pv_price": {"name": "PV price"},
-      "grid_reconciliation": {"name": "Grid reconciliation"},
-      "battery_stock_kwh": {"name": "Battery priced stock"},
-      "battery_weighted_cost": {"name": "Battery weighted cost"},
+      "tenant_share": {
+        "name": "Share"
+      },
+      "tenant_total_cost": {
+        "name": "Total cost"
+      },
+      "tenant_grid_cost": {
+        "name": "Grid cost"
+      },
+      "tenant_pv_cost": {
+        "name": "PV cost"
+      },
+      "tenant_battery_cost": {
+        "name": "Battery cost"
+      },
+      "grid_import_price": {
+        "name": "Grid import price"
+      },
+      "pv_price": {
+        "name": "PV price"
+      },
+      "grid_reconciliation": {
+        "name": "Grid reconciliation"
+      },
+      "battery_stock_kwh": {
+        "name": "Battery priced stock"
+      },
+      "battery_weighted_cost": {
+        "name": "Battery weighted cost"
+      },
       "battery_ledger_status": {
         "name": "Battery ledger status",
         "state": {
@@ -239,7 +317,9 @@
           "unavailable": "Unavailable"
         }
       },
-      "unpriced_battery_kwh": {"name": "Unpriced battery energy"}
+      "unpriced_battery_kwh": {
+        "name": "Unpriced battery energy"
+      }
     }
   },
   "services": {
@@ -247,17 +327,32 @@
       "name": "Rebuild period report",
       "description": "Rebuild a deterministic Recorder-based JSON report for the given period, recomputed from meter and price history.",
       "fields": {
-        "start": {"name": "Start (local)", "description": "Local start of the reporting period."},
-        "end": {"name": "End (local)", "description": "Local end of the reporting period."},
-        "tenant": {"name": "Tenant (optional)", "description": "Restrict the report to a single tenant slug."}
+        "start": {
+          "name": "Start (local)",
+          "description": "Local start of the reporting period."
+        },
+        "end": {
+          "name": "End (local)",
+          "description": "Local end of the reporting period."
+        },
+        "tenant": {
+          "name": "Tenant (optional)",
+          "description": "Restrict the report to a single tenant slug."
+        }
       }
     },
     "reset_battery_ledger": {
       "name": "Reset battery ledger",
       "description": "Reset the priced battery stock to the given values. Requires admin permissions.",
       "fields": {
-        "stock_kwh": {"name": "Stock (kWh)", "description": "New priced stock in kWh."},
-        "stock_cost": {"name": "Stock cost", "description": "Cost of the new priced stock in the configured currency."}
+        "stock_kwh": {
+          "name": "Stock (kWh)",
+          "description": "New priced stock in kWh."
+        },
+        "stock_cost": {
+          "name": "Stock cost",
+          "description": "Cost of the new priced stock in the configured currency."
+        }
       }
     }
   },

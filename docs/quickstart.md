@@ -3,8 +3,7 @@
 This page walks through installing Shared Energy Ledger from
 [HACS](https://www.hacs.xyz/) as a custom repository and running the
 first-time config flow. It uses only generic examples: two tenants
-called `flat-1` and `flat-2`, a `EUR` currency, and a simple day/night
-tariff.
+called `flat-1` and `flat-2`, `EUR` currency, and grid/PV price sensors.
 
 ## Prerequisites
 
@@ -15,10 +14,9 @@ tariff.
     - A grid **import** energy sensor (`kWh`, monotonic
       total-increasing).
     - One direct energy sensor (`kWh`) per tenant, or a
-      whole-building AC-load boundary sensor (`W`).
+      whole-building AC-load boundary sensor (`kWh`).
 - Optional entities you may also connect:
-    - A grid export energy sensor (`kWh`) and a grid power sensor (`W`).
-    - PV aggregate power (`W`) and/or energy (`kWh`) sensors.
+    - PV aggregate energy (`kWh`) sensor.
     - Battery charge/discharge counters (`kWh`, monotonic) and a signed
       DC power sensor (`W`, negative on discharge).
 
@@ -58,7 +56,7 @@ and no vendor-specific ID.
   or `GBP`).
 - The chosen code becomes the unit of measurement for every monetary
   sensor and is written into the accounting-epoch metadata. See
-  [Tariffs and currency](tariffs-and-currency.md).
+  [Pricing and currency](pricing-and-currency.md).
 
 ### Step 1b: Grid (same screen)
 
@@ -67,7 +65,7 @@ and no vendor-specific ID.
 - **Grid import price** — required. A sensor reporting the price per kWh
   in `<currency>/kWh` (for example `EUR/kWh`). Model flat, day/night, or
   dynamic pricing behind this sensor; see
-  [Pricing and currency](tariffs-and-currency.md).
+  [Pricing and currency](pricing-and-currency.md).
 
 ### Step 2: Optional sections
 
@@ -79,7 +77,6 @@ and no vendor-specific ID.
 - **PV aggregate energy** (`kWh`), required for this section.
 - Either a **PV price** sensor (`<currency>/kWh`) or tick **"Price
   self-consumed PV at zero cost"**.
-- Optional **PV aggregate power** (`W`) for freshness only.
 
 ### Step 4: Battery (optional)
 
@@ -94,8 +91,8 @@ and no vendor-specific ID.
 
 ### Step 5: Whole-building boundary (optional)
 
-- **Whole-building power** (`W`) or **energy** (`kWh`). This is what
-  enables the `residual_of_total_minus_others` allocation policy.
+- **Whole-building energy** (`kWh`). This is what enables the
+  `residual_of_total_minus_others` allocation policy.
 
 ### Step 6: Tenants
 
@@ -112,7 +109,6 @@ ticked until every tenant is entered. A minimal generic configuration:
 - **Display name** — free text, translatable.
 - **Direct energy sensor** (`kWh`) — required for the `direct_meter`
   and `proportional_by_direct_meters` policies.
-- **Direct power sensor** (`W`) — optional; freshness only.
 - **Allocation policy** — one of `direct_meter`,
   `residual_of_total_minus_others`, or `proportional_by_direct_meters`.
   See [Allocation policies](allocation-policies.md).

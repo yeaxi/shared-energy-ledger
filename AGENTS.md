@@ -11,9 +11,8 @@ scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/
 The public specification is [`REQUIREMENTS.md`](REQUIREMENTS.md). It is the
 source of truth for scope, non-functional invariants, and the migration path.
 
-The integration is a **read-only accounting layer**. It never controls
-physical devices, never calls side-effecting Home Assistant services, and
-never mutates recorder state.
+The integration is a **read-only accounting layer**. It never calls
+side-effecting Home Assistant services and never mutates recorder state.
 
 ## Canonical folders
 

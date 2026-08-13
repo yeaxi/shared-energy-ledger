@@ -14,6 +14,7 @@ requirements I1, I2, and I5:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from math import isfinite
 from typing import Final
@@ -46,32 +47,6 @@ def _age_seconds(updated: datetime | None, now: datetime) -> float | None:
     if age < 0:
         return None
     return age
-
-
-def validate_power_sample(
-    state: object,
-    unit: str | None,
-    updated: datetime | None,
-    now: datetime,
-    max_age_seconds: float,
-) -> float | None:
-    """Return the sample as a finite non-negative Watt value or ``None``.
-
-    Invariant coverage:
-
-    * I5: ``unit`` must equal ``"W"`` exactly. ``kW`` is rejected.
-    * I2: age(``updated``, ``now``) must be within ``max_age_seconds``.
-    * I1: any non-numeric or negative or non-finite state returns ``None``.
-    """
-    if unit != UNIT_POWER_W:
-        return None
-    value = _coerce_float(state)
-    if value is None or value < 0 or value > MAX_POWER_W:
-        return None
-    age = _age_seconds(updated, now)
-    if age is None or age > max_age_seconds:
-        return None
-    return value
 
 
 def validate_energy_sample(
@@ -138,8 +113,8 @@ def validate_signed_power_sample(
 ) -> float | None:
     """Return a signed power sample (e.g. battery DC power, negative on discharge).
 
-    Behaves like :func:`validate_power_sample` but permits negative values
-    while still rejecting non-finite, wrong-unit, or stale samples.
+    Rejects non-finite, wrong-unit, or stale samples. Negative values are
+    permitted (discharge); magnitude must stay within ``MAX_POWER_W``.
     """
     if unit != UNIT_POWER_W:
         return None
@@ -159,11 +134,30 @@ def as_utc(when: datetime) -> datetime:
     return when.astimezone(UTC)
 
 
+def samples_are_aligned(
+    updated_iterable: Iterable[datetime | None], skew_s: float
+) -> bool:
+    """Return True when every timestamp is present and within ``skew_s``.
+
+    Used at coordinator and report boundaries for residual inputs (I4). A
+    missing timestamp fails closed. An empty iterable is treated as aligned.
+    """
+    stamps: list[datetime] = []
+    for updated in updated_iterable:
+        if updated is None:
+            return False
+        stamps.append(updated)
+    if len(stamps) < 2:
+        return True
+    epoch = [stamp.timestamp() for stamp in stamps]
+    return (max(epoch) - min(epoch)) <= skew_s
+
+
 __all__ = [
     "MAX_POWER_W",
     "as_utc",
+    "samples_are_aligned",
     "validate_energy_sample",
-    "validate_power_sample",
     "validate_price_sample",
     "validate_signed_power_sample",
 ]

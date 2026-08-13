@@ -1,13 +1,10 @@
 /**
- * Pure `parseReport` function used by the report card.
+ * Pure `parseReport` for the report card.
  *
- * The parser fails closed: any structural, type, or numeric anomaly returns a
- * `Result` with `ok: false`. Callers MUST render "unavailable" in that case
- * (REQUIREMENTS.md invariants I1, I7, I10). The parser never fabricates a `0`
- * for a missing or wrong-typed field.
- *
- * Verification of the report revision hash uses `sha256Hex` from `./canonical`,
- * which prefers WebCrypto and falls back to a self-contained SHA-256.
+ * Lock-step with the Python report builder; amounts are decimal strings.
+ * Fail closed: any anomaly yields `ok: false` and the card renders
+ * unavailable (I1, I7, I10). Revision checks use `sha256Hex` from
+ * `./canonical`.
  */
 
 import {

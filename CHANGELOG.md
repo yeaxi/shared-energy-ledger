@@ -5,88 +5,55 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Historical intervals (see requirement I9) are never silently re-priced. A
-release that changes the tariff or currency of live installs must call this
-out in its `Changed` section so operators can decide whether to preserve
-prior epochs or start a new one.
+release that changes pricing or currency of live installs must call this out
+in its `Changed` section so operators can decide whether to preserve prior
+epochs or start a new one.
 
 ## [Unreleased]
 
 ### Added
 
-- Menu-driven options flow. Operators can now add, rename (display name
-  only), or remove tenants; tune per-data-class freshness windows
-  (`power_max_age_s`, `energy_max_age_s`, `battery_ledger_max_age_s`,
-  `alignment_skew_s`); and append new tariff-slot rates with automatic
-  accounting-epoch semantics (invariant I9).
-- Platinum-tier `quality_scale.yaml` attestation file that maps each rule
-  from the Home Assistant integration quality scale to the code path that
-  satisfies it, or to a documented exemption.
-- `docs` GitHub workflow that builds and deploys the mkdocs site to GitHub
-  Pages on every push to `main`.
-- Brand images at `custom_components/shared_energy_ledger/brand/`
-  (`icon.png`, `icon@2x.png`). Home Assistant 2026.3 and later serve these
-  local files instead of the `home-assistant/brands` CDN, and the HACS
-  `brands` check — which was failing the HACS workflow — accepts them.
-- `scripts/check_brand_assets.py`, wired into the CI lint job, which keeps
-  the brand images within the dimensions, transparency, and size limits of
-  the brands image specification.
+- Source-cost accounting from cumulative meter deltas and operator grid/PV
+  price sensors (`<currency>/kWh`), with restart-safe per-source cumulative
+  costs via `cost_store`.
+- Report schema v3: per-tenant totals split by grid, PV, and battery (kWh and
+  cost), revision-hashed and DST-safe.
+- One Lovelace report card (`shared-energy-ledger-report`) that calls
+  `shared_energy_ledger.rebuild_period_report` over the Home Assistant
+  connection.
+- Menu-driven options flow for tenants, shared loads (add/edit/remove/reassign
+  by stable `load_id`), and per-data-class freshness windows (including
+  `price_max_age_s` and `alignment_skew_s`).
+- Config-entry schema v3: optional non-battery power and grid export fields
+  removed; shared loads carry `load_id`; I4 residual alignment enforced at
+  coordinator and report boundaries.
+- Platinum-tier `quality_scale.yaml`, docs GitHub workflow, local brand
+  images under `brand/`, and `scripts/check_brand_assets.py`.
+- Repository `CODEOWNERS` / manifest `codeowners` set to `@yeaxi`.
 
 ### Changed
 
-- Slug immutability is now documented and enforced at the config-flow
-  layer: after a tenant is created, only its display name can change so
-  entity `unique_id`s stay stable across renames.
-- CI now pins its Home Assistant 2026.8.1 test runtime and GitHub Actions,
-  runs one reusable verification gate for pull requests and release tags,
-  and derives release notes from this changelog.
-- Home Assistant 2026.8.1 is the minimum supported release.
+- Pricing is owned by the operator's grid and PV price sensors. The built-in
+  tariff schedule, `set_tariff_rate` service, and per-tenant `NumberEntity` /
+  `SelectEntity` helpers are removed.
+- Slug immutability is enforced after create; only the display name may
+  change so entity `unique_id`s stay stable.
+- CI pins Home Assistant 2026.8.1; that release is the minimum supported
+  floor.
+- Docs rename: `tariffs-and-currency.md` → `pricing-and-currency.md`.
 
 ### Notes
 
-- No functional change to accounting math, ledger persistence, or the
-  report v2 envelope. Existing sensors and services keep their contracts.
 - No GitHub release has been published yet. A maintainer must promote this
   section to a versioned heading before creating the first tag.
 
 ### Initial release candidate
 
 The initial release-candidate code landed via
-[PR #3](https://github.com/yeaxi/shared-energy-ledger/pull/3) (scaffold +
-core integration + cards + docs + CI) and
-[PR #4](https://github.com/yeaxi/shared-energy-ledger/pull/4) (real
-battery ledger, mutating services, reconfigure flow, repairs, per-tenant
-`NumberEntity` / `SelectEntity`, grid-import-cost sensor, frontend CI).
-
-- HACS-installable custom integration `shared_energy_ledger` for cooperative
-  buildings sharing one grid connection, optional PV, and optional battery
-  between `N` metered flats or houses.
-- Multi-step config flow covering currency, grid meter, tariff preset,
-  optional PV/battery/whole-building sources, and per-tenant meters.
-- Coordinator with per-data-class freshness gates (grid, PV, battery,
-  per-tenant meter) and a fail-closed contract: no silent zeros on missing
-  upstream (invariant I1).
-- Pure-Python core modules covered by unit tests: `tariff`, `allocation`,
-  `ledger`, `report`, `samples`, `configio`. Every invariant `I1..I10`
-  from `REQUIREMENTS.md#a3` has a matching contract test.
-- Battery weighted-cost ledger with counter-reset detection, PV-first
-  grid-share heuristic, and persistent storage via
-  `homeassistant.helpers.storage.Store`.
-- Domain services: `rebuild_period_report`,
-  `reset_battery_ledger`, `set_tariff_rate` (admin-scoped).
-- Companion Lovelace card bundle in `dashboard/`: `shared-energy-ledger-period-summary`,
-  `shared-energy-ledger-history-report`, `shared-energy-ledger-history-bridge`. Cards
-  refuse to render out-of-order async report selections (I8) and never
-  treat "unavailable" as `0` (I10).
-- Repairs / `issue_registry` integration for tariff-schedule and ledger
-  boundary faults.
-- mkdocs documentation site under `docs/` with quickstart, invariants,
-  allocation-policy explainer, tariff and battery-ledger references, and a
-  traceability matrix.
-- CI pipeline: ruff, mypy strict, pytest with ≥ 90 % coverage, JSON
-  validation, no-silent-zero lint, private-installation denylist,
-  translation coverage, and requirements traceability. Plus a Node-based
-  frontend job (lint / typecheck / test / build) for the cards.
-- HACS validation, hassfest validation, and a release-tag workflow.
+[PR #3](https://github.com/yeaxi/shared-energy-ledger/pull/3) and
+[PR #4](https://github.com/yeaxi/shared-energy-ledger/pull/4). Later work on
+this branch replaced the tariff schedule with source-cost accounting and
+collapsed the companion cards to the single report card above.
 
 ### Invariants
 
@@ -98,17 +65,19 @@ Ten invariants (I1..I10) are locked in and enforced by tests and lints:
 - I4  Residual fallback rules.
 - I5  Recorder unit metadata is validated.
 - I6  Battery ledger safety and boundary-pair coherence.
-- I7  Report v2 contract (DST-safe, revision-hashed, finalized-as-of).
+- I7  Report contract (DST-safe, revision-hashed, finalized-as-of).
 - I8  Async selection ordering.
 - I9  Config-entry migration and accounting-epoch preservation.
 - I10 Dashboards fail closed.
 
 ### Non-code (maintainer follow-up)
 
-The following are outside the scope of tagged code but required for a
-public HACS listing:
+Outside tagged code and intentionally out of scope for agents:
 
-- GitHub repository topics and description on the About page.
-- Addition PR to [`hacs/default`](https://github.com/hacs/default).
+- Addition PR to [`hacs/default`](https://github.com/hacs/default) (external
+  repository and credentials).
+- Real Home Assistant live staging (policy: no live HA access from agents).
+- Publishing a git tag / GitHub Release (maintainer step after the
+  verification gate and `scripts/live_probe.py`).
 
 [Unreleased]: https://github.com/yeaxi/shared-energy-ledger/commits/main

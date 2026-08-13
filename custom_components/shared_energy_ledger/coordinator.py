@@ -53,8 +53,14 @@ from .ledger import (
     validate_boundary,
 )
 from .ledger_store import LedgerPersisted, LedgerStore, to_ledger_state
-from .models import BatteryConfig, SharedEnergyLedgerConfig, Tenant
+from .models import (
+    AllocationPolicy,
+    BatteryConfig,
+    SharedEnergyLedgerConfig,
+    Tenant,
+)
 from .samples import (
+    samples_are_aligned,
     validate_energy_sample,
     validate_price_sample,
     validate_signed_power_sample,
@@ -155,8 +161,40 @@ def _tenant_anchor(tenant: Tenant) -> str:
     return f"tenant:{tenant.tenant_id}"
 
 
-def _load_anchor(tenant: Tenant, index: int) -> str:
-    return f"load:{tenant.tenant_id}:{index}"
+def _load_anchor(tenant: Tenant, load_id: str) -> str:
+    return f"load:{tenant.tenant_id}:{load_id}"
+
+
+def residual_meter_entity_ids(config: SharedEnergyLedgerConfig) -> tuple[str, ...] | None:
+    """Entity ids whose timestamps must align for residual allocation (I4)."""
+    if not any(
+        t.allocation_policy == AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS
+        for t in config.tenants
+    ):
+        return None
+    ids: list[str] = []
+    if (
+        config.whole_building is not None
+        and config.whole_building.energy_entity is not None
+    ):
+        ids.append(config.whole_building.energy_entity)
+    for tenant in config.tenants:
+        if (
+            tenant.allocation_policy != AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS
+            and tenant.energy_entity is not None
+        ):
+            ids.append(tenant.energy_entity)
+        for load in tenant.shared_loads:
+            if load.energy_entity is not None:
+                ids.append(load.energy_entity)
+    return tuple(ids)
+
+
+def _last_updated(hass: HomeAssistant, entity_id: str) -> datetime | None:
+    state = _state(hass, entity_id)
+    if state is None:
+        return None
+    return state.last_updated
 
 
 class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
@@ -240,7 +278,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             tenant_cost_raw = {}
             unpriced_total = 0.0
 
-        # ---- read current validated samples ----
         f = config.freshness
         grid_import = _read_energy(
             self.hass, config.grid.import_energy_entity, now, f.energy_max_age_s
@@ -296,7 +333,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 and battery_discharge is not None
             )
 
-        # ---- per-tenant deltas and allocation inputs ----
         tenant_deltas: dict[str, float | None] = {}
         tenant_inputs: list[TenantInput] = []
         borrowed_by_host: dict[str, float | None] = {t.slug: 0.0 for t in config.tenants}
@@ -313,23 +349,25 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 tenant.energy_entity is None or direct_delta[tenant.slug] is not None
             )
 
-        load_deltas: dict[str, dict[int, float | None]] = {}
+        load_deltas: dict[str, dict[str, float | None]] = {}
         for tenant in config.tenants:
             load_deltas[tenant.slug] = {}
-            for index, load in enumerate(tenant.shared_loads):
-                load_deltas[tenant.slug][index] = self._delta(
-                    anchors, current_samples, _load_anchor(tenant, index),
+            for load in tenant.shared_loads:
+                load_deltas[tenant.slug][load.load_id] = self._delta(
+                    anchors,
+                    current_samples,
+                    _load_anchor(tenant, load.load_id),
                     _read_energy(self.hass, load.energy_entity, now, f.energy_max_age_s),
                 )
 
         # Accumulate borrowed-on-meter per host from every owner's shared loads.
         for tenant in config.tenants:
-            for index, load in enumerate(tenant.shared_loads):
+            for load in tenant.shared_loads:
                 host = load.host_slug
                 if host is None or host == tenant.slug or host not in borrowed_by_host:
                     continue
                 borrowed_by_host[host] = _add_optional(
-                    borrowed_by_host[host], load_deltas[tenant.slug][index]
+                    borrowed_by_host[host], load_deltas[tenant.slug][load.load_id]
                 )
 
         for tenant in config.tenants:
@@ -353,6 +391,15 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 ),
             )
 
+        residual_ids = residual_meter_entity_ids(config)
+        if residual_ids is not None:
+            residual_stamps = [
+                _last_updated(self.hass, entity_id) for entity_id in residual_ids
+            ]
+            if not samples_are_aligned(residual_stamps, f.alignment_skew_s):
+                # Fail residual closed at the boundary; allocate stays timestamp-free.
+                whole_building_delta = None
+
         results = allocate(
             AllocationInput(
                 tenants=tuple(tenant_inputs), whole_building_load=whole_building_delta
@@ -362,7 +409,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         for r in results:
             tenant_deltas[r.slug] = r.accounting_energy
 
-        # ---- battery ledger state at interval start ----
         ledger_state = await self._ledger_state(config.battery)
         payload.ledger = ledger_state
         weighted = to_weighted_cost(ledger_state)
@@ -381,7 +427,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             else None
         )
 
-        # ---- price the interval ----
         result = price_interval(
             IntervalInputs(
                 tenant_energy=tenant_deltas,
@@ -558,14 +603,14 @@ def _add_optional(a: float | None, b: float | None) -> float | None:
 
 
 def _owned_extra(
-    tenant: Tenant, deltas: dict[int, float | None]
+    tenant: Tenant, deltas: dict[str, float | None]
 ) -> float | None:
     """Sum the tenant's shared loads that are not on the tenant's own meter."""
     total = 0.0
-    for index, load in enumerate(tenant.shared_loads):
+    for load in tenant.shared_loads:
         if load.host_slug == tenant.slug:
             continue
-        value = deltas.get(index)
+        value = deltas.get(load.load_id)
         if value is None:
             return None
         total += value
@@ -597,4 +642,9 @@ def _dump_totals(totals: TenantCostTotals) -> dict[str, float]:
     }
 
 
-__all__ = ["CoordinatorPayload", "SharedEnergyLedgerCoordinator", "TenantCostTotals"]
+__all__ = [
+    "CoordinatorPayload",
+    "SharedEnergyLedgerCoordinator",
+    "TenantCostTotals",
+    "residual_meter_entity_ids",
+]

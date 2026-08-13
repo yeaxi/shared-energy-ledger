@@ -81,8 +81,10 @@ async def async_get_config_entry_diagnostics(
             section["tenants"] = _redact_tenants(section["tenants"])
     coordinator: SharedEnergyLedgerCoordinator | None = getattr(entry, "runtime_data", None)
     ledger_snapshot = None
+    accounting_snapshot = None
     if coordinator is not None:
         ledger_snapshot = coordinator.ledger_store.snapshot()
+        accounting_snapshot = coordinator.accounting_store.snapshot()
     return {
         "domain": DOMAIN,
         "version": entry.version,
@@ -91,4 +93,5 @@ async def async_get_config_entry_diagnostics(
         "options": options,
         "payload": _payload_snapshot(coordinator),
         "ledger_store": ledger_snapshot,
+        "accounting_store": accounting_snapshot,
     }

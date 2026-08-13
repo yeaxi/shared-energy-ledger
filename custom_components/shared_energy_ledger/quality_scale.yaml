@@ -26,8 +26,8 @@ rules:
   entity-unique-id: done                     # entity.py builds unique_id from entry_id + resource_slug + description.key
   has-entity-name: done                      # SharedEnergyLedgerEntity._attr_has_entity_name = True
   runtime-data: done                         # __init__.py sets entry.runtime_data
-  test-before-configure: done                # config_flow validates currency, slug, tariff schedule at each step
-  test-before-setup: done                    # coordinator._load_config_if_ready refuses to boot on bad schedule (issue_registry)
+  test-before-configure: done                # config_flow validates currency, slug, price sensors at each step
+  test-before-setup: done                    # coordinator._load_config_if_ready refuses to boot on invalid config (issue_registry)
   unique-config-entry: done                  # _async_current_entries + single_instance_allowed abort
 
   # ---------- Silver ----------
@@ -36,15 +36,14 @@ rules:
   docs-configuration-parameters: done        # docs/configuration.md
   docs-installation-parameters: done         # docs/quickstart.md
   entity-unavailable: done                   # sensor.py + binary_sensor.py override .available; requirement I1
-  integration-owner: exempt
-  # ^ codeowners is empty at v0.1; ownership is documented in AGENTS.md and
-  # community-triage identity in docs/cursor-agents.md.
+  integration-owner: done
+  # ^ manifest.json codeowners and .github/CODEOWNERS both map to @yeaxi.
   log-when-unavailable: done                 # coordinator.py raises repairs, not log spam (issues.py)
   parallel-updates: done                     # coordinator drives updates; entities do not fetch
   reauthentication-flow: exempt
   # ^ Shared Energy Ledger has no external credentials. All inputs are internal HA
   # entity selectors; async_step_reconfigure covers the rename case.
-  test-coverage: done                        # pytest --cov-fail-under=90 (176 tests, 91% coverage)
+  test-coverage: done                        # pytest --cov-fail-under=90
 
   # ---------- Gold ----------
   devices: done                              # entity.py registers DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
@@ -54,7 +53,7 @@ rules:
   # network to discover. All sources are user-supplied entity IDs.
   discovery-update-info: exempt              # see discovery
   docs-data-update: done                     # docs/configuration.md documents update cadence
-  docs-examples: done                        # docs/allocation-policies.md, docs/tariffs-and-currency.md
+  docs-examples: done                        # docs/allocation-policies.md, docs/pricing-and-currency.md
   docs-known-limitations: done               # docs/upgrade-guide.md and docs/troubleshooting.md
   docs-supported-devices: exempt             # no third-party devices; the integration accepts any HA sensor with the right unit
   docs-supported-functions: done             # docs/index.md + docs/configuration.md

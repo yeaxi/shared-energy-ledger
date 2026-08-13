@@ -20,7 +20,7 @@ All examples use generic tenant slugs (`flat-1`, `flat-2`, `house-a`,
 | `import_price_entity` | entity | **Required.** Grid import price sensor, `unit_of_measurement == "currency/kWh"` (for example `EUR/kWh`). |
 
 Rejected currencies yield the `invalid_currency` error. See
-[Pricing and currency](tariffs-and-currency.md) for how to build the price
+[Pricing and currency](pricing-and-currency.md) for how to build the price
 sensor.
 
 ### `optional` step
@@ -35,7 +35,6 @@ Three checkboxes choose which optional sections follow: `include_pv`,
 | `energy_entity` | entity | **Required.** PV aggregate energy in `kWh`. |
 | `zero_cost` | boolean | When on, self-consumed PV is priced at `0` and no price sensor is needed. |
 | `price_entity` | entity | Required unless `zero_cost` is on. PV price in `currency/kWh` (for example `EUR/kWh`). |
-| `power_entity` | entity | Optional; freshness and dashboards only. |
 
 Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
 
@@ -54,7 +53,6 @@ Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `energy_entity` | entity | Optional. Whole-building energy in `kWh`. Enables the `residual_of_total_minus_others` policy. |
-| `power_entity` | entity | Optional. Whole-building power in `W`. |
 
 ### `tenant` step (repeated)
 
@@ -67,7 +65,6 @@ gets a stable internal `tenant_id` used in entity `unique_id`s.
 | `name` | string | Display name; translatable. |
 | `allocation_policy` | enum | One of `direct_meter`, `residual_of_total_minus_others`, `proportional_by_direct_meters`. |
 | `energy_entity` | entity | Optional. `kWh` monotonic. Required for the direct-meter and proportional policies. |
-| `power_entity` | entity | Optional. `W`; freshness only. |
 | `add_another` | boolean | Keep ticked until every tenant is entered. |
 
 The enum is closed at the type-system level; any other value keeps the tenant's
@@ -88,14 +85,19 @@ Entered from **Settings** > **Devices & services** > **Shared Energy Ledger** >
 - **Add a tenant** — appends a tenant with a freshly generated `tenant_id`.
 - **Edit a tenant** — change display name, allocation policy, or meters. The
   `tenant_id` and entity `unique_id`s stay stable.
-- **Remove a tenant** — retires a tenant; at least two must remain.
+- **Remove a tenant** — retires a tenant after confirmation; at least two must
+  remain. Blocked while another tenant's shared load still lists the tenant as
+  `host_slug`. Owned shared loads are dropped with the tenant.
 - **Reorder tenants** — set the display order.
-- **Add a shared load** — attach a shared load to an owning tenant, with an
-  optional host tenant whose meter physically includes the load.
+- **Add a shared load** — attach a shared load (with a stable `load_id`) to an
+  owning tenant, with an optional host tenant whose meter physically includes
+  the load.
+- **Edit a shared load** — change label, meter, or host; `load_id` stays stable.
+- **Remove a shared load** — delete a load after confirmation.
+- **Reassign shared-load owner** — move a load to another tenant without
+  changing `load_id`.
 - **Freshness windows** — per-data-class maximum sample age, including
   `price_max_age_s` and `alignment_skew_s`.
-
-There is no tariff editor: change the price sensor instead.
 
 ## Related services
 

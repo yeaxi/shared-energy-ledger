@@ -6,8 +6,8 @@ The Shared Energy Ledger integration must never coerce a missing or unavailable 
 into ``0`` on any cost, allocation, ledger, or report code path. This lint is
 a lightweight second line of defence on top of the pytest contract tests.
 
-Scans for the following patterns in the integration source, excluding the
-``legacy/`` archive and tests:
+Scans for the following patterns in the integration source, excluding tests
+and common non-source directories:
 
 * ``float(<something>, 0)`` with a trailing ``, 0)`` default.
 * ``| float(0)`` in template-style expressions.

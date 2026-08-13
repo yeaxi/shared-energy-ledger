@@ -1,6 +1,6 @@
 ---
 name: ha-coordinator-and-entities
-description: Structure a DataUpdateCoordinator, model entities with EntityDescriptions, and keep unique_ids, availability, and RestoreEntity behavior correct for a Home Assistant custom integration. Use when creating or refactoring coordinator.py, sensor.py, binary_sensor.py, number.py, or select.py.
+description: Structure a DataUpdateCoordinator, model entities with EntityDescriptions, and keep unique_ids, availability, and RestoreEntity behavior correct for a Home Assistant custom integration. Use when creating or refactoring coordinator.py, sensor.py, or binary_sensor.py.
 ---
 
 # HA coordinator and entities

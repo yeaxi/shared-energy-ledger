@@ -35,7 +35,7 @@ from homeassistant.util import dt as dt_util
 
 from .allocation import AllocationInput, TenantInput, allocate
 from .const import price_unit
-from .coordinator import SharedEnergyLedgerCoordinator
+from .coordinator import SharedEnergyLedgerCoordinator, residual_meter_entity_ids
 from .interval import IntervalInputs, price_interval
 from .ledger import (
     LedgerInputs,
@@ -46,7 +46,7 @@ from .ledger import (
 )
 from .models import SharedEnergyLedgerConfig, Tenant
 from .report import HourlyRow, ReportInputs, build_report
-from .samples import validate_energy_sample, validate_price_sample
+from .samples import samples_are_aligned, validate_energy_sample, validate_price_sample
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -285,6 +285,20 @@ async def async_rebuild_period_report(
                 dt_util.as_utc(hour_start),
                 dt_util.as_utc(hour_end),
             )
+
+        residual_ids = residual_meter_entity_ids(config)
+        if residual_ids is not None:
+            boundary = dt_util.as_utc(hour_end)
+            residual_stamps: list[datetime | None] = []
+            for entity_id in residual_ids:
+                state = _state_at_or_before(fetched.get(entity_id, []), boundary)
+                residual_stamps.append(None if state is None else state.last_updated)
+            if not samples_are_aligned(
+                residual_stamps, config.freshness.alignment_skew_s
+            ):
+                unavailable_seconds += seconds
+                continue
+
         allocations = allocate(
             AllocationInput(
                 tenants=tuple(tenant_inputs), whole_building_load=whole_building_delta

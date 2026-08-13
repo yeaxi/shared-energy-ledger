@@ -53,7 +53,7 @@ nav:
   - Quickstart: quickstart.md
   - Configuration: configuration.md
   - Allocation policies: allocation-policies.md
-  - Pricing and currency: tariffs-and-currency.md
+  - Pricing and currency: pricing-and-currency.md
   - Battery ledger: battery-ledger.md
   - Invariants: invariants.md
   - Troubleshooting: troubleshooting.md
