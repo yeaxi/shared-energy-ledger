@@ -7,6 +7,20 @@ edit_uri: edit/main/docs/
 
 docs_dir: docs
 
+exclude_docs: |
+  AGENTS.md
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: info
+    unrecognized_links: info
+
 theme:
   name: material
   language: en
@@ -44,6 +58,7 @@ nav:
   - Invariants: invariants.md
   - Troubleshooting: troubleshooting.md
   - Upgrade guide: upgrade-guide.md
+  - Live validation: live-validation.md
   - Traceability: traceability.md
   - History: history.md
   - Cursor agents: cursor-agents.md

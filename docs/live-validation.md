@@ -5,14 +5,14 @@ Shared Energy Ledger is validated at three layers:
 1. **Pure-Python unit tests** cover the accounting core
    (`tariff`, `allocation`, `ledger`, `report`, `samples`, `configio`,
    `ledger_store`). Each of the ten invariants `I1..I10` from
-   [`REQUIREMENTS.md#a3`](../REQUIREMENTS.md#a3-non-functional-invariants)
+   [`REQUIREMENTS.md#a3`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
    has a matching contract test.
-2. **Integration tests** under [`tests/integration/`](../tests/integration/)
+2. **Integration tests** under [`tests/integration/`](https://github.com/yeaxi/shared-energy-ledger/tree/main/tests/integration/)
    boot a Home Assistant instance via
    [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component)
    and exercise the config flow, options flow, coordinator, sensor
    platforms, and services against the same runtime an operator installs.
-3. **Live smoke probe** at [`scripts/live_probe.py`](../scripts/live_probe.py)
+3. **Live smoke probe** at [`scripts/live_probe.py`](https://github.com/yeaxi/shared-energy-ledger/blob/main/scripts/live_probe.py)
    boots the exact same Home Assistant runtime in-process, loads the
    integration from `custom_components/shared_energy_ledger`, and asserts every
    invariant against the real state machine, entity registry, coordinator,
@@ -42,7 +42,7 @@ issue registry.
 ## What the probe validates
 
 Four scenarios plus two service-call checks, mapped to the
-[invariants](../REQUIREMENTS.md#a3-non-functional-invariants):
+[invariants](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants):
 
 | Scenario | Invariants asserted |
 | --- | --- |
