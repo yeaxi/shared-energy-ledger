@@ -65,16 +65,7 @@ async def test_reset_battery_ledger_accepts_coherent_boundary_i6(hass: HomeAssis
 
 
 @pytest.mark.asyncio
-async def test_set_tariff_rate_applies_change(hass: HomeAssistant) -> None:
+async def test_set_tariff_rate_service_is_not_registered(hass: HomeAssistant) -> None:
+    """Pricing is a sensor now; the tariff-rate service must not exist."""
     await _setup(hass)
-    response = await hass.services.async_call(
-        DOMAIN,
-        "set_tariff_rate",
-        {"slot": "day", "rate": 0.40, "effective_from": "2026-01-01T00:00:00"},
-        blocking=True,
-        return_response=True,
-    )
-    assert response is not None
-    assert response["status"] == "applied"
-    assert response["slot"] == "day"
-    assert response["rate"] == 0.40
+    assert not hass.services.has_service(DOMAIN, "set_tariff_rate")

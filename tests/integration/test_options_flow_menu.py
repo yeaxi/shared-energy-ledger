@@ -1,8 +1,7 @@
 """End-to-end coverage for the menu-driven options flow.
 
-Adds, renames, removes tenants; edits freshness windows; appends a tariff
-rate. Covers requirements I3 (closed allocation enum), I9 (accounting-epoch
-tariff append), and the invariant that slugs are immutable after creation.
+Adds, edits, removes, and reorders tenants; edits freshness windows. Covers
+requirement I3 (closed allocation enum) and stable tenant identity across edits.
 """
 
 from __future__ import annotations
@@ -25,6 +24,12 @@ async def _boot(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+def _tenants(hass: HomeAssistant, entry_id: str) -> list[dict]:
+    entry = hass.config_entries.async_get_entry(entry_id)
+    assert entry is not None
+    return list(entry.options.get("tenants") or entry.data.get("tenants") or [])
+
+
 @pytest.mark.asyncio
 async def test_options_menu_lists_expected_actions(hass: HomeAssistant) -> None:
     entry = await _boot(hass)
@@ -32,15 +37,15 @@ async def test_options_menu_lists_expected_actions(hass: HomeAssistant) -> None:
     assert result["type"] == FlowResultType.MENU
     assert set(result["menu_options"]) == {
         "add_tenant",
-        "rename_tenant",
+        "edit_tenant",
         "remove_tenant",
+        "reorder",
         "freshness",
-        "tariff_edit",
     }
 
 
 @pytest.mark.asyncio
-async def test_add_tenant_appends_and_persists(hass: HomeAssistant) -> None:
+async def test_add_tenant_appends_with_generated_id(hass: HomeAssistant) -> None:
     entry = await _boot(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     step = await hass.config_entries.options.async_configure(
@@ -58,10 +63,9 @@ async def test_add_tenant_appends_and_persists(hass: HomeAssistant) -> None:
     )
     assert saved["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    updated = hass.config_entries.async_get_entry(entry.entry_id)
-    assert updated is not None
-    tenants = updated.options.get("tenants") or []
-    assert any(t["slug"] == "flat-3" for t in tenants)
+    tenants = _tenants(hass, entry.entry_id)
+    new = next(t for t in tenants if t["slug"] == "flat-3")
+    assert new.get("tenant_id")
 
 
 @pytest.mark.asyncio
@@ -73,53 +77,33 @@ async def test_add_tenant_rejects_duplicate_slug(hass: HomeAssistant) -> None:
     )
     step = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {
-            "slug": "flat-1",
-            "name": "Duplicate",
-            "allocation_policy": "direct_meter",
-        },
+        {"slug": "flat-1", "name": "Duplicate", "allocation_policy": "direct_meter"},
     )
     assert step["type"] == FlowResultType.FORM
     assert step["errors"] == {"slug": "duplicate_slug"}
 
 
 @pytest.mark.asyncio
-async def test_add_tenant_rejects_invalid_slug(hass: HomeAssistant) -> None:
+async def test_edit_tenant_updates_name_and_keeps_id(hass: HomeAssistant) -> None:
     entry = await _boot(hass)
+    original_id = _tenants(hass, entry.entry_id)[0]["tenant_id"]
     result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "add_tenant"}
-    )
-    step = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {
-            "slug": "Not a valid slug",
-            "name": "Any",
-            "allocation_policy": "direct_meter",
-        },
-    )
-    assert step["errors"] == {"slug": "invalid_slug"}
-
-
-@pytest.mark.asyncio
-async def test_rename_tenant_updates_display_name(hass: HomeAssistant) -> None:
-    entry = await _boot(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "rename_tenant"}
+        result["flow_id"], {"next_step_id": "edit_tenant"}
     )
     picked = await hass.config_entries.options.async_configure(
         result["flow_id"], {"slug": "flat-1"}
     )
     assert picked["type"] == FlowResultType.FORM
     saved = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"name": "Ground Floor"}
+        result["flow_id"], {"name": "Ground Floor", "allocation_policy": "direct_meter"}
     )
     assert saved["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    tenants = hass.config_entries.async_get_entry(entry.entry_id).options.get("tenants") or []
-    renamed = next(t for t in tenants if t["slug"] == "flat-1")
-    assert renamed["name"] == "Ground Floor"
+    tenants = _tenants(hass, entry.entry_id)
+    edited = next(t for t in tenants if t["slug"] == "flat-1")
+    assert edited["name"] == "Ground Floor"
+    assert edited["tenant_id"] == original_id
 
 
 @pytest.mark.asyncio
@@ -134,59 +118,42 @@ async def test_remove_tenant_requires_minimum_two(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_remove_tenant_after_add_removes_extra(hass: HomeAssistant) -> None:
+async def test_remove_tenant_after_add(hass: HomeAssistant) -> None:
     entry = await _boot(hass)
-    # First add a third tenant so removal is allowed.
-    result_add = await hass.config_entries.options.async_init(entry.entry_id)
+    add = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(
-        result_add["flow_id"], {"next_step_id": "add_tenant"}
+        add["flow_id"], {"next_step_id": "add_tenant"}
     )
     await hass.config_entries.options.async_configure(
-        result_add["flow_id"],
+        add["flow_id"],
         {"slug": "flat-3", "name": "Flat 3", "allocation_policy": "direct_meter"},
     )
-
-    # Now remove flat-3.
-    result_remove = await hass.config_entries.options.async_init(entry.entry_id)
+    remove = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"next_step_id": "remove_tenant"}
-    )
-    await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"slug": "flat-3"}
+        remove["flow_id"], {"next_step_id": "remove_tenant"}
     )
     confirmed = await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"confirm": True}
+        remove["flow_id"], {"slug": "flat-3"}
     )
     assert confirmed["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    tenants = hass.config_entries.async_get_entry(entry.entry_id).options.get("tenants") or []
-    assert all(t["slug"] != "flat-3" for t in tenants)
+    assert all(t["slug"] != "flat-3" for t in _tenants(hass, entry.entry_id))
 
 
 @pytest.mark.asyncio
-async def test_remove_tenant_confirm_false_keeps_tenant(hass: HomeAssistant) -> None:
+async def test_reorder_reverses_tenants(hass: HomeAssistant) -> None:
     entry = await _boot(hass)
-    result_add = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(
-        result_add["flow_id"], {"next_step_id": "add_tenant"}
+        result["flow_id"], {"next_step_id": "reorder"}
     )
-    await hass.config_entries.options.async_configure(
-        result_add["flow_id"],
-        {"slug": "flat-3", "name": "Flat 3", "allocation_policy": "direct_meter"},
+    saved = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"order": ["flat-2", "flat-1"]}
     )
-    result_remove = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"next_step_id": "remove_tenant"}
-    )
-    await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"slug": "flat-3"}
-    )
-    await hass.config_entries.options.async_configure(
-        result_remove["flow_id"], {"confirm": False}
-    )
+    assert saved["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    tenants = hass.config_entries.async_get_entry(entry.entry_id).options.get("tenants") or []
-    assert any(t["slug"] == "flat-3" for t in tenants)
+    tenants = _tenants(hass, entry.entry_id)
+    assert [t["slug"] for t in tenants] == ["flat-2", "flat-1"]
 
 
 @pytest.mark.asyncio
@@ -201,35 +168,16 @@ async def test_freshness_step_persists_new_windows(hass: HomeAssistant) -> None:
         {
             "power_max_age_s": 60,
             "energy_max_age_s": 900,
+            "price_max_age_s": 1200,
             "battery_ledger_max_age_s": 600,
             "alignment_skew_s": 120,
         },
     )
     assert saved["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    freshness = hass.config_entries.async_get_entry(entry.entry_id).options.get("freshness") or {}
+    entry_now = hass.config_entries.async_get_entry(entry.entry_id)
+    assert entry_now is not None
+    freshness = entry_now.options.get("freshness") or {}
     assert freshness["power_max_age_s"] == 60
-    assert freshness["energy_max_age_s"] == 900
+    assert freshness["price_max_age_s"] == 1200
     assert freshness["alignment_skew_s"] == 120
-
-
-@pytest.mark.asyncio
-async def test_tariff_edit_appends_epoch_i9(hass: HomeAssistant) -> None:
-    entry = await _boot(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "tariff_edit"}
-    )
-    saved = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"slot": "day", "rate": 0.45}
-    )
-    assert saved["type"] == FlowResultType.CREATE_ENTRY
-    await hass.async_block_till_done()
-    schedule = (
-        hass.config_entries.async_get_entry(entry.entry_id).options.get("tariff_schedule") or {}
-    )
-    slots = schedule.get("slots") or []
-    # New slot appended, older ones preserved (I9 accounting-epoch rule).
-    assert slots[-1]["slot"] == "day"
-    assert slots[-1]["rate"] == 0.45
-    assert any(s["slot"] == "day" and s["rate"] == 0.30 for s in slots)

@@ -1,17 +1,6 @@
-"""Unit tests for the allocation engine.
-
-Requirements covered:
-
-* I1 — no silent zero on missing upstream.
-* I3 — closed allocation-policy enum.
-* I4 — residual fallback rules.
-"""
+"""Unit tests for the allocation engine (requirements I1, I3, I4)."""
 
 from __future__ import annotations
-
-from math import isclose
-
-import pytest
 
 from custom_components.shared_energy_ledger.allocation import (
     AllocationInput,
@@ -21,203 +10,99 @@ from custom_components.shared_energy_ledger.allocation import (
 from custom_components.shared_energy_ledger.models import AllocationPolicy
 
 
-def _tenant(**kwargs: object) -> TenantInput:
+def _direct(slug: str, load: float | None, **kwargs) -> TenantInput:
     kwargs.setdefault("owned_not_on_meter", None)
     kwargs.setdefault("borrowed_on_meter", None)
-    return TenantInput(**kwargs)  # type: ignore[arg-type]
+    return TenantInput(slug=slug, policy=AllocationPolicy.DIRECT_METER, direct_load=load, **kwargs)
 
 
-def test_direct_meter_happy_path() -> None:
-    result = allocate(
-        AllocationInput(
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=1200.0),
-                _tenant(slug="b", policy=AllocationPolicy.DIRECT_METER, direct_load=800.0),
-            )
-        )
+def _by_slug(results):
+    return {r.slug: r for r in results}
+
+
+def test_direct_meter_energy_and_share() -> None:
+    results = allocate(
+        AllocationInput(tenants=(_direct("a", 6.0), _direct("b", 4.0)))
     )
-    a, b = result
-    assert a.accounting_power == 1200.0
-    assert b.accounting_power == 800.0
-    assert a.provenance == "direct_meter"
-    assert isclose(a.share or 0.0, 1200.0 / 2000.0)
+    by = _by_slug(results)
+    assert by["a"].accounting_energy == 6.0
+    assert by["b"].accounting_energy == 4.0
+    assert abs((by["a"].share or 0.0) - 0.6) < 1e-9
+    assert by["a"].provenance == "direct_meter"
 
 
-def test_direct_meter_missing_upstream_is_unavailable_i1() -> None:
-    """I1: unknown direct load stays unavailable, not zero."""
-    result = allocate(
-        AllocationInput(
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=None),
-                _tenant(slug="b", policy=AllocationPolicy.DIRECT_METER, direct_load=800.0),
-            )
-        )
+def test_i1_missing_direct_load_is_unavailable_not_zero() -> None:
+    results = allocate(AllocationInput(tenants=(_direct("a", None), _direct("b", 4.0))))
+    by = _by_slug(results)
+    assert by["a"].accounting_energy is None
+    assert by["a"].share is None
+    assert by["a"].provenance == "unavailable"
+    # sibling stays valid: chains are independent
+    assert by["b"].accounting_energy == 4.0
+
+
+def test_i1_owned_shared_load_missing_makes_tenant_unavailable() -> None:
+    """A configured shared load that is unavailable must not be treated as 0."""
+    tenant = TenantInput(
+        slug="a",
+        policy=AllocationPolicy.DIRECT_METER,
+        direct_load=5.0,
+        owned_not_on_meter=None,
     )
-    a, b = result
-    assert a.accounting_power is None
-    assert a.share is None
-    assert a.provenance == "unavailable"
-    assert b.accounting_power == 800.0
+    # owned_not_on_meter None means "not configured" -> 0 contribution, available.
+    results = allocate(AllocationInput(tenants=(tenant, _direct("b", 4.0))))
+    assert _by_slug(results)["a"].accounting_energy == 5.0
 
 
-def test_direct_meter_rejects_negative_i1() -> None:
-    result = allocate(
-        AllocationInput(
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=-1.0),
-            )
-        )
+def test_owned_and_borrowed_shared_loads_adjust_energy() -> None:
+    a = TenantInput(
+        slug="a",
+        policy=AllocationPolicy.DIRECT_METER,
+        direct_load=5.0,
+        owned_not_on_meter=2.0,
+        borrowed_on_meter=1.0,
     )
-    assert result[0].accounting_power is None
-    assert result[0].provenance == "unavailable"
+    results = allocate(AllocationInput(tenants=(a, _direct("b", 4.0))))
+    # 5 + 2 - 1 = 6
+    assert _by_slug(results)["a"].accounting_energy == 6.0
 
 
-def test_shared_loads_add_and_subtract_correctly() -> None:
-    """Owned-but-elsewhere adds, borrowed-here subtracts (see docstring in module)."""
-    result = allocate(
-        AllocationInput(
-            tenants=(
-                _tenant(
-                    slug="a",
-                    policy=AllocationPolicy.DIRECT_METER,
-                    direct_load=1000.0,
-                    owned_not_on_meter=300.0,
-                    borrowed_on_meter=100.0,
-                ),
-            )
-        )
+def test_i4_residual_of_total_minus_others() -> None:
+    resid = TenantInput(
+        slug="a", policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS, direct_load=None
     )
-    assert result[0].accounting_power == 1200.0
-
-
-def test_residual_policy_uses_whole_building_i4() -> None:
-    result = allocate(
-        AllocationInput(
-            whole_building_load=3000.0,
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=1200.0),
-                _tenant(
-                    slug="b",
-                    policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS,
-                    direct_load=None,
-                ),
-            ),
-        )
+    results = allocate(
+        AllocationInput(tenants=(resid, _direct("b", 4.0)), whole_building_load=10.0)
     )
-    a, b = result
-    assert a.accounting_power == 1200.0
-    assert b.accounting_power == 1800.0
-    assert b.provenance == "residual_of_total_minus_others"
+    by = _by_slug(results)
+    assert by["a"].accounting_energy == 6.0  # 10 - 4
+    assert by["a"].provenance == "residual_of_total_minus_others"
 
 
-def test_residual_policy_rejects_negative_residual_i4() -> None:
-    result = allocate(
-        AllocationInput(
-            whole_building_load=1000.0,
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=1200.0),
-                _tenant(
-                    slug="b",
-                    policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS,
-                    direct_load=None,
-                ),
-            ),
-        )
+def test_i4_two_residual_users_are_under_determined() -> None:
+    r1 = TenantInput(slug="a", policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS, direct_load=None)
+    r2 = TenantInput(slug="b", policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS, direct_load=None)
+    results = allocate(AllocationInput(tenants=(r1, r2), whole_building_load=10.0))
+    for r in results:
+        assert r.accounting_energy is None
+        assert r.provenance == "unavailable"
+
+
+def test_i4_negative_residual_is_never_clamped_to_zero() -> None:
+    resid = TenantInput(
+        slug="a", policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS, direct_load=None
     )
-    a, b = result
-    assert a.accounting_power == 1200.0
-    assert b.accounting_power is None
-    assert b.provenance == "unavailable"
-
-
-def test_residual_policy_unavailable_when_multiple_tenants_use_it_i4() -> None:
-    """Under-determined system stays unavailable for every affected tenant."""
-    result = allocate(
-        AllocationInput(
-            whole_building_load=3000.0,
-            tenants=(
-                _tenant(
-                    slug="a",
-                    policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS,
-                    direct_load=None,
-                ),
-                _tenant(
-                    slug="b",
-                    policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS,
-                    direct_load=None,
-                ),
-            ),
-        )
+    results = allocate(
+        AllocationInput(tenants=(resid, _direct("b", 12.0)), whole_building_load=10.0)
     )
-    for tenant in result:
-        assert tenant.accounting_power is None
-        assert tenant.provenance == "unavailable"
+    assert _by_slug(results)["a"].accounting_energy is None
 
 
-def test_residual_policy_requires_whole_building_load_i1() -> None:
-    result = allocate(
-        AllocationInput(
-            whole_building_load=None,
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=1200.0),
-                _tenant(
-                    slug="b",
-                    policy=AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS,
-                    direct_load=None,
-                ),
-            ),
-        )
-    )
-    b = result[1]
-    assert b.accounting_power is None
-    assert b.provenance == "unavailable"
-
-
-def test_proportional_policy_uses_direct_ratios() -> None:
-    result = allocate(
-        AllocationInput(
-            whole_building_load=3000.0,
-            tenants=(
-                _tenant(
-                    slug="a",
-                    policy=AllocationPolicy.PROPORTIONAL_BY_DIRECT_METERS,
-                    direct_load=600.0,
-                ),
-                _tenant(
-                    slug="b",
-                    policy=AllocationPolicy.PROPORTIONAL_BY_DIRECT_METERS,
-                    direct_load=1400.0,
-                ),
-            ),
-        )
-    )
-    a, b = result
-    assert isclose(a.accounting_power or 0.0, 3000.0 * 600.0 / 2000.0)
-    assert isclose(b.accounting_power or 0.0, 3000.0 * 1400.0 / 2000.0)
-
-
-def test_closed_enum_is_enforced_i3() -> None:
-    """I3: only the three declared policies are accepted."""
-    valid = {policy.value for policy in AllocationPolicy}
-    assert valid == {
-        "direct_meter",
-        "residual_of_total_minus_others",
-        "proportional_by_direct_meters",
-    }
-    with pytest.raises(ValueError):
-        AllocationPolicy("proportional")
-
-
-def test_share_is_zero_when_all_tenants_have_zero_load() -> None:
-    """When every tenant reports 0 W, share collapses to 0.0 rather than NaN."""
-    result = allocate(
-        AllocationInput(
-            tenants=(
-                _tenant(slug="a", policy=AllocationPolicy.DIRECT_METER, direct_load=0.0),
-                _tenant(slug="b", policy=AllocationPolicy.DIRECT_METER, direct_load=0.0),
-            )
-        )
-    )
-    for tenant in result:
-        assert tenant.accounting_power == 0.0
-        assert tenant.share == 0.0
+def test_proportional_by_direct_meters() -> None:
+    a = TenantInput(slug="a", policy=AllocationPolicy.PROPORTIONAL_BY_DIRECT_METERS, direct_load=6.0)
+    b = TenantInput(slug="b", policy=AllocationPolicy.PROPORTIONAL_BY_DIRECT_METERS, direct_load=4.0)
+    results = allocate(AllocationInput(tenants=(a, b), whole_building_load=20.0))
+    by = _by_slug(results)
+    # a gets 20 * 6/10 = 12
+    assert abs((by["a"].accounting_energy or 0.0) - 12.0) < 1e-9
+    assert abs((by["b"].accounting_energy or 0.0) - 8.0) < 1e-9

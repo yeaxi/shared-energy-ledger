@@ -1,14 +1,13 @@
 """Integration test for the ``rebuild_period_report`` service.
 
-We do not exercise the real Recorder here (setting it up in
-``pytest-homeassistant-custom-component`` is expensive). Instead we mock
-``homeassistant.components.recorder.history.get_significant_states`` to
-return synthetic State objects and verify the produced report shape.
+The report is recomputed from meter and price history via the interval engine.
+We mock ``history.get_significant_states`` to return synthetic kWh and price
+states and assert the produced report reconciles to a hand-computed answer.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -23,35 +22,50 @@ from .test_setup import _happy_entry_data
 
 KYIV = ZoneInfo("Europe/Kyiv")
 
+# Five hourly boundaries 00:00..04:00 local.
+_BOUNDARIES = [datetime(2026, 6, 1, hour, tzinfo=KYIV) for hour in range(5)]
 
-def _fake_states_for_entity(entity_id: str, currency: str = "EUR") -> list[State]:
-    """Return synthetic cumulative-cost anchors at each KYIV hour boundary."""
-    boundaries = [datetime(2026, 6, 1, hour, tzinfo=KYIV) for hour in range(5)]
-    values = ["0.00", "1.00", "2.50", "4.00", "5.75"]
+
+def _cumulative(entity_id: str, values: list[str], unit: str) -> list[State]:
     return [
-        State(
-            entity_id,
-            value,
-            {"unit_of_measurement": currency},
-            last_updated=boundary.astimezone(UTC),
-        )
-        for value, boundary in zip(values, boundaries, strict=True)
+        State(entity_id, value, {"unit_of_measurement": unit}, last_updated=b.astimezone(UTC))
+        for value, b in zip(values, _BOUNDARIES, strict=True)
     ]
 
 
-@pytest.mark.asyncio
-async def test_rebuild_period_report_end_to_end(hass: HomeAssistant) -> None:
-    entry = MockConfigEntry(
-        domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION
-    )
+def _series(entity_id: str) -> list[State]:
+    data = _happy_entry_data()
+    grid_import = data["grid"]["import_energy_entity"]
+    grid_price = data["grid"]["import_price_entity"]
+    flat1 = data["tenants"][0]["energy_entity"]
+    flat2 = data["tenants"][1]["energy_entity"]
+    if entity_id == grid_import:
+        return _cumulative(entity_id, ["0", "2", "4", "6", "8"], "kWh")
+    if entity_id in (flat1, flat2):
+        return _cumulative(entity_id, ["0", "1", "2", "3", "4"], "kWh")
+    if entity_id == grid_price:
+        # Constant 0.30 EUR/kWh, one anchor before the period, persisting.
+        early = (_BOUNDARIES[0] - timedelta(hours=1)).astimezone(UTC)
+        return [State(entity_id, "0.30", {"unit_of_measurement": "EUR/kWh"}, last_updated=early)]
+    return []
+
+
+def _fake_get(*args, **kwargs):  # type: ignore[no-untyped-def]
+    entity_ids = kwargs.get("entity_ids") or []
+    return {eid: _series(eid) for eid in entity_ids}
+
+
+async def _setup(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
+    return entry
 
-    def _fake_get(*args, **kwargs):  # type: ignore[no-untyped-def]
-        entity_ids = kwargs.get("entity_ids") or []
-        return {eid: _fake_states_for_entity(eid) for eid in entity_ids}
 
+@pytest.mark.asyncio
+async def test_report_reconciles_to_hand_computed_cost(hass: HomeAssistant) -> None:
+    await _setup(hass)
     with patch(
         "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
         side_effect=_fake_get,
@@ -60,27 +74,54 @@ async def test_rebuild_period_report_end_to_end(hass: HomeAssistant) -> None:
             DOMAIN,
             "rebuild_period_report",
             {
-                "start": datetime(2026, 6, 1, tzinfo=KYIV).isoformat(),
-                "end": datetime(2026, 6, 1, 4, tzinfo=KYIV).isoformat(),
+                "start": _BOUNDARIES[0].isoformat(),
+                "end": _BOUNDARIES[4].isoformat(),
             },
             blocking=True,
             return_response=True,
         )
 
     assert response is not None
-    assert response["schema_version"] == 2
+    assert response["schema_version"] == 3
     assert response["currency"] == "EUR"
     assert set(response["tenants"].keys()) == {"flat-1", "flat-2"}
+    # Each flat consumes 1 kWh/hour for 4 hours at 0.30 EUR/kWh = 1.20, all grid.
     for tenant in response["tenants"].values():
-        assert tenant["coverage_seconds"] > 0
-        # cumulative jump: 0 -> 5.75 over 4 hours; hourly deltas sum to 5.75
-        assert tenant["known_cost"] in {"5.75", "0.00"}
-    # revision hash present, matches the canonical body
+        assert tenant["known_cost"] == "1.20"
+        assert tenant["grid_cost"] == "1.20"
+        assert tenant["pv_cost"] == "0.00"
+    # Grid import delta (2/h) exactly serves consumption: reconciliation ~ 0.
+    assert response["reconciliation_kwh"] == "0.000000"
+    assert response["unavailable_seconds"] == 0
     assert isinstance(response["revision"], str) and len(response["revision"]) == 64
-    assert response.get("transition_excluded_seconds") == 0
-    assert "period" in response and "start_local" in response["period"]
 
-    # Filtering by unknown tenant slug must fail closed.
+
+@pytest.mark.asyncio
+async def test_report_scoped_to_single_tenant(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    with patch(
+        "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
+        side_effect=_fake_get,
+    ):
+        response = await hass.services.async_call(
+            DOMAIN,
+            "rebuild_period_report",
+            {
+                "start": _BOUNDARIES[0].isoformat(),
+                "end": _BOUNDARIES[4].isoformat(),
+                "tenant": "flat-1",
+            },
+            blocking=True,
+            return_response=True,
+        )
+    assert response is not None
+    assert set(response["tenants"].keys()) == {"flat-1"}
+    assert response["tenants"]["flat-1"]["known_cost"] == "1.20"
+
+
+@pytest.mark.asyncio
+async def test_unknown_tenant_fails_closed(hass: HomeAssistant) -> None:
+    await _setup(hass)
     with (
         patch(
             "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
@@ -92,42 +133,10 @@ async def test_rebuild_period_report_end_to_end(hass: HomeAssistant) -> None:
             DOMAIN,
             "rebuild_period_report",
             {
-                "start": datetime(2026, 6, 1, tzinfo=KYIV).isoformat(),
-                "end": datetime(2026, 6, 1, 4, tzinfo=KYIV).isoformat(),
+                "start": _BOUNDARIES[0].isoformat(),
+                "end": _BOUNDARIES[4].isoformat(),
                 "tenant": "ghost",
             },
             blocking=True,
             return_response=True,
         )
-
-
-@pytest.mark.asyncio
-async def test_rebuild_period_report_scoped_to_single_tenant(hass: HomeAssistant) -> None:
-    entry = MockConfigEntry(
-        domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION
-    )
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-
-    def _fake_get(*args, **kwargs):  # type: ignore[no-untyped-def]
-        entity_ids = kwargs.get("entity_ids") or []
-        return {eid: _fake_states_for_entity(eid) for eid in entity_ids}
-
-    with patch(
-        "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
-        side_effect=_fake_get,
-    ):
-        response = await hass.services.async_call(
-            DOMAIN,
-            "rebuild_period_report",
-            {
-                "start": datetime(2026, 6, 1, tzinfo=KYIV).isoformat(),
-                "end": datetime(2026, 6, 1, 4, tzinfo=KYIV).isoformat(),
-                "tenant": "flat-1",
-            },
-            blocking=True,
-            return_response=True,
-        )
-    assert response is not None
-    assert set(response["tenants"].keys()) == {"flat-1"}
