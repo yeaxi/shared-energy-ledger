@@ -1,14 +1,9 @@
 /**
- * TypeScript surface for the v3 report envelope produced by
+ * TypeScript surface for the v3 report envelope from
  * `custom_components/shared_energy_ledger/report.py`.
  *
- * These types are the smallest shape the card needs. They MUST stay in
- * lock-step with the Python report builder; see REQUIREMENTS.md invariant I7.
- * Any field marked required here is a hard requirement for the card, and its
- * absence forces the card into the fail-closed "unavailable" state (I10).
- *
- * Currency and kWh amounts are decimal strings (not JSON floats) so the
- * canonical revision hash is identical in Python and JavaScript.
+ * Lock-step with the Python report builder; amounts are decimal strings.
+ * Missing required fields force the card to unavailable (I7, I10).
  */
 
 export const REPORT_SCHEMA_VERSION = 3 as const;

@@ -8,9 +8,6 @@ Registers two domain services:
 * ``shared_energy_ledger.reset_battery_ledger`` — admin action that reseeds the
   weighted-cost ledger boundary pair (requires admin, enforces coherence per
   invariant I6).
-
-Pricing is sourced from operator-provided price sensors, so there is no
-``set_tariff_rate`` service: the operator changes the price sensor instead.
 """
 
 from __future__ import annotations

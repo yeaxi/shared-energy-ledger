@@ -10,8 +10,7 @@ reads:
    (minimum two). Each tenant gets a stable ``tenant_id`` used in entity
    ``unique_id``s; the editable slug is only a display label.
 
-Pricing comes from operator-provided currency/kWh sensors, so there is no
-tariff editor. Every runtime-changeable parameter lives in the options flow.
+Every runtime-changeable parameter lives in the options flow.
 """
 
 from __future__ import annotations
