@@ -3,14 +3,19 @@
 Everything in this module is a plain, framework-agnostic dataclass or enum.
 The integration's coordinator, config flow, and services translate config
 entry data to/from these types. The pure-Python core modules (``ledger``,
-``allocation``, ``tariff``, ``report``) operate exclusively on these types
+``allocation``, ``interval``, ``report``) operate exclusively on these types
 and never touch Home Assistant runtime state directly.
+
+Pricing is sourced from operator-provided price sensors (currency per kWh),
+not a built-in tariff schedule. The grid price sensor is required; the PV
+price sensor is required only when PV is configured and not explicitly marked
+as zero cost.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, time
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -32,6 +37,13 @@ class SharedLoad:
     """A load physically upstream of a neighbor's feeder that is financially
     owned by a specific tenant.
 
+    ``host_slug`` names the tenant whose direct meter physically includes this
+    load. When ``host_slug`` is set and differs from the owning tenant, the
+    coordinator subtracts the load from the host's accounting energy
+    (``borrowed_on_meter``) and adds it to the owner's (``owned_not_on_meter``).
+    When ``host_slug`` is ``None`` the load is measured on a dedicated meter
+    that is not part of any tenant's direct meter.
+
     Generic use cases include shelters, workshops, staircases, storage rooms,
     heating accumulators, and EV chargers.
     """
@@ -39,12 +51,20 @@ class SharedLoad:
     label: str
     energy_entity: str | None = None
     power_entity: str | None = None
+    host_slug: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Tenant:
-    """A financial tenant of the cooperative building."""
+    """A financial tenant of the cooperative building.
 
+    ``tenant_id`` is a stable, immutable identifier generated at creation and
+    used in every entity ``unique_id``. ``slug`` is an operator-editable label
+    used in entity names and reports; renaming the slug never changes
+    ``tenant_id``.
+    """
+
+    tenant_id: str
     slug: str
     name: str
     allocation_policy: AllocationPolicy
@@ -55,19 +75,33 @@ class Tenant:
 
 @dataclass(frozen=True, slots=True)
 class GridConfig:
-    """Grid connection configuration."""
+    """Grid connection configuration.
+
+    ``import_price_entity`` is a required sensor reporting the effective
+    per-kWh grid import price in ``<currency>/kWh``.
+    """
 
     import_energy_entity: str
+    import_price_entity: str
     export_energy_entity: str | None = None
     power_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class PvConfig:
-    """Photovoltaic aggregate configuration (optional)."""
+    """Photovoltaic aggregate configuration (optional).
 
+    ``price_entity`` reports the per-kWh cost attributed to self-consumed PV
+    energy. When ``zero_cost`` is ``True`` the operator has explicitly chosen
+    to price PV at zero and ``price_entity`` is ignored. When ``zero_cost`` is
+    ``False`` a valid ``price_entity`` is required or PV-sourced energy stays
+    unavailable (never silently zero).
+    """
+
+    energy_entity: str
+    price_entity: str | None = None
+    zero_cost: bool = False
     power_entity: str | None = None
-    energy_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,50 +129,8 @@ class WholeBuildingConfig:
     becomes available for tenants without a direct meter.
     """
 
-    power_entity: str | None = None
     energy_entity: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class TariffSlot:
-    """A named tariff slot with a per-kWh rate.
-
-    ``effective_from`` marks the accounting epoch for the slot. Historical
-    intervals prior to ``effective_from`` are priced with a previous slot
-    entry, not with this one.
-    """
-
-    slot: str
-    rate: float
-    effective_from: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class TariffWindow:
-    """A daily time-of-use window mapping to a tariff slot.
-
-    ``weekdays`` is a frozenset of ISO weekday numbers (Monday=0..Sunday=6).
-    ``start`` is inclusive; ``end`` is exclusive. A schedule must partition a
-    24-hour day per configured weekday.
-    """
-
-    weekdays: frozenset[int]
-    start: time
-    end: time
-    slot: str
-
-
-@dataclass(frozen=True, slots=True)
-class TariffSchedule:
-    """Time-of-use tariff schedule.
-
-    The schedule consists of ``slots`` (rate table with epochs) and ``windows``
-    (map of weekday/time-range to slot). Any window referencing an undefined
-    slot invalidates the schedule.
-    """
-
-    slots: tuple[TariffSlot, ...]
-    windows: tuple[TariffWindow, ...]
+    power_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +139,7 @@ class FreshnessConfig:
 
     power_max_age_s: int = 180
     energy_max_age_s: int = 1800
+    price_max_age_s: int = 3600
     battery_ledger_max_age_s: int = 900
     alignment_skew_s: int = 180
 
@@ -158,7 +151,6 @@ class SharedEnergyLedgerConfig:
     currency: str
     grid: GridConfig
     tenants: tuple[Tenant, ...]
-    tariff: TariffSchedule
     pv: PvConfig | None = None
     battery: BatteryConfig | None = None
     whole_building: WholeBuildingConfig | None = None

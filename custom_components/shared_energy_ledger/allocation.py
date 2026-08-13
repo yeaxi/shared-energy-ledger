@@ -1,14 +1,16 @@
 """Allocation policy engine.
 
-The allocation engine maps validated upstream samples to per-tenant accounting
-power. It applies the closed allocation-policy enum from
-:class:`~.models.AllocationPolicy` and enforces the fail-closed invariants
-I3 and I4 from :doc:`REQUIREMENTS`.
+The allocation engine maps validated cumulative-meter *deltas* to per-tenant
+accounting energy (kWh) for one interval. It applies the closed
+allocation-policy enum from :class:`~.models.AllocationPolicy` and enforces the
+fail-closed invariants I3 and I4 from :doc:`REQUIREMENTS`.
 
-Inputs are consumed as pre-validated floats. The coordinator is responsible
-for producing them from raw entity states, applying unit checks and
-freshness windows. Missing or invalid inputs are passed as ``None`` and never
-coerced to ``0``.
+Inputs are consumed as pre-validated floats (kWh over the interval). The
+coordinator and the report builder are responsible for producing them from raw
+counter history, applying unit checks and freshness/alignment windows. Missing
+or invalid inputs are passed as ``None`` and never coerced to ``0``. The engine
+is unit-agnostic: the same math priced instantaneous power in earlier
+revisions, but the accounting substrate is now energy per interval.
 """
 
 from __future__ import annotations
@@ -25,15 +27,15 @@ from .models import AllocationPolicy, AllocationProvenance
 class TenantInput:
     """Aggregated input for a single tenant, pre-computed by the coordinator.
 
-    ``direct_load`` is the tenant's own feeder meter reading (W) *before*
-    shared-load adjustments. ``owned_not_on_meter`` and
+    ``direct_load`` is the tenant's own feeder meter energy (kWh) for the
+    interval *before* shared-load adjustments. ``owned_not_on_meter`` and
     ``borrowed_on_meter`` handle the shared-load fixups:
 
-    * ``owned_not_on_meter`` — sum (W) of the tenant's shared loads that are
+    * ``owned_not_on_meter`` — sum (kWh) of the tenant's shared loads that are
       physically downstream of a *different* tenant's meter. Added to the
-      accounting load because the tenant owns them but they are not yet on
+      accounting energy because the tenant owns them but they are not yet on
       the tenant's own meter reading.
-    * ``borrowed_on_meter`` — sum (W) of shared loads that are physically
+    * ``borrowed_on_meter`` — sum (kWh) of shared loads that are physically
       on this tenant's meter but owned by a *different* tenant. Subtracted
       because they are on this meter but the tenant does not owe them.
 
@@ -52,8 +54,8 @@ class AllocationInput:
     """The full allocation input for one coordinator update.
 
     ``whole_building_load`` is the sum of every downstream load inside the
-    shared boundary, in Watts. It is required for the residual policy and
-    ignored otherwise.
+    shared boundary, in kWh over the interval. It is required for the residual
+    policy and ignored otherwise.
     """
 
     tenants: tuple[TenantInput, ...]
@@ -65,7 +67,7 @@ class AllocationResult:
     """The allocation outcome for one tenant."""
 
     slug: str
-    accounting_power: float | None
+    accounting_energy: float | None
     share: float | None
     provenance: AllocationProvenance
 
@@ -150,7 +152,7 @@ def allocate(allocation_input: AllocationInput) -> tuple[AllocationResult, ...]:
     Invariants:
 
     * Any tenant whose direct or dependency inputs are ``None``, non-finite,
-      negative, or otherwise invalid returns ``accounting_power=None``,
+      negative, or otherwise invalid returns ``accounting_energy=None``,
       ``share=None``, and ``provenance="unavailable"``. The result is never
       clamped to ``0``.
     * If two or more tenants declare
@@ -218,7 +220,7 @@ def allocate(allocation_input: AllocationInput) -> tuple[AllocationResult, ...]:
         results.append(
             AllocationResult(
                 slug=tenant.slug,
-                accounting_power=value,
+                accounting_energy=value,
                 share=share,
                 provenance=provenances[tenant.slug],
             )

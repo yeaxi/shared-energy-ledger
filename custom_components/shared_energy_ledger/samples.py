@@ -101,6 +101,34 @@ def validate_energy_sample(
     return value
 
 
+def validate_price_sample(
+    state: object,
+    unit: str | None,
+    updated: datetime | None,
+    now: datetime,
+    max_age_seconds: float,
+    expected_unit: str,
+) -> float | None:
+    """Return a per-kWh price sample as a finite non-negative float or ``None``.
+
+    Invariant coverage:
+
+    * I5: ``unit`` must equal ``expected_unit`` exactly (for example
+      ``"EUR/kWh"``). A bare currency code or a missing unit is rejected.
+    * I2: age(``updated``, ``now``) must be within ``max_age_seconds``.
+    * I1: any non-numeric, negative, or non-finite state returns ``None``.
+    """
+    if unit != expected_unit:
+        return None
+    value = _coerce_float(state)
+    if value is None or value < 0:
+        return None
+    age = _age_seconds(updated, now)
+    if age is None or age > max_age_seconds:
+        return None
+    return value
+
+
 def validate_signed_power_sample(
     state: object,
     unit: str | None,
@@ -136,5 +164,6 @@ __all__ = [
     "as_utc",
     "validate_energy_sample",
     "validate_power_sample",
+    "validate_price_sample",
     "validate_signed_power_sample",
 ]
