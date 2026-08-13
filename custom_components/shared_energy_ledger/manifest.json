@@ -1,7 +1,7 @@
 {
   "domain": "shared_energy_ledger",
   "name": "Shared Energy Ledger",
-  "after_dependencies": ["recorder", "utility_meter"],
+  "after_dependencies": ["recorder"],
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],
