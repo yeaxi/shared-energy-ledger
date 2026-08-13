@@ -86,9 +86,12 @@ async def test_duplicate_slug_is_rejected(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_invalid_slug_is_rejected(hass: HomeAssistant) -> None:
     flow_id = await _run_to_tenants(hass)
-    step = await hass.config_entries.flow.async_configure(
-        flow_id, _tenant_input("Flat 1", "Flat 1", False)
-    )
+    bad = _tenant_input("flat-1", "Flat 1", False)
+    bad["slug"] = "Flat 1"
+    # Keep a valid entity_id so the form schema accepts the payload and the
+    # integration's own slug validator can reject the value.
+    bad["energy_entity"] = "sensor.demo_flat_1_energy"
+    step = await hass.config_entries.flow.async_configure(flow_id, bad)
     assert step["errors"] == {"slug": "invalid_slug"}
 
 

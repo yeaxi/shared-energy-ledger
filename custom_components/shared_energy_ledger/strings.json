@@ -7,12 +7,12 @@
         "data": {
           "currency": "Currency (ISO 4217)",
           "import_energy_entity": "Grid import energy (kWh, monotonic)",
-          "import_price_entity": "Grid import price sensor (<currency>/kWh)"
+          "import_price_entity": "Grid import price sensor (currency/kWh)"
         },
         "data_description": {
           "currency": "Three-letter currency code used as the unit of measurement for all monetary sensors.",
           "import_energy_entity": "A cumulative total-increasing sensor with unit_of_measurement kWh.",
-          "import_price_entity": "A sensor reporting the effective grid import price per kWh in <currency>/kWh."
+          "import_price_entity": "A sensor reporting the effective grid import price per kWh in currency/kWh (for example EUR/kWh)."
         }
       },
       "optional": {
@@ -29,13 +29,13 @@
         "data": {
           "energy_entity": "PV aggregate energy (kWh)",
           "zero_cost": "Price self-consumed PV at zero cost",
-          "price_entity": "PV price sensor (<currency>/kWh)",
+          "price_entity": "PV price sensor (currency/kWh)",
           "power_entity": "PV aggregate power (optional)"
         },
         "data_description": {
           "energy_entity": "Cumulative total-increasing kWh counter of PV generation.",
           "zero_cost": "When enabled, self-consumed PV energy is priced at zero and no PV price sensor is needed.",
-          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in <currency>/kWh.",
+          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in currency/kWh (for example EUR/kWh).",
           "power_entity": "Optional; used for freshness and dashboards only."
         }
       },
@@ -106,13 +106,35 @@
     "step": {
       "init": {
         "title": "Shared Energy Ledger options",
-        "description": "Add, edit, remove, or reorder tenants, or adjust freshness windows.",
+        "description": "Add, edit, remove, or reorder tenants, attach shared loads, or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
           "edit_tenant": "Edit a tenant",
           "remove_tenant": "Remove a tenant",
           "reorder": "Reorder tenants",
+          "shared_load": "Add a shared load",
           "freshness": "Freshness windows"
+        }
+      },
+      "shared_load": {
+        "title": "Shared load owner",
+        "description": "Pick the tenant that financially owns the shared load.",
+        "data": {"owner": "Owning tenant"}
+      },
+      "shared_load_details": {
+        "title": "Shared load for {owner}",
+        "description": "Configure a load owned by {owner}. Set the host tenant when the load is physically on another tenant's meter; leave host empty for a dedicated meter.",
+        "data": {
+          "label": "Label",
+          "energy_entity": "Shared load energy meter (kWh)",
+          "power_entity": "Shared load power meter (optional)",
+          "host_slug": "Host tenant meter (optional)"
+        },
+        "data_description": {
+          "label": "Short name shown in diagnostics and reports.",
+          "energy_entity": "Cumulative kWh counter for this shared load.",
+          "power_entity": "Optional instantaneous power sensor.",
+          "host_slug": "Tenant whose direct meter physically includes this load. Leave empty when the load has its own dedicated meter."
         }
       },
       "add_tenant": {

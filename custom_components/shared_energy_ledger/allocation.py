@@ -80,13 +80,16 @@ def _direct_accounting_load(inp: TenantInput) -> float | None:
     # ``None`` on any shared-load field means "configured but unavailable this
     # interval" and fails closed (requirement I1). A tenant with no shared
     # loads carries the ``0.0`` default and is unaffected.
-    if not _is_finite_non_negative(inp.direct_load):
+    direct = inp.direct_load
+    owned = inp.owned_not_on_meter
+    borrowed = inp.borrowed_on_meter
+    if direct is None or not _is_finite_non_negative(direct):
         return None
-    if inp.owned_not_on_meter is None or not _is_finite_non_negative(inp.owned_not_on_meter):
+    if owned is None or not _is_finite_non_negative(owned):
         return None
-    if inp.borrowed_on_meter is None or not _is_finite_non_negative(inp.borrowed_on_meter):
+    if borrowed is None or not _is_finite_non_negative(borrowed):
         return None
-    result = float(inp.direct_load) + float(inp.owned_not_on_meter) - float(inp.borrowed_on_meter)
+    result = direct + owned - borrowed
     if not isfinite(result) or result < 0:
         return None
     return result
@@ -188,10 +191,16 @@ def allocate(allocation_input: AllocationInput) -> tuple[AllocationResult, ...]:
         elif tenant.policy == AllocationPolicy.PROPORTIONAL_BY_DIRECT_METERS:
             total_load = allocation_input.whole_building_load
             if total_load is None:
-                total_load = sum(
-                    (_direct_accounting_load(t) or 0.0) for t in tenants
-                )
-                if any(_direct_accounting_load(t) is None for t in tenants):
+                directs: list[float] = []
+                for peer in tenants:
+                    peer_direct = _direct_accounting_load(peer)
+                    if peer_direct is None:
+                        directs = []
+                        break
+                    directs.append(peer_direct)
+                else:
+                    total_load = sum(directs)
+                if not directs:
                     total_load = None
             accounting = _proportional_accounting_load(tenant, tenants, total_load)
             provenance = (

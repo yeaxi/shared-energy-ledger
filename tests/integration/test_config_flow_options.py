@@ -74,7 +74,7 @@ async def test_full_optional_path_creates_entry(hass: HomeAssistant) -> None:
     )
     assert final["type"] == FlowResultType.CREATE_ENTRY
     assert final["data"][CONF_CURRENCY] == "USD"
-    assert final["data"][CONF_IMPORT_PRICE] not in (None, "") or True
+    assert final["data"]["grid"][CONF_IMPORT_PRICE] == "sensor.grid_price"
     assert final["data"][CONF_PV] is not None
     assert final["data"][CONF_PV]["zero_cost"] is True
     assert final["data"][CONF_BATTERY] is not None
@@ -110,5 +110,12 @@ async def test_options_menu_lists_actions(hass: HomeAssistant) -> None:
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     options_flow = await hass.config_entries.options.async_init(entry.entry_id)
     assert options_flow["type"] == FlowResultType.MENU
-    for action in ("add_tenant", "edit_tenant", "remove_tenant", "reorder", "freshness"):
+    for action in (
+        "add_tenant",
+        "edit_tenant",
+        "remove_tenant",
+        "reorder",
+        "shared_load",
+        "freshness",
+    ):
         assert action in options_flow["menu_options"]
