@@ -6,8 +6,8 @@ change here is user-facing code that must reach and stay at
 
 ## Scope
 
-- Python source, `manifest.json`, `services.yaml`, `strings.json`, and
-  translations live here.
+- Python source, `manifest.json`, `services.yaml`, `strings.json`,
+  translations, and the `brand/` icons live here.
 - No frontend code, no test code, and no documentation prose belongs in this
   folder.
 - The folder never imports from `legacy/` or references legacy fixtures.
@@ -46,6 +46,10 @@ Agents editing this folder must follow, in this order of precedence:
   `unit_of_measurement` before consuming any value.
 - All user-visible strings are localized via `strings.json` and mirrored in
   `translations/en.json`.
+- Brand images ship in `brand/` (`icon.png` at 256x256 and `icon@2x.png` at
+  512x512, transparent background, trimmed). HACS `brands` validation fails
+  outright when `brand/icon.png` is absent, so the assets are part of the
+  integration, not of a release checklist.
 
 ## Forbidden patterns
 
@@ -67,6 +71,7 @@ Before requesting review, the following must all pass locally:
 python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m mypy --strict custom_components/shared_energy_ledger
 python -m ruff check custom_components/shared_energy_ledger
+python scripts/check_brand_assets.py custom_components/shared_energy_ledger
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90
 ```
 

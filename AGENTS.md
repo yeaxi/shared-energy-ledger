@@ -77,6 +77,7 @@ python -m ruff check .
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error
 python scripts/check_translations.py custom_components/shared_energy_ledger
 python scripts/check_private_denylist.py
+python scripts/check_brand_assets.py custom_components/shared_energy_ledger
 python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 python scripts/check_requirements_traceability.py
 python scripts/live_probe.py                 # live smoke against the real HA runtime

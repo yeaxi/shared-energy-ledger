@@ -27,6 +27,9 @@ prior epochs or start a new one.
   (`icon.png`, `icon@2x.png`). Home Assistant 2026.3 and later serve these
   local files instead of the `home-assistant/brands` CDN, and the HACS
   `brands` check — which was failing the HACS workflow — accepts them.
+- `scripts/check_brand_assets.py`, wired into the CI lint job, which keeps
+  the brand images within the dimensions, transparency, and size limits of
+  the brands image specification.
 
 ### Changed
 
