@@ -23,6 +23,10 @@ prior epochs or start a new one.
   satisfies it, or to a documented exemption.
 - `docs` GitHub workflow that builds and deploys the mkdocs site to GitHub
   Pages on every push to `main`.
+- Brand images at `custom_components/shared_energy_ledger/brand/`
+  (`icon.png`, `icon@2x.png`). Home Assistant 2026.3 and later serve these
+  local files instead of the `home-assistant/brands` CDN, and the HACS
+  `brands` check — which was failing the HACS workflow — accepts them.
 
 ### Changed
 
@@ -98,7 +102,6 @@ The following are outside the scope of tagged code but required for a
 public HACS listing:
 
 - GitHub repository topics and description on the About page.
-- Brand PR to [`home-assistant/brands`](https://github.com/home-assistant/brands).
 - Addition PR to [`hacs/default`](https://github.com/hacs/default).
 
 [Unreleased]: https://github.com/yeaxi/shared-energy-ledger/compare/v0.1.0...HEAD

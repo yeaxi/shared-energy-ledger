@@ -230,9 +230,11 @@ cross-referencing from tests, docs, and the traceability matrix.
 - Config-entry versioning and migration cover every schema bump. Every entity
   has a deterministic `unique_id`. Device and entity registry entries are
   stable across restarts.
-- Hassfest and HACS validate green in CI. A brand PR is prepared for
-  `home-assistant/brands` (icon and logo) but is not a blocker for local
-  development.
+- Hassfest and HACS validate green in CI. Brand images ship inside the
+  integration at `custom_components/shared_energy_ledger/brand/`, which is
+  where Home Assistant 2026.3 and later look first and where the HACS
+  `brands` validator looks before falling back to the
+  `home-assistant/brands` repository.
 - Test suite runs via `pytest-homeassistant-custom-component`. Coverage floor
   is ≥ 90 %. Required test modules:
   - `test_ledger.py`, `test_allocation.py`, `test_tariff.py`, `test_report.py`
@@ -252,6 +254,7 @@ custom_components/shared_energy_ledger/
   sensor.py  binary_sensor.py  number.py  select.py
   ledger.py  allocation.py  tariff.py  report.py
   translations/en.json  strategies/shared_energy_ledger.yaml
+  brand/{icon.png,icon@2x.png}
 dashboard/
   shared-energy-ledger-period-summary/
   shared-energy-ledger-history-report/

@@ -16,7 +16,8 @@ Invoke this skill when:
 
 - Preparing a new tagged release.
 - Adding the integration to the HACS default listing.
-- Updating `hacs.json` or brand assets.
+- Updating `hacs.json` or the brand images under
+  `custom_components/<domain>/brand/`.
 
 ## Preconditions
 
@@ -44,13 +45,20 @@ Invoke this skill when:
 5. **HACS validation on tag.** The release workflow reruns HACS validate on
    the tagged commit. Fail-open is not allowed; a red HACS validate blocks the
    release.
-6. **Brand PR (default listing only).** For inclusion in the HACS default
-   listing, open a PR to `home-assistant/brands` adding:
-   - `custom_integrations/<domain>/icon.png` (256x256 PNG, transparent
-     background).
-   - `custom_integrations/<domain>/logo.png` (larger PNG at the aspect ratio
-     the brands repo requires).
-   Follow the brands repo README for exact dimensions and file naming.
+6. **Brand images.** Ship them inside the integration at
+   `custom_components/<domain>/brand/`:
+   - `icon.png` (256x256 PNG, transparent background, trimmed).
+   - `icon@2x.png` (512x512).
+   - Optionally `logo.png` / `logo@2x.png`, and `dark_` variants when the
+     light-background artwork does not survive a dark theme. A square logo
+     is not worth shipping: the icon is used as its fallback.
+   Home Assistant 2026.3 and later serve these local files in preference to
+   the CDN, and `home-assistant/brands` no longer accepts custom-integration
+   submissions. The HACS `brands` validator looks for
+   `<content path>/brand/icon.png` and only falls back to the brands
+   repository when it is missing, so a release without that file fails HACS
+   validation. Dimensions come from the brands repository image
+   specification; `scripts/check_brand_assets.py` enforces them.
 
 ## hacs.json
 
@@ -100,6 +108,7 @@ Before publishing the tag:
 ```bash
 python -m json.tool hacs.json
 python -m json.tool custom_components/<domain>/manifest.json
+python scripts/check_brand_assets.py custom_components/<domain>
 python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m pytest tests/ -q --cov=custom_components.<domain> --cov-fail-under=90
 ```

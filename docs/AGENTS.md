@@ -16,7 +16,8 @@ integration and its companion cards.
 Agents editing this folder must follow:
 
 1. `translation-and-i18n` for any user-visible copy inside the site.
-2. `hacs-release-and-brands` when preparing release notes and the brand PR.
+2. `hacs-release-and-brands` when preparing release notes or refreshing the
+   brand images.
 3. `energy-accounting-invariants` for accuracy of the invariant reference
    page.
 
