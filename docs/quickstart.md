@@ -56,7 +56,7 @@ and no vendor-specific ID.
   or `GBP`).
 - The chosen code becomes the unit of measurement for every monetary
   sensor and is written into the accounting-epoch metadata. See
-  [Tariffs and currency](tariffs-and-currency.md).
+  [Pricing and currency](pricing-and-currency.md).
 
 ### Step 1b: Grid (same screen)
 
@@ -65,7 +65,7 @@ and no vendor-specific ID.
 - **Grid import price** — required. A sensor reporting the price per kWh
   in `<currency>/kWh` (for example `EUR/kWh`). Model flat, day/night, or
   dynamic pricing behind this sensor; see
-  [Pricing and currency](tariffs-and-currency.md).
+  [Pricing and currency](pricing-and-currency.md).
 
 ### Step 2: Optional sections
 

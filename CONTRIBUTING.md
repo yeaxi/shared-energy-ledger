@@ -106,9 +106,23 @@ deterministic: no wall-clock waits, no real network, no real database.
 
 ## Repository automation and agents
 
-This project is developed with a set of Cursor agent identities, each scoped
-to a folder with its own guardrails. If you want to understand that workflow,
-see [`docs/cursor-agents.md`](docs/cursor-agents.md).
+Folder ownership and the PR review gate are documented in
+[`docs/cursor-agents.md`](docs/cursor-agents.md). Cross-cutting hard rules
+live in [`AGENTS.md`](AGENTS.md).
+
+When a change spans folders (for example a card that needs a new sensor),
+open linked pull requests per folder rather than editing another folder's
+owned paths in place.
+
+## Releases
+
+Maintainers only:
+
+- Run the full verification gate and `python scripts/live_probe.py` on the
+  release commit before tagging.
+- Never force-push a release tag.
+- HACS default-list addition and live Home Assistant staging are external
+  maintainer steps; they are not part of agent or CI work.
 
 ## Security
 

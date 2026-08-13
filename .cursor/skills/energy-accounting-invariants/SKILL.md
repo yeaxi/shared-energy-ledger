@@ -61,7 +61,7 @@ as `typing.Literal` or `enum.StrEnum`. Any other value returns `unavailable`.
 `residual_of_total_minus_others` is accepted only when:
 
 - total, all sibling loads, and shared loads are finite and non-negative,
-- all inputs share a unit class (all `W` or all `kWh`),
+- all inputs share a unit class (all `kWh`),
 - all inputs are time-aligned within a configurable skew window (default
   180 s),
 - and the computed residual is non-negative.

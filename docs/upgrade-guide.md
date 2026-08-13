@@ -39,7 +39,7 @@ deltas split by source (grid, PV, battery). What changed for operators:
 - **Grid pricing is now a sensor.** Add a grid import price sensor in
   `<currency>/kWh`. The `set_tariff_rate` service and the tariff editor are
   removed; model day/night or dynamic pricing in the price sensor instead (see
-  [Pricing and currency](tariffs-and-currency.md)).
+  [Pricing and currency](pricing-and-currency.md)).
 - **PV pricing is a sensor or an explicit zero-cost choice.**
 - **New and renamed entities.** Per-tenant cost is now split into
   `total_cost`, `grid_cost`, `pv_cost`, and `battery_cost`. The old
