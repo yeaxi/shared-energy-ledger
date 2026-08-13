@@ -10,7 +10,7 @@ reads:
    (minimum two). Each tenant gets a stable ``tenant_id`` used in entity
    ``unique_id``s; the editable slug is only a display label.
 
-Pricing comes from operator-provided ``<currency>/kWh`` sensors, so there is no
+Pricing comes from operator-provided currency/kWh sensors, so there is no
 tariff editor. Every runtime-changeable parameter lives in the options flow.
 """
 
@@ -42,8 +42,10 @@ from .const import (
     CONF_POWER,
     CONF_PV_PRICE,
     CONF_PV_ZERO_COST,
+    CONF_SHARED_LOAD_HOST,
     CONF_TENANT_ALLOCATION,
     CONF_TENANT_NAME,
+    CONF_TENANT_SHARED_LOADS,
     CONF_TENANT_SLUG,
     DEFAULT_CHARGE_EFFICIENCY,
     DEFAULT_DISCHARGE_EFFICIENCY,
@@ -336,11 +338,12 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SharedEnergyLedgerOptionsFlow(OptionsFlow):
-    """Menu-driven options flow: add, edit, remove, reorder tenants; freshness."""
+    """Menu-driven options flow: tenants, shared loads, and freshness."""
 
     def __init__(self, entry: ConfigEntry) -> None:
         self.entry = entry
         self._selected_slug: str | None = None
+        self._shared_load_owner: str | None = None
 
     def _current_tenants(self) -> list[dict[str, Any]]:
         tenants = list(
@@ -362,7 +365,14 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["add_tenant", "edit_tenant", "remove_tenant", "reorder", "freshness"],
+            menu_options=[
+                "add_tenant",
+                "edit_tenant",
+                "remove_tenant",
+                "reorder",
+                "shared_load",
+                "freshness",
+            ],
         )
 
     async def async_step_add_tenant(
@@ -516,6 +526,77 @@ class SharedEnergyLedgerOptionsFlow(OptionsFlow):
             }
         )
         return self.async_show_form(step_id="reorder", data_schema=schema)
+
+    async def async_step_shared_load(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Pick the owning tenant for a new shared load."""
+        tenants = self._current_tenants()
+        if not tenants:
+            return self.async_abort(reason="no_tenants")
+        if user_input is not None:
+            self._shared_load_owner = str(user_input["owner"])
+            return await self.async_step_shared_load_details()
+        options = [
+            selector.SelectOptionDict(value=t["slug"], label=f'{t["name"]} ({t["slug"]})')
+            for t in tenants
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required("owner"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options, mode=selector.SelectSelectorMode.LIST
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="shared_load", data_schema=schema)
+
+    async def async_step_shared_load_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Attach a shared load to the selected owner with optional host meter."""
+        assert self._shared_load_owner is not None
+        tenants = self._current_tenants()
+        owner = next((t for t in tenants if t["slug"] == self._shared_load_owner), None)
+        if owner is None:
+            self._shared_load_owner = None
+            return self.async_abort(reason="unknown_tenant")
+        if user_input is not None:
+            host = user_input.get(CONF_SHARED_LOAD_HOST)
+            load: dict[str, Any] = {
+                "label": str(user_input["label"]).strip() or "shared-load",
+                CONF_ENERGY: user_input.get(CONF_ENERGY),
+                CONF_POWER: user_input.get(CONF_POWER),
+            }
+            if host:
+                load[CONF_SHARED_LOAD_HOST] = str(host)
+            loads = list(owner.get(CONF_TENANT_SHARED_LOADS) or [])
+            loads.append(load)
+            owner[CONF_TENANT_SHARED_LOADS] = loads
+            self._shared_load_owner = None
+            return self._finalize(tenants=tenants)
+        host_options = [
+            selector.SelectOptionDict(value=t["slug"], label=f'{t["name"]} ({t["slug"]})')
+            for t in tenants
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required("label"): str,
+                vol.Optional(CONF_ENERGY): _energy_selector(),
+                vol.Optional(CONF_POWER): _power_selector(),
+                vol.Optional(CONF_SHARED_LOAD_HOST): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=host_options, mode=selector.SelectSelectorMode.DROPDOWN
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="shared_load_details",
+            data_schema=schema,
+            description_placeholders={"owner": self._shared_load_owner},
+        )
 
     async def async_step_freshness(
         self, user_input: dict[str, Any] | None = None

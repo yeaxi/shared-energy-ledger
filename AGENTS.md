@@ -27,8 +27,6 @@ never mutates recorder state.
 - [`scripts/`](scripts/) — dev helpers (lint, traceability, i18n coverage).
 - [`.cursor/skills/`](.cursor/skills/) — reusable Home Assistant development
   skills.
-- [`legacy/`](legacy/) — **read-only** archive of the pre-migration personal
-  installation. Never a source of truth.
 
 Each of the first four folders has a scoped `AGENTS.md` with folder-specific
 rules. Read those before editing files in that folder.
@@ -36,9 +34,8 @@ rules. Read those before editing files in that folder.
 ## Cross-cutting hard rules
 
 - **Public and generic.** No hard-coded entity IDs, device names, brand
-  identifiers, currencies-locked-to-a-country, addresses, or personal names in
-  any file outside `legacy/`. All external inputs are user-selected at config
-  time.
+  identifiers, currencies-locked-to-a-country, addresses, or personal names.
+  All external inputs are user-selected at config time.
 - **Fail-closed accounting.** No `float(state, 0)`, no `state or 0`, no
   `try/except: pass` on any cost, allocation, ledger, or report code path.
   See the `energy-accounting-invariants` skill for the full invariant list.

@@ -5,13 +5,8 @@ Boots a real Home Assistant runtime via
 ``pytest_homeassistant_custom_component.async_test_home_assistant``, loads
 our integration from ``custom_components/shared_energy_ledger``, drives synthetic
 upstream sensors through the state machine, forces coordinator refreshes,
-and asserts every invariant from ``REQUIREMENTS.md#a3`` (I1..I9) against
-the real HA machinery — state machine, entity registry, config entries,
-services, coordinator, Recorder helpers.
-
-This is exactly the runtime an end user would install, minus the frontend
-(``hass_frontend``) and voice-assist packages that require a full Home
-Assistant Operating System build.
+and asserts the fail-closed source-cost invariants against the real HA
+machinery.
 
 Usage:
 
@@ -35,8 +30,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 ENTRY_DATA: dict[str, Any] = {
     "currency": "EUR",
-    "grid": {"import_energy_entity": "sensor.fake_grid_import"},
-    "pv": {"power_entity": "sensor.fake_pv_power"},
+    "grid": {
+        "import_energy_entity": "sensor.fake_grid_import",
+        "import_price_entity": "sensor.fake_grid_price",
+    },
+    "pv": {
+        "energy_entity": "sensor.fake_pv_energy",
+        "zero_cost": True,
+    },
     "battery": {
         "charge_energy_entity": "sensor.fake_batt_charge",
         "discharge_energy_entity": "sensor.fake_batt_discharge",
@@ -46,32 +47,25 @@ ENTRY_DATA: dict[str, Any] = {
         "initial_stock_kwh": 5.0,
         "initial_stock_cost": 20.0,
     },
-    "whole_building": {"power_entity": "sensor.fake_wb_power"},
-    "tariff_schedule": {
-        "slots": [
-            {"slot": "day", "rate": 0.30, "effective_from": "2024-01-01T00:00:00+00:00"},
-            {"slot": "night", "rate": 0.15, "effective_from": "2024-01-01T00:00:00+00:00"},
-        ],
-        "windows": [
-            {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "07:00", "end": "23:00", "slot": "day"},
-            {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "23:00", "end": "00:00", "slot": "night"},
-            {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "00:00", "end": "07:00", "slot": "night"},
-        ],
-    },
+    "whole_building": {"energy_entity": "sensor.fake_wb_energy"},
     "tenants": [
         {
+            "tenant_id": "id-flat-1",
             "slug": "flat-1",
             "name": "Flat 1",
             "allocation_policy": "direct_meter",
             "energy_entity": "sensor.fake_flat_1_energy",
             "power_entity": "sensor.fake_flat_1_power",
+            "shared_loads": [],
         },
         {
+            "tenant_id": "id-flat-2",
             "slug": "flat-2",
             "name": "Flat 2",
             "allocation_policy": "direct_meter",
             "energy_entity": "sensor.fake_flat_2_energy",
             "power_entity": "sensor.fake_flat_2_power",
+            "shared_loads": [],
         },
     ],
 }
@@ -121,6 +115,8 @@ async def _run() -> int:
         async_test_home_assistant,
     )
 
+    from custom_components.shared_energy_ledger.const import CONFIG_ENTRY_VERSION
+
     probe_dir = _bootstrap_probe_dir()
 
     problems: list[str] = []
@@ -131,7 +127,10 @@ async def _run() -> int:
         hass.config.components.add("recorder")
 
         entry = MockConfigEntry(
-            domain="shared_energy_ledger", data=ENTRY_DATA, version=1, title="Shared Energy Ledger (EUR)"
+            domain="shared_energy_ledger",
+            data=ENTRY_DATA,
+            version=CONFIG_ENTRY_VERSION,
+            title="Shared Energy Ledger (EUR)",
         )
         entry.add_to_hass(hass)
 
@@ -150,20 +149,32 @@ async def _run() -> int:
 
         _dump(hass, "SCENARIO 1: cold boot, no upstream states set")
 
-        _set(hass, "sensor.fake_grid_import", "12345.678", "kWh")
-        _set(hass, "sensor.fake_pv_power", "1500.0", "W")
+        # Anchor tick: establish cumulative counter samples.
+        _set(hass, "sensor.fake_grid_import", "100.0", "kWh")
+        _set(hass, "sensor.fake_grid_price", "0.30", "EUR/kWh")
+        _set(hass, "sensor.fake_pv_energy", "50.0", "kWh")
         _set(hass, "sensor.fake_batt_charge", "100.0", "kWh")
         _set(hass, "sensor.fake_batt_discharge", "50.0", "kWh")
         _set(hass, "sensor.fake_batt_power", "250.0", "W")
-        _set(hass, "sensor.fake_wb_power", "2400.0", "W")
+        _set(hass, "sensor.fake_wb_energy", "200.0", "kWh")
         _set(hass, "sensor.fake_flat_1_energy", "1200.0", "kWh")
         _set(hass, "sensor.fake_flat_1_power", "800.0", "W")
         _set(hass, "sensor.fake_flat_2_energy", "1000.0", "kWh")
         _set(hass, "sensor.fake_flat_2_power", "600.0", "W")
-
         await coordinator.async_refresh()
         await hass.async_block_till_done()
-        _dump(hass, "SCENARIO 2: fresh grid + PV + battery + tenants; every gate should flip on")
+
+        # Priced interval: advance every cumulative meter by a known delta.
+        _set(hass, "sensor.fake_grid_import", "102.0", "kWh")
+        _set(hass, "sensor.fake_pv_energy", "51.0", "kWh")
+        _set(hass, "sensor.fake_batt_charge", "100.5", "kWh")
+        _set(hass, "sensor.fake_batt_discharge", "50.2", "kWh")
+        _set(hass, "sensor.fake_wb_energy", "203.0", "kWh")
+        _set(hass, "sensor.fake_flat_1_energy", "1201.2", "kWh")
+        _set(hass, "sensor.fake_flat_2_energy", "1000.8", "kWh")
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+        _dump(hass, "SCENARIO 2: priced interval after meter deltas")
 
         payload = coordinator.data
         if not payload.grid_data_fresh:
@@ -175,26 +186,29 @@ async def _run() -> int:
         for slug in ("flat-1", "flat-2"):
             if not payload.tenant_data_fresh.get(slug):
                 problems.append(f"I2 tenant gate did not flip on for {slug}")
-        for slug, expected in (("flat-1", 800.0), ("flat-2", 600.0)):
+        for slug, expected in (("flat-1", 1.2), ("flat-2", 0.8)):
             alloc = payload.allocations.get(slug)
-            if alloc is None or alloc.accounting_power is None:
+            if alloc is None or alloc.accounting_energy is None:
                 problems.append(f"I3 allocation unavailable for {slug}")
                 continue
-            if abs(alloc.accounting_power - expected) > 1.0:
+            if abs(alloc.accounting_energy - expected) > 1e-6:
                 problems.append(
-                    f"allocation mismatch for {slug}: got {alloc.accounting_power}"
+                    f"allocation mismatch for {slug}: got {alloc.accounting_energy}"
                 )
-        if payload.ledger is None or payload.ledger.stock_kwh != 5.0:
-            problems.append(f"I6 ledger stock unexpected: {payload.ledger}")
+        if payload.ledger is None:
+            problems.append("I6 ledger missing after priced interval")
         if payload.currency != "EUR":
             problems.append(f"currency mismatch: {payload.currency}")
+        if not payload.interval_available:
+            problems.append(f"interval unavailable: {payload.interval_reason}")
 
-        _set(hass, "sensor.fake_grid_import", "12345", "kW")
+        _set(hass, "sensor.fake_grid_price", "0.30", "USD/kWh")
         await coordinator.async_refresh()
         await hass.async_block_till_done()
-        if coordinator.data.grid_data_fresh:
-            problems.append("I5 grid gate should flip off when unit becomes kW")
-        _dump(hass, "SCENARIO 3: grid unit switched to kW (invariant I5)")
+        # Wrong currency unit must not silently price further intervals.
+        if coordinator.data.grid_price is not None:
+            problems.append("I5 grid price should be rejected when unit is USD/kWh for EUR")
+        _dump(hass, "SCENARIO 3: price unit switched away from EUR/kWh (invariant I5)")
 
         hass.states.async_remove("sensor.fake_grid_import")
         await coordinator.async_refresh()
@@ -235,23 +249,10 @@ async def _run() -> int:
         if snapshot is None or snapshot.get("stock_kwh") != 7.5:
             problems.append(f"ledger snapshot missing 7.5 stock: {snapshot}")
 
-        response = await hass.services.async_call(
-            "shared_energy_ledger",
-            "set_tariff_rate",
-            {
-                "slot": "day",
-                "rate": 0.42,
-                "effective_from": "2027-01-01T00:00:00",
-            },
-            blocking=True,
-            return_response=True,
-        )
-        print(f"set_tariff_rate response: {response}")
-        slots = (entry.options.get("tariff_schedule") or {}).get("slots") or []
-        if not any(s.get("slot") == "day" and s.get("rate") == 0.42 for s in slots):
-            problems.append("I9 set_tariff_rate did not append a new epoch")
+        if hass.services.has_service("shared_energy_ledger", "set_tariff_rate"):
+            problems.append("set_tariff_rate must not be registered after source-cost rewrite")
         else:
-            print(f"I9 accounting-epoch preserved; last day slot: {slots[-1]}")
+            print("I9 pricing is sensor-backed; set_tariff_rate is absent as required")
 
         print("\n=== Summary ===")
         if problems:

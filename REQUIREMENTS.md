@@ -282,12 +282,11 @@ scripts/                        # dev helpers (typing, release, hacs-validate)
 docs/                           # mkdocs site (quickstart, examples, invariants)
 .github/workflows/{ci,docs,release}.yml
 hacs.json  info.md  README.md  LICENSE
-legacy/                         # optional archive of pre-migration artifacts
 ```
 
-Content under `legacy/` is never a source of truth for the new integration.
-Nothing in `custom_components/shared_energy_ledger/` may import identifiers from
-`legacy/`, and no test may reference `legacy/` fixtures.
+Pre-migration personal installation artifacts are not kept in the tree.
+Nothing in `custom_components/shared_energy_ledger/` may hard-code private
+identifiers, and no test may use data from a real installation.
 
 ## A6. Migration path
 
@@ -295,8 +294,7 @@ The migration is described in technical terms, not calendar time. Each step
 lands as a separate draft PR on a `cursor/<name>-c99d` branch and stays
 reviewable in isolation.
 
-1. Archive or remove pre-migration artifacts. Anything retained is moved under
-   `legacy/` and marked as non-canonical.
+1. Remove or keep out of the tree any pre-migration personal artifacts.
 2. Scaffold `custom_components/shared_energy_ledger/` with `manifest.json`, an empty
    config flow, and the N-tenant data model in `models.py`. Ship a stub
    coordinator that always yields empty data so entities can register.

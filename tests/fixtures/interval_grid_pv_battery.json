@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "scenario": "Two tenants, mixed grid/PV/battery sources over one interval",
+    "invariants": ["I1", "I6", "I7"],
+    "requirement": "A3",
+    "hand_calculated": {
+      "consumption_kwh": 10.0,
+      "pv_to_load_kwh": 2.0,
+      "battery_to_load_kwh": 3.0,
+      "grid_to_load_kwh": 5.0,
+      "total_cost": 2.46,
+      "notes": "prices grid=0.40, pv=0.05, battery_weighted=0.12; costs = 5*0.40 + 2*0.05 + 3*0.12"
+    }
+  },
+  "tenant_energy": {"flat-1": 7.0, "flat-2": 3.0},
+  "grid_price": 0.4,
+  "pv_configured": true,
+  "pv_generation_kwh": 2.0,
+  "pv_price": 0.05,
+  "battery_configured": true,
+  "battery_discharge_kwh": 3.0,
+  "battery_charge_kwh": 0.0,
+  "battery_weighted_cost": 0.12,
+  "grid_import_kwh": 5.0
+}

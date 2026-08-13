@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "scenario": "Owned shared load on another tenant's meter transfers accounting energy",
+    "invariants": ["I1", "I3"],
+    "requirement": "A3",
+    "hand_calculated": {
+      "flat-1_accounting_kwh": 6.0,
+      "flat-2_accounting_kwh": 3.0,
+      "notes": "flat-1 direct 5 + owned shared 1; flat-2 direct 4 - borrowed 1"
+    }
+  },
+  "tenants": [
+    {
+      "slug": "flat-1",
+      "policy": "direct_meter",
+      "direct_load": 5.0,
+      "owned_not_on_meter": 1.0,
+      "borrowed_on_meter": 0.0
+    },
+    {
+      "slug": "flat-2",
+      "policy": "direct_meter",
+      "direct_load": 4.0,
+      "owned_not_on_meter": 0.0,
+      "borrowed_on_meter": 1.0
+    }
+  ]
+}

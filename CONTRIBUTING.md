@@ -24,9 +24,10 @@ developers. If you are an end user, start with the [README](README.md) and the
   invariant test, update [`REQUIREMENTS.md`](REQUIREMENTS.md) and the matching
   contract test too.
 - **No private installation data.** Never add real entity IDs, device names,
-  addresses, or personal data. Synthetic fixtures only. The read-only
-  pre-migration archive under [`legacy/`](legacy/README.md) is never a source
-  of truth and is never imported by shipping code.
+  addresses, or personal data. Synthetic fixtures under
+  [`tests/fixtures/`](tests/fixtures/) only. Pre-migration personal
+  installation artifacts are not kept in the tree and must never be
+  reintroduced.
 - **Public and generic.** No hard-coded brands, currencies locked to one
   country, or installation-specific identifiers.
 - **Async only.** All I/O inside the event loop is async; wrap sync
