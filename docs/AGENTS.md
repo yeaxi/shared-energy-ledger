@@ -23,7 +23,7 @@ Agents editing this folder must follow:
 ## Hard rules
 
 - The invariant reference page mirrors
-  [`REQUIREMENTS.md#a3`](../REQUIREMENTS.md#a3-non-functional-invariants)
+  [`REQUIREMENTS.md#a3`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
   exactly. Changes to either file happen in the same PR.
 - Every configuration option documented in the site has a matching field in
   the integration's config or options flow. Undocumented flow fields are a

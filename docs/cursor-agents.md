@@ -4,7 +4,7 @@ This document describes the Cursor identities used to develop the
 `shared_energy_ledger` Home Assistant custom integration and its companion Lovelace
 cards. The identities are separated so that guardrails match responsibilities
 and so that no single agent can silently regress an invariant defined in
-[`REQUIREMENTS.md`](../REQUIREMENTS.md).
+[`REQUIREMENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md).
 
 None of the identities has SSH, HTTP, or service-call access to any real Home
 Assistant instance. Live testing is out of scope for this project; it will be
@@ -31,7 +31,7 @@ handled by a separate rollout plan after the project is "done by definition".
   accompany a change are proposed as a separate PR reviewed by
   `test-engineer`.
 - Bound by every rule in
-  [`custom_components/shared_energy_ledger/AGENTS.md`](../custom_components/shared_energy_ledger/AGENTS.md).
+  [`custom_components/shared_energy_ledger/AGENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/custom_components/shared_energy_ledger/AGENTS.md).
 - Verification: hassfest, mypy strict, ruff, pytest with the coverage floor,
   and the invariant-lint script.
 
@@ -42,7 +42,7 @@ handled by a separate rollout plan after the project is "done by definition".
 - Cannot modify integration Python. Card fields that depend on new
   integration entities are proposed here first, agreed in a design PR, and
   implemented by `integration-dev` in a separate PR.
-- Bound by every rule in [`dashboard/AGENTS.md`](../dashboard/AGENTS.md).
+- Bound by every rule in [`dashboard/AGENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/dashboard/AGENTS.md).
 - Verification: `npm run lint`, `npm run typecheck`, `npm test`, `npm run
   build`.
 
@@ -53,7 +53,7 @@ handled by a separate rollout plan after the project is "done by definition".
   paths. Never weakens an existing invariant test.
 - May propose new fixture generator scripts under `scripts/` when the
   fixture is derived programmatically.
-- Bound by every rule in [`tests/AGENTS.md`](../tests/AGENTS.md).
+- Bound by every rule in [`tests/AGENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/tests/AGENTS.md).
 - Verification: `pytest -q --cov-fail-under=90 -W error` on every supported
   HA version.
 
@@ -64,8 +64,8 @@ handled by a separate rollout plan after the project is "done by definition".
 - Never modifies Python or JSON storage. Never edits card source; card copy
   changes are proposed as translations updates that `frontend-dev` picks up.
 - Keeps the invariant reference page and the traceability matrix in sync
-  with [`REQUIREMENTS.md`](../REQUIREMENTS.md) and the contract tests.
-- Bound by every rule in [`docs/AGENTS.md`](../docs/AGENTS.md).
+  with [`REQUIREMENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md) and the contract tests.
+- Bound by every rule in [`docs/AGENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/docs/AGENTS.md).
 - Verification: `mkdocs build --strict` and the traceability checker.
 
 ## `platinum-reviewer`
@@ -74,7 +74,7 @@ handled by a separate rollout plan after the project is "done by definition".
   touches `ledger.py`, `allocation.py`, `report.py`, `config_flow.py`,
   `coordinator.py`, or `services.py`.
 - Enforces the invariants in
-  [`REQUIREMENTS.md#a3`](../REQUIREMENTS.md#a3-non-functional-invariants)
+  [`REQUIREMENTS.md#a3`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
   and the Platinum checklist in the `ha-platinum-quality` skill.
 - Never commits code. Its output is comments and change requests on the PR.
 - Blocks merges that:
