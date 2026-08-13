@@ -92,6 +92,18 @@ def _weighted_cost(stock_kwh: float, stock_cost: float) -> float | None:
     return stock_cost / stock_kwh
 
 
+def to_weighted_cost(state: LedgerState | None) -> float | None:
+    """Return the weighted cost per kWh usable for pricing discharge.
+
+    ``None`` means the battery holds no priced stock this interval, so any
+    discharge is reported as unpriced rather than priced at a fabricated zero
+    (requirement I6/I7). An ``unavailable`` ledger also yields ``None``.
+    """
+    if state is None or state.status == "unavailable":
+        return None
+    return state.weighted_cost_per_kwh
+
+
 def empty_state() -> LedgerState:
     """Return an all-zero ledger state (before any priced charge)."""
     return LedgerState(
@@ -204,6 +216,7 @@ __all__ = [
     "LedgerInputs",
     "LedgerState",
     "empty_state",
+    "to_weighted_cost",
     "unavailable_state",
     "unpriced_discharge_kwh",
     "update_ledger",

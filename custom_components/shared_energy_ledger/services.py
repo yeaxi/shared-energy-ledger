@@ -1,22 +1,22 @@
 """Service registration for Shared Energy Ledger.
 
-Registers three domain services:
+Registers two domain services:
 
-* ``shared_energy_ledger.rebuild_period_report`` — deterministic Recorder-based JSON
-  report for a period, backed by :mod:`.report_builder`.
+* ``shared_energy_ledger.rebuild_period_report`` — deterministic Recorder-based
+  JSON report for a period, recomputed from meter and price history by
+  :mod:`.report_builder`. Read-only; never mutates recorder state.
 * ``shared_energy_ledger.reset_battery_ledger`` — admin action that reseeds the
-  weighted-cost ledger boundary pair (requires admin, enforces coherence
-  per invariant I6).
-* ``shared_energy_ledger.set_tariff_rate`` — journaled tariff change; creates a new
-  tariff-slot entry in ``entry.options`` so historical accounting epochs
-  are preserved (invariant I9).
+  weighted-cost ledger boundary pair (requires admin, enforces coherence per
+  invariant I6).
+
+Pricing is sourced from operator-provided price sensors, so there is no
+``set_tariff_rate`` service: the operator changes the price sensor instead.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -25,23 +25,14 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
-    ATTR_EFFECTIVE_FROM,
     ATTR_END,
-    ATTR_RATE,
-    ATTR_SLOT,
     ATTR_START,
     ATTR_STOCK_COST,
     ATTR_STOCK_KWH,
     ATTR_TENANT,
-    CONF_TARIFF_EFFECTIVE_FROM,
-    CONF_TARIFF_RATE,
-    CONF_TARIFF_SCHEDULE,
-    CONF_TARIFF_SLOT,
-    CONF_TARIFF_SLOTS,
     DOMAIN,
     SERVICE_REBUILD_PERIOD_REPORT,
     SERVICE_RESET_BATTERY_LEDGER,
-    SERVICE_SET_TARIFF_RATE,
 )
 from .coordinator import SharedEnergyLedgerCoordinator
 from .ledger import validate_boundary
@@ -63,14 +54,6 @@ RESET_LEDGER_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_STOCK_KWH): vol.All(vol.Coerce(float), vol.Range(min=0)),
         vol.Required(ATTR_STOCK_COST): vol.All(vol.Coerce(float), vol.Range(min=0)),
-    }
-)
-
-SET_TARIFF_SCHEMA = vol.Schema(
-    {
-        vol.Required(ATTR_SLOT): cv.string,
-        vol.Required(ATTR_RATE): vol.All(vol.Coerce(float), vol.Range(min=0)),
-        vol.Required(ATTR_EFFECTIVE_FROM): cv.datetime,
     }
 )
 
@@ -101,7 +84,7 @@ def _coordinator(hass: HomeAssistant) -> SharedEnergyLedgerCoordinator:
 
 
 async def _rebuild_period_report(call: ServiceCall) -> ServiceResponse:
-    """Rebuild a period report and return the report v2 payload."""
+    """Rebuild a period report and return the report payload."""
     start: datetime = call.data[ATTR_START]
     end: datetime = call.data[ATTR_END]
     tenant: str | None = call.data.get(ATTR_TENANT)
@@ -125,62 +108,11 @@ async def _reset_battery_ledger(call: ServiceCall) -> ServiceResponse:
             "Boundary pair (stock_kwh, stock_cost) is incoherent per invariant I6."
         )
     coordinator = _coordinator(call.hass)
-    ledger_store = coordinator.ledger_store
-    snapshot = ledger_store.snapshot() or {}
-    # no-silent-zero: allow (persisted counter anchors, not upstream samples)
-    updated: LedgerPersisted = {
-        "last_charge_kwh": float(snapshot.get("last_charge_kwh", 0.0)),  # no-silent-zero: allow
-        "last_discharge_kwh": float(snapshot.get("last_discharge_kwh", 0.0)),  # no-silent-zero: allow
-        "stock_kwh": stock_kwh,
-        "stock_cost": stock_cost,
-    }
-    await ledger_store.async_save(updated)
+    updated: LedgerPersisted = {"stock_kwh": stock_kwh, "stock_cost": stock_cost}
+    await coordinator.ledger_store.async_save(updated)
     await coordinator.async_request_refresh()
     _LOGGER.info("Battery ledger reseeded: stock_kwh=%s stock_cost=%s", stock_kwh, stock_cost)
     return {"status": "applied", "stock_kwh": stock_kwh, "stock_cost": stock_cost}
-
-
-async def _set_tariff_rate(call: ServiceCall) -> ServiceResponse:
-    await _require_admin(call)
-    slot: str = call.data[ATTR_SLOT]
-    rate = float(call.data[ATTR_RATE])
-    effective_from: datetime = call.data[ATTR_EFFECTIVE_FROM]
-    if effective_from.tzinfo is None:
-        effective_from = effective_from.replace(tzinfo=UTC)
-    coordinator = _coordinator(call.hass)
-    config = coordinator.energy_config
-    if config is None:
-        raise HomeAssistantError("Config entry is not ready.")
-    known_slots = {s.slot for s in config.tariff.slots}
-    if slot not in known_slots:
-        raise HomeAssistantError(
-            f"Unknown tariff slot {slot!r}. Known slots: {sorted(known_slots)}."
-        )
-
-    entry = coordinator.config_entry
-    options = dict(entry.options)
-    schedule = dict(options.get(CONF_TARIFF_SCHEDULE) or entry.data.get(CONF_TARIFF_SCHEDULE) or {})
-    slots_list = list(schedule.get(CONF_TARIFF_SLOTS, []))
-    slots_list.append(
-        {
-            CONF_TARIFF_SLOT: slot,
-            CONF_TARIFF_RATE: rate,
-            CONF_TARIFF_EFFECTIVE_FROM: effective_from.isoformat(),
-        }
-    )
-    schedule[CONF_TARIFF_SLOTS] = slots_list
-    options[CONF_TARIFF_SCHEDULE] = schedule
-    call.hass.config_entries.async_update_entry(entry, options=options)
-    await coordinator.async_request_refresh()
-    _LOGGER.info(
-        "Tariff slot %s reprised to %s effective %s", slot, rate, effective_from.isoformat()
-    )
-    return {
-        "status": "applied",
-        "slot": slot,
-        "rate": rate,
-        "effective_from": effective_from.isoformat(),
-    }
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
@@ -201,22 +133,11 @@ async def async_register_services(hass: HomeAssistant) -> None:
         schema=RESET_LEDGER_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_TARIFF_RATE,
-        _set_tariff_rate,
-        schema=SET_TARIFF_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
 
 
 async def async_unregister_services(hass: HomeAssistant) -> None:
     """Unregister the domain services on integration unload."""
-    for name in (
-        SERVICE_REBUILD_PERIOD_REPORT,
-        SERVICE_RESET_BATTERY_LEDGER,
-        SERVICE_SET_TARIFF_RATE,
-    ):
+    for name in (SERVICE_REBUILD_PERIOD_REPORT, SERVICE_RESET_BATTERY_LEDGER):
         if hass.services.has_service(DOMAIN, name):
             hass.services.async_remove(DOMAIN, name)
 
@@ -225,5 +146,3 @@ __all__: list[str] = [
     "async_register_services",
     "async_unregister_services",
 ]
-
-_UNUSED: dict[str, Any] = {}

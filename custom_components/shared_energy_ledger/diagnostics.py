@@ -25,9 +25,11 @@ REDACTED_KEYS: frozenset[str] = frozenset(
     {
         "unique_id",
         "import_energy_entity",
+        "import_price_entity",
         "export_energy_entity",
         "power_entity",
         "energy_entity",
+        "price_entity",
         "charge_energy_entity",
         "discharge_energy_entity",
     }
@@ -46,15 +48,20 @@ def _payload_snapshot(coordinator: SharedEnergyLedgerCoordinator | None) -> dict
     data = coordinator.data
     return {
         "currency": data.currency,
-        "tariff_slot": data.tariff_slot,
-        "tariff_rate": data.tariff_rate,
+        "grid_price": data.grid_price,
+        "pv_price": data.pv_price,
         "grid_data_fresh": data.grid_data_fresh,
         "pv_data_fresh": data.pv_data_fresh,
         "battery_data_fresh": data.battery_data_fresh,
         "tenant_data_fresh": dict(data.tenant_data_fresh),
+        "interval_available": data.interval_available,
+        "interval_reason": data.interval_reason,
+        "reconciliation_kwh": data.reconciliation_kwh,
         "unpriced_battery_kwh": data.unpriced_battery_kwh,
-        "grid_import_cost_rate": data.grid_import_cost_rate,
-        "tenants_cost_rate": dict(data.tenants_cost_rate),
+        "tenant_costs": {
+            slug: (asdict(totals) if is_dataclass(totals) else None)
+            for slug, totals in data.tenant_costs.items()
+        },
         "allocations": {
             slug: (asdict(result) if is_dataclass(result) else None)
             for slug, result in data.allocations.items()

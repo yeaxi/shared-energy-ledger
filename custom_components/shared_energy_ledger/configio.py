@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import asdict, replace
-from datetime import UTC, datetime, time
 from typing import Any
 
 from .const import (
@@ -29,21 +28,17 @@ from .const import (
     CONF_FRESHNESS_BATTERY_LEDGER,
     CONF_FRESHNESS_ENERGY,
     CONF_FRESHNESS_POWER,
+    CONF_FRESHNESS_PRICE,
     CONF_GRID,
     CONF_IMPORT_ENERGY,
+    CONF_IMPORT_PRICE,
     CONF_INITIAL_STOCK_COST,
     CONF_INITIAL_STOCK_KWH,
     CONF_POWER,
     CONF_PV,
-    CONF_TARIFF_EFFECTIVE_FROM,
-    CONF_TARIFF_END,
-    CONF_TARIFF_RATE,
-    CONF_TARIFF_SCHEDULE,
-    CONF_TARIFF_SLOT,
-    CONF_TARIFF_SLOTS,
-    CONF_TARIFF_START,
-    CONF_TARIFF_WEEKDAYS,
-    CONF_TARIFF_WINDOWS,
+    CONF_PV_PRICE,
+    CONF_PV_ZERO_COST,
+    CONF_SHARED_LOAD_HOST,
     CONF_TENANT_ALLOCATION,
     CONF_TENANT_NAME,
     CONF_TENANT_SHARED_LOADS,
@@ -56,6 +51,7 @@ from .const import (
     DEFAULT_DISCHARGE_EFFICIENCY,
     DEFAULT_ENERGY_MAX_AGE_S,
     DEFAULT_POWER_MAX_AGE_S,
+    DEFAULT_PRICE_MAX_AGE_S,
 )
 from .models import (
     AllocationPolicy,
@@ -65,37 +61,15 @@ from .models import (
     PvConfig,
     SharedEnergyLedgerConfig,
     SharedLoad,
-    TariffSchedule,
-    TariffSlot,
-    TariffWindow,
     Tenant,
     WholeBuildingConfig,
 )
 
+CONF_TENANT_ID = "tenant_id"
+
 
 class ConfigError(ValueError):
     """Raised when the stored config entry cannot be deserialized."""
-
-
-def _iso_to_datetime(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value)
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed
-
-
-def _time_from_hhmm(value: str) -> time:
-    parts = value.split(":")
-    if len(parts) < 2 or len(parts) > 3:
-        raise ConfigError(f"invalid time {value!r}, expected HH:MM or HH:MM:SS")
-    hour = int(parts[0])
-    minute = int(parts[1])
-    second = int(parts[2]) if len(parts) == 3 else 0
-    return time(hour=hour, minute=minute, second=second)
-
-
-def _dump_time(value: time) -> str:
-    return value.strftime("%H:%M:%S" if value.second else "%H:%M")
 
 
 def _load_shared_load(payload: Mapping[str, Any]) -> SharedLoad:
@@ -103,6 +77,7 @@ def _load_shared_load(payload: Mapping[str, Any]) -> SharedLoad:
         label=str(payload["label"]),
         energy_entity=payload.get(CONF_ENERGY),
         power_entity=payload.get(CONF_POWER),
+        host_slug=payload.get(CONF_SHARED_LOAD_HOST),
     )
 
 
@@ -114,8 +89,11 @@ def _load_tenant(payload: Mapping[str, Any]) -> Tenant:
     shared_loads = tuple(
         _load_shared_load(item) for item in payload.get(CONF_TENANT_SHARED_LOADS, ())
     )
+    slug = str(payload[CONF_TENANT_SLUG])
+    tenant_id = str(payload.get(CONF_TENANT_ID) or slug)
     return Tenant(
-        slug=str(payload[CONF_TENANT_SLUG]),
+        tenant_id=tenant_id,
+        slug=slug,
         name=str(payload[CONF_TENANT_NAME]),
         allocation_policy=allocation,
         energy_entity=payload.get(CONF_ENERGY),
@@ -125,8 +103,11 @@ def _load_tenant(payload: Mapping[str, Any]) -> Tenant:
 
 
 def _load_grid(payload: Mapping[str, Any]) -> GridConfig:
+    if CONF_IMPORT_PRICE not in payload:
+        raise ConfigError("Grid section is missing the required import price sensor")
     return GridConfig(
         import_energy_entity=str(payload[CONF_IMPORT_ENERGY]),
+        import_price_entity=str(payload[CONF_IMPORT_PRICE]),
         export_energy_entity=payload.get(CONF_EXPORT_ENERGY),
         power_entity=payload.get(CONF_POWER),
     )
@@ -135,9 +116,19 @@ def _load_grid(payload: Mapping[str, Any]) -> GridConfig:
 def _load_pv(payload: Mapping[str, Any] | None) -> PvConfig | None:
     if not payload:
         return None
+    if CONF_ENERGY not in payload:
+        raise ConfigError("PV section requires an aggregate energy sensor")
+    zero_cost = bool(payload.get(CONF_PV_ZERO_COST, False))
+    price_entity = payload.get(CONF_PV_PRICE)
+    if not zero_cost and not price_entity:
+        raise ConfigError(
+            "PV requires a price sensor unless it is explicitly marked as zero cost"
+        )
     return PvConfig(
+        energy_entity=str(payload[CONF_ENERGY]),
+        price_entity=price_entity,
+        zero_cost=zero_cost,
         power_entity=payload.get(CONF_POWER),
-        energy_entity=payload.get(CONF_ENERGY),
     )
 
 
@@ -161,30 +152,9 @@ def _load_whole_building(payload: Mapping[str, Any] | None) -> WholeBuildingConf
     if not payload:
         return None
     return WholeBuildingConfig(
-        power_entity=payload.get(CONF_POWER),
         energy_entity=payload.get(CONF_ENERGY),
+        power_entity=payload.get(CONF_POWER),
     )
-
-
-def _load_tariff(payload: Mapping[str, Any]) -> TariffSchedule:
-    slots = tuple(
-        TariffSlot(
-            slot=str(item[CONF_TARIFF_SLOT]),
-            rate=float(item[CONF_TARIFF_RATE]),
-            effective_from=_iso_to_datetime(str(item[CONF_TARIFF_EFFECTIVE_FROM])),
-        )
-        for item in payload.get(CONF_TARIFF_SLOTS, ())
-    )
-    windows = tuple(
-        TariffWindow(
-            weekdays=frozenset(int(day) for day in item[CONF_TARIFF_WEEKDAYS]),
-            start=_time_from_hhmm(str(item[CONF_TARIFF_START])),
-            end=_time_from_hhmm(str(item[CONF_TARIFF_END])),
-            slot=str(item[CONF_TARIFF_SLOT]),
-        )
-        for item in payload.get(CONF_TARIFF_WINDOWS, ())
-    )
-    return TariffSchedule(slots=slots, windows=windows)
 
 
 def _load_freshness(payload: Mapping[str, Any] | None) -> FreshnessConfig:
@@ -193,6 +163,7 @@ def _load_freshness(payload: Mapping[str, Any] | None) -> FreshnessConfig:
     return FreshnessConfig(
         power_max_age_s=int(payload.get(CONF_FRESHNESS_POWER, DEFAULT_POWER_MAX_AGE_S)),
         energy_max_age_s=int(payload.get(CONF_FRESHNESS_ENERGY, DEFAULT_ENERGY_MAX_AGE_S)),
+        price_max_age_s=int(payload.get(CONF_FRESHNESS_PRICE, DEFAULT_PRICE_MAX_AGE_S)),
         battery_ledger_max_age_s=int(
             payload.get(CONF_FRESHNESS_BATTERY_LEDGER, DEFAULT_BATTERY_LEDGER_MAX_AGE_S)
         ),
@@ -200,19 +171,19 @@ def _load_freshness(payload: Mapping[str, Any] | None) -> FreshnessConfig:
     )
 
 
-def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> SharedEnergyLedgerConfig:
+def config_from_entry(
+    data: Mapping[str, Any], options: Mapping[str, Any]
+) -> SharedEnergyLedgerConfig:
     """Build :class:`SharedEnergyLedgerConfig` from a config entry.
 
     ``options`` overrides ``data`` on a per-key basis so the options flow can
-    swap tariffs, tenants, or thresholds without a full reconfigure.
+    swap tenants or thresholds without a full reconfigure.
     """
     merged: dict[str, Any] = {**dict(data), **dict(options)}
     if CONF_CURRENCY not in merged or not isinstance(merged[CONF_CURRENCY], str):
         raise ConfigError("Missing currency in config entry")
     if CONF_GRID not in merged:
         raise ConfigError("Missing grid section in config entry")
-    if CONF_TARIFF_SCHEDULE not in merged:
-        raise ConfigError("Missing tariff_schedule in config entry")
     tenants_raw = merged.get(CONF_TENANTS)
     if not tenants_raw or len(tenants_raw) < 2:
         raise ConfigError("At least two tenants are required")
@@ -220,11 +191,13 @@ def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> Sh
     slugs = [t.slug for t in tenants]
     if len(set(slugs)) != len(slugs):
         raise ConfigError("Tenant slugs must be unique")
+    ids = [t.tenant_id for t in tenants]
+    if len(set(ids)) != len(ids):
+        raise ConfigError("Tenant ids must be unique")
     return SharedEnergyLedgerConfig(
         currency=str(merged[CONF_CURRENCY]).upper(),
         grid=_load_grid(merged[CONF_GRID]),
         tenants=tenants,
-        tariff=_load_tariff(merged[CONF_TARIFF_SCHEDULE]),
         pv=_load_pv(merged.get(CONF_PV)),
         battery=_load_battery(merged.get(CONF_BATTERY)),
         whole_building=_load_whole_building(merged.get(CONF_WHOLE_BUILDING)),
@@ -232,12 +205,25 @@ def config_from_entry(data: Mapping[str, Any], options: Mapping[str, Any]) -> Sh
     )
 
 
+def _dump_shared_load(load: SharedLoad) -> dict[str, Any]:
+    payload: dict[str, Any] = {"label": load.label}
+    if load.energy_entity is not None:
+        payload[CONF_ENERGY] = load.energy_entity
+    if load.power_entity is not None:
+        payload[CONF_POWER] = load.power_entity
+    if load.host_slug is not None:
+        payload[CONF_SHARED_LOAD_HOST] = load.host_slug
+    return payload
+
+
 def config_to_entry(config: SharedEnergyLedgerConfig) -> dict[str, Any]:
     """Serialize :class:`SharedEnergyLedgerConfig` back into a JSON-safe dict."""
     return {
         CONF_CURRENCY: config.currency,
         CONF_GRID: {k: v for k, v in asdict(config.grid).items() if v is not None},
-        CONF_PV: {k: v for k, v in asdict(config.pv).items() if v is not None} if config.pv else None,
+        CONF_PV: {k: v for k, v in asdict(config.pv).items() if v is not None}
+        if config.pv
+        else None,
         CONF_BATTERY: asdict(config.battery) if config.battery else None,
         CONF_WHOLE_BUILDING: {
             k: v for k, v in asdict(config.whole_building).items() if v is not None
@@ -246,41 +232,18 @@ def config_to_entry(config: SharedEnergyLedgerConfig) -> dict[str, Any]:
         else None,
         CONF_TENANTS: [
             {
+                CONF_TENANT_ID: tenant.tenant_id,
                 CONF_TENANT_SLUG: tenant.slug,
                 CONF_TENANT_NAME: tenant.name,
                 CONF_TENANT_ALLOCATION: tenant.allocation_policy.value,
                 CONF_ENERGY: tenant.energy_entity,
                 CONF_POWER: tenant.power_entity,
                 CONF_TENANT_SHARED_LOADS: [
-                    {
-                        "label": sl.label,
-                        CONF_ENERGY: sl.energy_entity,
-                        CONF_POWER: sl.power_entity,
-                    }
-                    for sl in tenant.shared_loads
+                    _dump_shared_load(sl) for sl in tenant.shared_loads
                 ],
             }
             for tenant in config.tenants
         ],
-        CONF_TARIFF_SCHEDULE: {
-            CONF_TARIFF_SLOTS: [
-                {
-                    CONF_TARIFF_SLOT: slot.slot,
-                    CONF_TARIFF_RATE: slot.rate,
-                    CONF_TARIFF_EFFECTIVE_FROM: slot.effective_from.isoformat(),
-                }
-                for slot in config.tariff.slots
-            ],
-            CONF_TARIFF_WINDOWS: [
-                {
-                    CONF_TARIFF_WEEKDAYS: sorted(window.weekdays),
-                    CONF_TARIFF_START: _dump_time(window.start),
-                    CONF_TARIFF_END: _dump_time(window.end),
-                    CONF_TARIFF_SLOT: window.slot,
-                }
-                for window in config.tariff.windows
-            ],
-        },
         CONF_FRESHNESS: asdict(config.freshness),
     }
 
@@ -293,6 +256,7 @@ def with_freshness(
 
 
 __all__ = [
+    "CONF_TENANT_ID",
     "ConfigError",
     "config_from_entry",
     "config_to_entry",

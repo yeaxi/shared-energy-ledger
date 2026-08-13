@@ -1,18 +1,23 @@
-"""Recorder-backed report builder.
+"""Recorder-backed period report builder.
 
-This module bridges Home Assistant Recorder history to the pure-Python
-:mod:`.report` builder. It never fabricates rows: intervals with missing or
-non-monotonic history remain absent, and the caller surfaces the resulting
-coverage gap through :attr:`ReportInputs.coverage_seconds` and
-:attr:`ReportInputs.transition_excluded_seconds`.
+This module recomputes "who owes how much" for any period directly from the
+Recorder history of the operator's meters and price sensors, using the same
+pure :mod:`.interval` engine as the live coordinator. It never diffs a derived
+cost sensor, so the report is an independent recomputation that reconciles with
+the raw meters rather than inheriting any live-path approximation.
 
 Requirements covered:
 
-* I5 — recorder unit metadata is validated on every hourly boundary state.
-* I7 — reports use DST-safe exact local-day boundaries via
-  :func:`homeassistant.util.dt.as_local`.
-* I8 — the ``finalized_as_of`` timestamp is computed once at build time and
-  never rewinds within a single call.
+* I5 — recorder unit metadata is validated on every boundary state.
+* I7 — DST-safe exact local-day boundaries; per-tenant source rows; distinct
+  ``unpriced_battery_kwh``; strict numbers.
+* I8 — ``finalized_as_of`` is computed once per build and never rewinds.
+
+Battery pricing within a report replays a fresh weighted-cost ledger across the
+period from empty stock. Priced stock carried in before the period start is not
+reconstructed from history (it is live-persisted state, not a recorded meter),
+so battery cost is exact for charge/discharge that both occur inside the
+period; discharge of pre-period stock is reported as ``unpriced_battery_kwh``.
 """
 
 from __future__ import annotations
@@ -23,21 +28,27 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import pairwise
-from typing import Any
 
 from homeassistant.components.recorder import history
 from homeassistant.core import HomeAssistant, State
-from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .allocation import AllocationInput, TenantInput, allocate
+from .const import price_unit
 from .coordinator import SharedEnergyLedgerCoordinator
-from .models import SharedEnergyLedgerConfig
+from .interval import IntervalInputs, price_interval
+from .ledger import (
+    LedgerInputs,
+    LedgerState,
+    empty_state,
+    to_weighted_cost,
+    update_ledger,
+)
+from .models import SharedEnergyLedgerConfig, Tenant
 from .report import HourlyRow, ReportInputs, build_report
+from .samples import validate_energy_sample, validate_price_sample
 
 _LOGGER = logging.getLogger(__name__)
-
-_INVALID_STATES = {"unknown", "unavailable", "none", ""}
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,45 +61,17 @@ class RebuildRequest:
 
 
 def _hour_boundaries(start_local: datetime, end_local: datetime) -> list[datetime]:
-    """Return the list of hour boundaries in ``[start, end]`` in local time."""
     boundaries: list[datetime] = [start_local]
     cursor = start_local
     while cursor < end_local:
         cursor = cursor + timedelta(hours=1)
-        boundaries.append(cursor)
-    if boundaries[-1] > end_local:
-        boundaries[-1] = end_local
+        boundaries.append(min(cursor, end_local))
     return boundaries
 
 
-def _lookup_tenant_cost_entity_id(
-    hass: HomeAssistant, entry_id: str, tenant_slug: str
-) -> str | None:
-    """Resolve the entity_id of a tenant's cumulative-total-cost sensor.
-
-    The coordinator constructs ``unique_id`` as
-    ``f"{entry_id}:{slug}:tenant_total_cost"``. We look that up via the
-    entity registry so tests and translations can rename the visible
-    entity_id without breaking the report path.
-    """
-    registry = er.async_get(hass)
-    unique_id = f"{entry_id}:{tenant_slug}:tenant_total_cost"
-    entry = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
-    return entry
-
-
-def _state_at_or_before(
-    states: Iterable[State], moment: datetime
-) -> State | None:
-    """Return the newest state with ``last_updated <= moment`` or ``None``.
-
-    The recorder ``get_significant_states`` result is already sorted by time
-    per-entity, but the helper's contract is not documented, so we sort
-    defensively.
-    """
-    ordered = sorted(states, key=lambda s: s.last_updated)
+def _state_at_or_before(states: Iterable[State], moment: datetime) -> State | None:
     best: State | None = None
-    for state in ordered:
+    for state in sorted(states, key=lambda s: s.last_updated):
         if state.last_updated <= moment:
             best = state
         else:
@@ -96,82 +79,122 @@ def _state_at_or_before(
     return best
 
 
-def _parse_cost(state: State | None, expected_currency: str) -> Decimal | None:
-    """Return the state as a ``Decimal`` currency amount, or ``None``.
-
-    Validates unit metadata against the config-entry's currency per
-    invariant I5. States in the invalid-state set or with non-numeric text
-    return ``None``.
-    """
+def _energy_at(states: list[State], moment: datetime) -> float | None:
+    state = _state_at_or_before(states, moment)
     if state is None:
         return None
-    if state.state in _INVALID_STATES:
+    return validate_energy_sample(
+        state=state.state,
+        unit=state.attributes.get("unit_of_measurement"),
+        updated=state.last_updated,
+        now=state.last_updated,
+        max_age_seconds=float("inf"),
+    )
+
+
+def _price_at(states: list[State], moment: datetime, expected_unit: str) -> float | None:
+    state = _state_at_or_before(states, moment)
+    if state is None:
         return None
-    unit = state.attributes.get("unit_of_measurement")
-    if unit is not None and unit != expected_currency:
+    return validate_price_sample(
+        state=state.state,
+        unit=state.attributes.get("unit_of_measurement"),
+        updated=state.last_updated,
+        now=state.last_updated,
+        max_age_seconds=float("inf"),
+        expected_unit=expected_unit,
+    )
+
+
+def _delta(states: list[State], start: datetime, end: datetime) -> float | None:
+    before = _energy_at(states, start)
+    after = _energy_at(states, end)
+    if before is None or after is None or after < before:
         return None
-    try:
-        return Decimal(state.state)
-    except (ValueError, ArithmeticError):
-        return None
+    return after - before
 
 
 def _tenants_to_include(
     config: SharedEnergyLedgerConfig, request: RebuildRequest
-) -> tuple[str, ...]:
+) -> tuple[Tenant, ...]:
     if request.tenant_slug is None:
-        return tuple(t.slug for t in config.tenants)
-    if request.tenant_slug not in {t.slug for t in config.tenants}:
-        return ()
-    return (request.tenant_slug,)
+        return config.tenants
+    return tuple(t for t in config.tenants if t.slug == request.tenant_slug)
 
 
-def _hourly_rows_for_tenant(
-    tenant_slug: str,
-    boundaries: list[datetime],
-    states: list[State],
-    currency: str,
-) -> tuple[list[HourlyRow], int]:
-    """Return per-hour rows plus the covered-seconds count for one tenant.
+def _collect_entity_ids(config: SharedEnergyLedgerConfig) -> set[str]:
+    ids: set[str] = {config.grid.import_energy_entity, config.grid.import_price_entity}
+    if config.pv is not None:
+        ids.add(config.pv.energy_entity)
+        if config.pv.price_entity is not None:
+            ids.add(config.pv.price_entity)
+    if config.battery is not None:
+        ids.add(config.battery.charge_energy_entity)
+        ids.add(config.battery.discharge_energy_entity)
+    if config.whole_building is not None and config.whole_building.energy_entity is not None:
+        ids.add(config.whole_building.energy_entity)
+    for tenant in config.tenants:
+        if tenant.energy_entity is not None:
+            ids.add(tenant.energy_entity)
+        for load in tenant.shared_loads:
+            if load.energy_entity is not None:
+                ids.add(load.energy_entity)
+    return {eid for eid in ids if eid}
 
-    Each row's cost is the delta between two adjacent boundary states.
-    Missing anchor states cause the row to be skipped; skipped rows do NOT
-    contribute to ``coverage_seconds`` per I7.
-    """
-    rows: list[HourlyRow] = []
-    coverage_seconds = 0
-    for hour_start, hour_end in pairwise(boundaries):
-        anchor_before = _state_at_or_before(states, hour_start)
-        anchor_after = _state_at_or_before(states, hour_end)
-        before = _parse_cost(anchor_before, currency)
-        after = _parse_cost(anchor_after, currency)
-        if before is None or after is None:
-            continue
-        delta = after - before
-        if delta < 0:
-            # A cumulative-total sensor may reset (e.g., accounting-epoch
-            # change). We skip that row rather than emit a negative cost
-            # per requirement I1.
-            continue
-        rows.append(
-            HourlyRow(
-                tenant_slug=tenant_slug,
-                hour_local=hour_start,
-                cost=delta,
-                coverage_seconds=int((hour_end - hour_start).total_seconds()),
-                source="direct",
-            )
+
+def _build_tenant_inputs(
+    config: SharedEnergyLedgerConfig,
+    fetched: dict[str, list[State]],
+    hour_start: datetime,
+    hour_end: datetime,
+) -> tuple[list[TenantInput], dict[str, float | None]]:
+    def load_delta(entity_id: str | None) -> float | None:
+        if entity_id is None:
+            return None
+        return _delta(fetched.get(entity_id, []), hour_start, hour_end)
+
+    direct: dict[str, float | None] = {}
+    for tenant in config.tenants:
+        direct[tenant.slug] = (
+            load_delta(tenant.energy_entity) if tenant.energy_entity is not None else None
         )
-        coverage_seconds += int((hour_end - hour_start).total_seconds())
-    return rows, coverage_seconds
+
+    borrowed: dict[str, float | None] = {t.slug: 0.0 for t in config.tenants}
+    owned: dict[str, float | None] = {t.slug: 0.0 for t in config.tenants}
+    for tenant in config.tenants:
+        for load in tenant.shared_loads:
+            value = load_delta(load.energy_entity)
+            if load.host_slug != tenant.slug:
+                owned[tenant.slug] = _add(owned[tenant.slug], value)
+            host = load.host_slug
+            if host is not None and host != tenant.slug and host in borrowed:
+                borrowed[host] = _add(borrowed[host], value)
+
+    inputs = [
+        TenantInput(
+            slug=tenant.slug,
+            policy=tenant.allocation_policy,
+            direct_load=direct[tenant.slug],
+            owned_not_on_meter=owned[tenant.slug],
+            borrowed_on_meter=borrowed[tenant.slug],
+        )
+        for tenant in config.tenants
+    ]
+    return inputs, direct
+
+
+def _add(a: float | None, b: float | None) -> float | None:
+    if a is None or b is None:
+        return None
+    return a + b
 
 
 async def async_rebuild_period_report(
     hass: HomeAssistant,
     coordinator: SharedEnergyLedgerCoordinator,
     request: RebuildRequest,
-) -> dict[str, Any]:
-    """Build a deterministic report v2 payload for the requested period."""
+) -> dict[str, object]:
+    """Build a deterministic report payload for the requested period."""
     config = coordinator.energy_config
     if config is None:
         raise ValueError("Config entry is not yet initialised")
@@ -181,79 +204,178 @@ async def async_rebuild_period_report(
     if end_local <= start_local:
         raise ValueError("end must be strictly after start")
 
-    tenant_slugs = _tenants_to_include(config, request)
-    if not tenant_slugs:
+    included = _tenants_to_include(config, request)
+    if not included:
         raise ValueError(f"Unknown tenant slug: {request.tenant_slug!r}")
+    included_slugs = {t.slug for t in included}
 
-    entity_map: dict[str, str] = {}
-    for slug in tenant_slugs:
-        entity_id = _lookup_tenant_cost_entity_id(
-            hass, coordinator.config_entry.entry_id, slug
-        )
-        if entity_id is None:
-            _LOGGER.debug("No total-cost entity registered for tenant %s", slug)
-            continue
-        entity_map[slug] = entity_id
-
+    entity_ids = sorted(_collect_entity_ids(config))
     period_start_utc = dt_util.as_utc(start_local)
     period_end_utc = dt_util.as_utc(end_local)
-    boundaries_local = _hour_boundaries(start_local, end_local)
 
     def _fetch() -> dict[str, list[State]]:
-        entity_ids = list(entity_map.values())
         if not entity_ids:
             return {}
         raw = history.get_significant_states(
             hass,
-            period_start_utc,
+            period_start_utc - timedelta(hours=1),
             period_end_utc,
             entity_ids=entity_ids,
             no_attributes=False,
         )
         return {
-            eid: [s for s in states if isinstance(s, State)]
-            for eid, states in raw.items()
+            eid: [s for s in states if isinstance(s, State)] for eid, states in raw.items()
         }
 
     fetched = await hass.async_add_executor_job(_fetch)
 
-    hourly_rows: list[HourlyRow] = []
-    total_coverage = 0
-    max_coverage_per_tenant = int((end_local - start_local).total_seconds())
-    for slug, entity_id in entity_map.items():
-        rows, coverage = _hourly_rows_for_tenant(
-            slug, boundaries_local, fetched.get(entity_id, []), config.currency
+    boundaries = _hour_boundaries(start_local, end_local)
+    grid_price_unit = price_unit(config.currency)
+
+    ledger: LedgerState = empty_state()
+    rows: list[HourlyRow] = []
+    coverage_seconds = 0
+    unavailable_seconds = 0
+    unpriced_battery = 0.0
+    reconciliation_total: float | None = 0.0
+
+    for hour_start, hour_end in pairwise(boundaries):
+        seconds = int((hour_end - hour_start).total_seconds())
+        hour_utc = dt_util.as_utc(hour_start)
+
+        grid_price = _price_at(
+            fetched.get(config.grid.import_price_entity, []), hour_utc, grid_price_unit
         )
-        hourly_rows.extend(rows)
-        total_coverage = max(total_coverage, coverage)
+        pv_price: float | None = None
+        pv_delta: float | None = None
+        if config.pv is not None:
+            pv_delta = _delta(
+                fetched.get(config.pv.energy_entity, []),
+                dt_util.as_utc(hour_start),
+                dt_util.as_utc(hour_end),
+            )
+            if config.pv.zero_cost:
+                pv_price = 0.0  # no-silent-zero: allow (operator chose explicit zero-cost PV)
+            elif config.pv.price_entity is not None:
+                pv_price = _price_at(
+                    fetched.get(config.pv.price_entity, []), hour_utc, grid_price_unit
+                )
 
-    transition_excluded = _transition_excluded_seconds(start_local, end_local)
-    coverage_capped = min(total_coverage, max_coverage_per_tenant)
+        charge_delta: float | None = None
+        discharge_delta: float | None = None
+        if config.battery is not None:
+            charge_delta = _delta(
+                fetched.get(config.battery.charge_energy_entity, []),
+                dt_util.as_utc(hour_start),
+                dt_util.as_utc(hour_end),
+            )
+            discharge_delta = _delta(
+                fetched.get(config.battery.discharge_energy_entity, []),
+                dt_util.as_utc(hour_start),
+                dt_util.as_utc(hour_end),
+            )
 
-    finalized_as_of = datetime.now(UTC)
+        tenant_inputs, _direct = _build_tenant_inputs(
+            config, fetched, dt_util.as_utc(hour_start), dt_util.as_utc(hour_end)
+        )
+        whole_building_delta: float | None = None
+        if config.whole_building is not None and config.whole_building.energy_entity is not None:
+            whole_building_delta = _delta(
+                fetched.get(config.whole_building.energy_entity, []),
+                dt_util.as_utc(hour_start),
+                dt_util.as_utc(hour_end),
+            )
+        allocations = allocate(
+            AllocationInput(
+                tenants=tuple(tenant_inputs), whole_building_load=whole_building_delta
+            )
+        )
+        tenant_energy = {a.slug: a.accounting_energy for a in allocations}
+
+        result = price_interval(
+            IntervalInputs(
+                tenant_energy=tenant_energy,
+                grid_price=grid_price,
+                pv_configured=config.pv is not None,
+                pv_generation_kwh=pv_delta if config.pv is not None else None,
+                pv_price=pv_price,
+                battery_configured=config.battery is not None,
+                battery_discharge_kwh=discharge_delta,
+                battery_charge_kwh=charge_delta,
+                battery_weighted_cost=to_weighted_cost(ledger),
+                grid_import_kwh=_delta(
+                    fetched.get(config.grid.import_energy_entity, []),
+                    dt_util.as_utc(hour_start),
+                    dt_util.as_utc(hour_end),
+                ),
+            )
+        )
+
+        if result.tenants is None:
+            unavailable_seconds += seconds
+            continue
+
+        coverage_seconds += seconds
+        unpriced_battery += result.unpriced_battery_kwh
+        if result.reconciliation_kwh is None or reconciliation_total is None:
+            reconciliation_total = None
+        else:
+            reconciliation_total += result.reconciliation_kwh
+
+        # Advance the report-local ledger so battery discharge in later hours is
+        # priced from the same weighted stock the live path would compute.
+        if (
+            config.battery is not None
+            and charge_delta is not None
+            and discharge_delta is not None
+            and not (charge_delta > 1e-9 and result.charge_unit_cost is None)
+        ):
+            advanced = update_ledger(
+                ledger,
+                LedgerInputs(
+                    delta_charge_kwh=charge_delta,
+                    delta_discharge_kwh=discharge_delta,
+                    charge_unit_cost=result.charge_unit_cost
+                    if result.charge_unit_cost is not None
+                    else 0.0,  # no-silent-zero: allow (no charge this hour)
+                    charge_efficiency=config.battery.charge_efficiency,
+                    discharge_efficiency=config.battery.discharge_efficiency,
+                ),
+            )
+            ledger = empty_state() if advanced.status == "unavailable" else advanced
+
+        for tsc in result.tenants:
+            if tsc.slug not in included_slugs:
+                continue
+            rows.append(
+                HourlyRow(
+                    tenant_slug=tsc.slug,
+                    hour_local=hour_start,
+                    grid_cost=Decimal(str(tsc.grid_cost)),
+                    pv_cost=Decimal(str(tsc.pv_cost)),
+                    battery_cost=Decimal(str(tsc.battery_cost)),
+                    coverage_seconds=seconds,
+                )
+            )
 
     inputs = ReportInputs(
-        tenant_slugs=tuple(entity_map.keys()) or tenant_slugs,
+        tenant_slugs=tuple(t.slug for t in included),
         period_start_local=start_local,
         period_end_local=end_local,
         timezone_name=str(dt_util.get_default_time_zone()),
-        coverage_seconds=coverage_capped,
-        transition_excluded_seconds=transition_excluded,
-        unpriced_battery_kwh=float(coordinator.data.unpriced_battery_kwh),
-        hourly_rows=tuple(hourly_rows),
-        finalized_as_of=finalized_as_of,
+        coverage_seconds=coverage_seconds,
+        transition_excluded_seconds=_transition_excluded_seconds(start_local, end_local),
+        unavailable_seconds=unavailable_seconds,
+        unpriced_battery_kwh=unpriced_battery,
+        reconciliation_kwh=reconciliation_total,
+        hourly_rows=tuple(rows),
+        finalized_as_of=datetime.now(UTC),
         currency=config.currency,
     )
     return build_report(inputs)
 
 
 def _transition_excluded_seconds(start_local: datetime, end_local: datetime) -> int:
-    """Return the seconds inside the period that are excluded by DST.
-
-    On a DST-forward day the clock jumps forward and an hour disappears; on
-    a DST-backward day an hour repeats. The difference between wall-clock
-    seconds and UTC seconds is that transition adjustment.
-    """
     wall_seconds = int((end_local - start_local).total_seconds())
     utc_seconds = int(
         (dt_util.as_utc(end_local) - dt_util.as_utc(start_local)).total_seconds()
