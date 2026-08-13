@@ -34,7 +34,7 @@ uncertainty visible.
 
 Why it matters: a stale grid meter should not disable a
 tenant's consumption sensor, and a stale PV meter should not disable
-the grid cost rate. Independent freshness lets dashboards partially
+the grid pricing chain. Independent freshness lets dashboards partially
 degrade instead of going dark on any hiccup.
 
 ## `I3`. Closed allocation enum
@@ -57,8 +57,7 @@ stays `unavailable` until an operator resolves it.
 >
 > - finite,
 > - non-negative,
-> - unit-consistent across the tuple (all `W` for power residuals or
->   all `kWh` for cumulative residuals),
+> - unit-consistent across the tuple (all `kWh`),
 > - time-aligned within a bounded skew window (default 180 seconds;
 >   configurable per install),
 > - and produce a non-negative residual.

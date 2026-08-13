@@ -23,10 +23,9 @@ following principles were adopted and are still in force:
 - The integration hard-codes no device model or manufacturer. All
   upstream sensors are supplied by the operator through entity
   selectors in the config flow.
-- Files under `legacy/` are archived only for pre-migration context
-  and are explicitly not a source of truth. Nothing in the
-  integration imports from `legacy/`, and no test references
-  `legacy/` fixtures.
+- Pre-migration personal artifacts are not kept in the tree. Nothing
+  in the integration hard-codes private identifiers, and no test uses
+  data from a real installation.
 
 If you are curious about the shape of the private original, please
 respect that it is intentionally not documented here. What matters
@@ -41,9 +40,8 @@ for this project is that the invariants survived the migration.
   `ledger.py`, and `report.py` were implemented behind unit tests
   covering the invariants `I1` through `I10`.
 - **UI and services wired.** The coordinator, sensors, binary
-  sensors, number/select helpers, and services were connected. The
-  config- and options-flow UX gained entity selectors and translation
-  keys.
+  sensors, and services were connected. The config- and options-flow
+  UX gained entity selectors and translation keys.
 - **Docs, CI, HACS.** The mkdocs site, CI workflows, diagnostics
   helper, and HACS metadata reached a shippable state.
 - **First release pending.** The release candidate is still tracked under

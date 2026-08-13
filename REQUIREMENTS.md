@@ -28,10 +28,8 @@ unavailability on the affected cost/allocation entity; the dashboard renders
 
 Scope non-goals:
 
-- The integration does not control any physical device. It never calls
-  `turn_on`, `turn_off`, `toggle`, inverter/ESS/battery mode services, or any
-  other side-effecting service. It is a read-only accounting and reporting
-  layer.
+- The integration is a read-only accounting and reporting layer. It never
+  calls side-effecting Home Assistant services.
 - The integration does not attempt to invent independent measurements of shared
   infrastructure. Allocation between tenants is an accounting policy applied on
   top of the meters the operator provides.
@@ -71,7 +69,7 @@ Scope non-goals:
     in `unique_id`s and entity names).
   - Direct energy sensor (`kWh`) — optional if the allocation policy does not
     require it.
-  - Optional direct power sensor (`W`) — improves live cost-rate accuracy.
+  - Optional direct power sensor (`W`) — freshness and dashboards only.
   - Optional list of *shared load* sensors: loads that are physically upstream
     of a neighbor's feeder but are financially owned by this tenant. The
     integration treats this as a generic pattern; use cases include shelter
@@ -176,8 +174,7 @@ cross-referencing from tests, docs, and the traceability matrix.
   only accepted when total, all sibling loads, and shared loads are:
   - finite,
   - non-negative,
-  - unit-consistent across the tuple (all `W` for power residuals or all `kWh`
-    for cumulative residuals),
+  - unit-consistent across the tuple (all `kWh`),
   - time-aligned within a bounded skew window (default 180 seconds; configurable
     per install),
   - and produce a non-negative residual.
@@ -301,9 +298,8 @@ reviewable in isolation.
 3. Implement `interval.py`, `allocation.py`, `ledger.py`, and `report.py` as
    pure Python modules with high unit coverage of the
    [A3](#a3-non-functional-invariants) invariants using synthetic fixtures.
-4. Wire the coordinator, sensors, binary sensors, number/select helpers, and
-   services. Add the config- and options-flow UX with entity selectors and
-   translation keys.
+4. Wire the coordinator, sensors, binary sensors, and services. Add the
+   config- and options-flow UX with entity selectors and translation keys.
 5. Ship translations, docs, HACS metadata, CI, and diagnostics.
 6. Cut `v0.x` pre-releases for community feedback. Live-in-HA testing is
    explicitly out of scope for this project and is handled by a separate

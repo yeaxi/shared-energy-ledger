@@ -17,18 +17,18 @@ They are illustrative and do not describe any real installation.
 
 ## `direct_meter`
 
-The tenant's accounting power equals its direct meter reading. Shared
+The tenant's accounting energy equals its direct meter reading. Shared
 loads that this tenant *owns* still contribute to the tenant's total,
 but they are added on top of the direct meter, not derived from a
 boundary. Invalid or stale direct meters propagate as `unavailable`.
 
 ```mermaid
 flowchart LR
-    A["Grid import (kWh)"] --> B["Whole-building boundary (W or kWh)"]
+    A["Grid import (kWh)"] --> B["Whole-building boundary (kWh)"]
     B --> C["Flat 1 direct meter"]
     B --> D["Flat 2 direct meter"]
-    D --> E["Flat 2 accounting power = direct meter"]
-    C --> F["Flat 1 accounting power = direct meter"]
+    D --> E["Flat 2 accounting energy = direct meter"]
+    C --> F["Flat 1 accounting energy = direct meter"]
     G["EV charger (shared load, owned by Flat 1)"] --> F
 ```
 
@@ -41,8 +41,8 @@ Common mistakes:
 
 ## `residual_of_total_minus_others`
 
-The tenant's accounting power equals the whole-building boundary minus
-the sum of every sibling tenant's power and every shared load owned by
+The tenant's accounting energy equals the whole-building boundary minus
+the sum of every sibling tenant's energy and every shared load owned by
 another tenant. The residual is only accepted when the inputs are
 finite, non-negative, unit-consistent, time-aligned within a bounded
 skew window (default 180 seconds), and produce a non-negative residual.
@@ -51,11 +51,11 @@ are never clamped to zero. See [invariant I4](invariants.md).
 
 ```mermaid
 flowchart LR
-    T["Whole-building boundary (W)"] --> R["Residual"]
+    T["Whole-building boundary (kWh)"] --> R["Residual"]
     S1["Flat 2 direct meter"] --> R
     S2["Shelter utilities (shared, owned by Flat 2)"] --> R
     S3["Staircase lighting (shared, owned by Flat 1)"] --> R
-    R --> F1["Flat 1 accounting power"]
+    R --> F1["Flat 1 accounting energy"]
 ```
 
 The example above computes `Flat 1` as

@@ -5,10 +5,10 @@ invariants, read [`REQUIREMENTS.md`](REQUIREMENTS.md). For user-facing
 explanations, read the [documentation site](https://yeaxi.github.io/shared-energy-ledger/).
 
 Shared Energy Ledger is a **read-only accounting layer** for Home Assistant.
-It never controls physical devices, never calls side-effecting services, and
-never mutates recorder state. It reads meter entities the operator supplies,
-allocates shared energy between tenants, prices it against a time-of-use
-tariff, and produces per-tenant cost sensors and deterministic reports.
+It reads the meters and price sensors the operator supplies, allocates shared
+energy between tenants, and produces per-tenant cost sensors and deterministic
+reports. It never calls side-effecting services and never mutates recorder
+state.
 
 ## Repository layout
 

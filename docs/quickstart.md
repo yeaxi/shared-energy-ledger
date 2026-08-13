@@ -3,8 +3,7 @@
 This page walks through installing Shared Energy Ledger from
 [HACS](https://www.hacs.xyz/) as a custom repository and running the
 first-time config flow. It uses only generic examples: two tenants
-called `flat-1` and `flat-2`, a `EUR` currency, and a simple day/night
-tariff.
+called `flat-1` and `flat-2`, `EUR` currency, and grid/PV price sensors.
 
 ## Prerequisites
 

@@ -16,7 +16,7 @@ Features:
   kWh priced separately).
 - Optional PV; PV serves accounting loads first, then the active AC source,
   then battery discharge.
-- Time-of-use tariffs, DST-safe, with a day/night preset.
+- Pricing from operator price sensors in `<currency>/kWh`.
 - Currency-agnostic (ISO 4217).
 - Deterministic Recorder-based reports for any timeframe.
 

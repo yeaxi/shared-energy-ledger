@@ -4,16 +4,16 @@
 [![Docs](https://github.com/yeaxi/shared-energy-ledger/actions/workflows/docs.yml/badge.svg)](https://yeaxi.github.io/shared-energy-ledger/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A [Home Assistant](https://www.home-assistant.io/) add-on for buildings that
-**share one electricity connection** between several flats or houses. It works
-out **who owes how much** for any period of time, in your own currency.
+A [Home Assistant](https://www.home-assistant.io/) custom integration for
+buildings that **share one electricity connection** between several flats or
+houses. It works out **who owes how much** for any period of time, in your own
+currency.
 
 > Who owes how much, for any date range?
 
 If you have one shared grid meter (and, optionally, shared solar panels or a
 shared battery) plus a meter for each home, Shared Energy Ledger keeps a fair,
-per-home running cost. It only reads your meters and does the maths. It never
-switches anything on or off.
+per-home running cost. It only reads your meters and does the maths.
 
 ## What it does
 
@@ -21,7 +21,8 @@ switches anything on or off.
   provide.
 - Optionally includes shared **solar panels** and a shared **battery**, and
   prices solar energy and grid energy separately.
-- Supports **day/night** (time-of-use) pricing.
+- Prices energy from your **grid and PV price sensors** (flat, time-of-use, or
+  dynamic).
 - Works in **any currency**.
 - Gives you accurate cost reports for any date range.
 - **Never guesses.** If a meter is missing or reporting bad data, the cost

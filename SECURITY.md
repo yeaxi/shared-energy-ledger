@@ -19,15 +19,14 @@ consent.
 
 ## Scope
 
-This project is a read-only accounting layer. It does not control physical
-devices and does not call side-effecting Home Assistant services. Reports
-that describe hypothetical exploitation of a device-control path are out of
-scope; the integration simply does not have that surface.
+This project is a read-only accounting layer. It does not call side-effecting
+Home Assistant services. Reports that describe hypothetical device-control
+exploitation are out of scope; the integration has no such surface.
 
 Reports that describe:
 
 - leakage of personal data through diagnostics or reports,
-- reintroduction of a private-installation identifier from `legacy/`,
+- reintroduction of a private-installation identifier,
 - weakening of a documented invariant that lets a cost sensor report a
   fabricated `0`,
 

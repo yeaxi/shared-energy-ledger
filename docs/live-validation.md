@@ -3,8 +3,8 @@
 Shared Energy Ledger is validated at three layers:
 
 1. **Pure-Python unit tests** cover the accounting core
-   (`tariff`, `allocation`, `ledger`, `report`, `samples`, `configio`,
-   `ledger_store`). Each of the ten invariants `I1..I10` from
+   (`interval`, `allocation`, `ledger`, `report`, `samples`, `configio`,
+   `cost_store`). Each of the ten invariants `I1..I10` from
    [`REQUIREMENTS.md#a3`](https://github.com/yeaxi/shared-energy-ledger/blob/main/REQUIREMENTS.md#a3-non-functional-invariants)
    has a matching contract test.
 2. **Integration tests** under [`tests/integration/`](https://github.com/yeaxi/shared-energy-ledger/tree/main/tests/integration/)
@@ -48,11 +48,11 @@ Four scenarios plus two service-call checks, mapped to the
 | Scenario | Invariants asserted |
 | --- | --- |
 | Cold boot, no upstream states set | Entities register cleanly; freshness gates start `off`; cost sensors start `unavailable` (I1, I2, I10). |
-| Fresh grid + PV + battery + tenants | All freshness gates flip `on`; per-tenant `accounting_power` matches the input; share splits to the correct percentages; cumulative-cost sensor accumulates; ledger seeds to `initial_stock` (I2, I3, I6). |
+| Fresh grid + PV + battery + tenants | All freshness gates flip `on`; per-tenant share and cumulative source costs match the inputs; ledger seeds to `initial_stock` (I2, I3, I6). |
 | Grid unit switched to `kW` | Grid data-fresh gate flips `off` because `unit_of_measurement != "kWh"` (I5). |
 | Grid entity removed | Grid data-fresh gate stays `off`; dependent cost sensors do not fabricate a zero (I1, I10). |
 | `reset_battery_ledger` with incoherent boundary | Service rejects with `HomeAssistantError` (I6). |
-| `reset_battery_ledger` with valid boundary | New stock persisted to `LedgerStore` (I6). Pricing stays on the operator-owned price sensors; there is no `set_tariff_rate` service (I9). |
+| `reset_battery_ledger` with valid boundary | New stock persisted to `LedgerStore` (I6). |
 
 ## When to rerun
 
