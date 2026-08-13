@@ -90,8 +90,9 @@ handled by a separate rollout plan after the project is "done by definition".
   on the release commit. Drafts the release notes from the `CHANGELOG.md`
   entry for the target version.
 - Tags the release only after all checks pass. Never force-pushes a tag.
-- Prepares the `home-assistant/brands` PR when a brand refresh is part of the
-  release.
+- Refreshes the brand images under
+  `custom_components/shared_energy_ledger/brand/` when a brand change is part
+  of the release, and reruns `scripts/check_brand_assets.py`.
 - Bound by the `hacs-release-and-brands` and `ha-platinum-quality` skills.
 
 ## `community-triage`
