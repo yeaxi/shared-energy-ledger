@@ -22,10 +22,10 @@ from custom_components.shared_energy_ledger.configio import (
 from custom_components.shared_energy_ledger.models import (
     AllocationPolicy,
     BatteryConfig,
-    SharedEnergyLedgerConfig,
     FreshnessConfig,
     GridConfig,
     PvConfig,
+    SharedEnergyLedgerConfig,
     SharedLoad,
     TariffSchedule,
     TariffSlot,
