@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import cast
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.util.json import JsonObjectType
 
 from .const import (
     ATTR_END,
@@ -96,7 +98,7 @@ async def _rebuild_period_report(call: ServiceCall) -> ServiceResponse:
         report = await async_rebuild_period_report(call.hass, coordinator, request)
     except ValueError as err:
         raise HomeAssistantError(str(err)) from err
-    return report
+    return cast(JsonObjectType, report)
 
 
 async def _reset_battery_ledger(call: ServiceCall) -> ServiceResponse:

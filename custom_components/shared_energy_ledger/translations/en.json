@@ -7,12 +7,12 @@
         "data": {
           "currency": "Currency (ISO 4217)",
           "import_energy_entity": "Grid import energy (kWh, monotonic)",
-          "import_price_entity": "Grid import price sensor (<currency>/kWh)"
+          "import_price_entity": "Grid import price sensor (currency/kWh)"
         },
         "data_description": {
           "currency": "Three-letter currency code used as the unit of measurement for all monetary sensors.",
           "import_energy_entity": "A cumulative total-increasing sensor with unit_of_measurement kWh.",
-          "import_price_entity": "A sensor reporting the effective grid import price per kWh in <currency>/kWh."
+          "import_price_entity": "A sensor reporting the effective grid import price per kWh in currency/kWh (for example EUR/kWh)."
         }
       },
       "optional": {
@@ -29,13 +29,13 @@
         "data": {
           "energy_entity": "PV aggregate energy (kWh)",
           "zero_cost": "Price self-consumed PV at zero cost",
-          "price_entity": "PV price sensor (<currency>/kWh)",
+          "price_entity": "PV price sensor (currency/kWh)",
           "power_entity": "PV aggregate power (optional)"
         },
         "data_description": {
           "energy_entity": "Cumulative total-increasing kWh counter of PV generation.",
           "zero_cost": "When enabled, self-consumed PV energy is priced at zero and no PV price sensor is needed.",
-          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in <currency>/kWh.",
+          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in currency/kWh (for example EUR/kWh).",
           "power_entity": "Optional; used for freshness and dashboards only."
         }
       },
@@ -106,13 +106,37 @@
     "step": {
       "init": {
         "title": "Shared Energy Ledger options",
-        "description": "Add, edit, remove, or reorder tenants, or adjust freshness windows.",
+        "description": "Add, edit, remove, or reorder tenants, attach shared loads, or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
           "edit_tenant": "Edit a tenant",
           "remove_tenant": "Remove a tenant",
           "reorder": "Reorder tenants",
+          "shared_load": "Add a shared load",
           "freshness": "Freshness windows"
+        }
+      },
+      "shared_load": {
+        "title": "Shared load owner",
+        "description": "Pick the tenant that financially owns the shared load.",
+        "data": {
+          "owner": "Owning tenant"
+        }
+      },
+      "shared_load_details": {
+        "title": "Shared load for {owner}",
+        "description": "Configure a load owned by {owner}. Set the host tenant when the load is physically on another tenant's meter; leave host empty for a dedicated meter.",
+        "data": {
+          "label": "Label",
+          "energy_entity": "Shared load energy meter (kWh)",
+          "power_entity": "Shared load power meter (optional)",
+          "host_slug": "Host tenant meter (optional)"
+        },
+        "data_description": {
+          "label": "Short name shown in diagnostics and reports.",
+          "energy_entity": "Cumulative kWh counter for this shared load.",
+          "power_entity": "Optional instantaneous power sensor.",
+          "host_slug": "Tenant whose direct meter physically includes this load. Leave empty when the load has its own dedicated meter."
         }
       },
       "add_tenant": {
@@ -136,7 +160,9 @@
       "edit_tenant": {
         "title": "Edit a tenant",
         "description": "Pick a tenant to edit.",
-        "data": {"slug": "Tenant"}
+        "data": {
+          "slug": "Tenant"
+        }
       },
       "edit_tenant_details": {
         "title": "Edit tenant {slug}",
@@ -151,12 +177,16 @@
       "remove_tenant": {
         "title": "Remove a tenant",
         "description": "Pick a tenant to remove. At least two tenants must remain configured.",
-        "data": {"slug": "Tenant"}
+        "data": {
+          "slug": "Tenant"
+        }
       },
       "reorder": {
         "title": "Reorder tenants",
         "description": "Select every tenant in the desired display order.",
-        "data": {"order": "Tenant order"}
+        "data": {
+          "order": "Tenant order"
+        }
       },
       "freshness": {
         "title": "Freshness windows",
@@ -192,22 +222,50 @@
   },
   "entity": {
     "binary_sensor": {
-      "grid_data_fresh": {"name": "Grid data fresh"},
-      "pv_data_fresh": {"name": "PV data fresh"},
-      "battery_data_fresh": {"name": "Battery data fresh"},
-      "tenant_data_fresh": {"name": "Tenant data fresh"}
+      "grid_data_fresh": {
+        "name": "Grid data fresh"
+      },
+      "pv_data_fresh": {
+        "name": "PV data fresh"
+      },
+      "battery_data_fresh": {
+        "name": "Battery data fresh"
+      },
+      "tenant_data_fresh": {
+        "name": "Tenant data fresh"
+      }
     },
     "sensor": {
-      "tenant_share": {"name": "Share"},
-      "tenant_total_cost": {"name": "Total cost"},
-      "tenant_grid_cost": {"name": "Grid cost"},
-      "tenant_pv_cost": {"name": "PV cost"},
-      "tenant_battery_cost": {"name": "Battery cost"},
-      "grid_import_price": {"name": "Grid import price"},
-      "pv_price": {"name": "PV price"},
-      "grid_reconciliation": {"name": "Grid reconciliation"},
-      "battery_stock_kwh": {"name": "Battery priced stock"},
-      "battery_weighted_cost": {"name": "Battery weighted cost"},
+      "tenant_share": {
+        "name": "Share"
+      },
+      "tenant_total_cost": {
+        "name": "Total cost"
+      },
+      "tenant_grid_cost": {
+        "name": "Grid cost"
+      },
+      "tenant_pv_cost": {
+        "name": "PV cost"
+      },
+      "tenant_battery_cost": {
+        "name": "Battery cost"
+      },
+      "grid_import_price": {
+        "name": "Grid import price"
+      },
+      "pv_price": {
+        "name": "PV price"
+      },
+      "grid_reconciliation": {
+        "name": "Grid reconciliation"
+      },
+      "battery_stock_kwh": {
+        "name": "Battery priced stock"
+      },
+      "battery_weighted_cost": {
+        "name": "Battery weighted cost"
+      },
       "battery_ledger_status": {
         "name": "Battery ledger status",
         "state": {
@@ -217,7 +275,9 @@
           "unavailable": "Unavailable"
         }
       },
-      "unpriced_battery_kwh": {"name": "Unpriced battery energy"}
+      "unpriced_battery_kwh": {
+        "name": "Unpriced battery energy"
+      }
     }
   },
   "services": {
@@ -225,17 +285,32 @@
       "name": "Rebuild period report",
       "description": "Rebuild a deterministic Recorder-based JSON report for the given period, recomputed from meter and price history.",
       "fields": {
-        "start": {"name": "Start (local)", "description": "Local start of the reporting period."},
-        "end": {"name": "End (local)", "description": "Local end of the reporting period."},
-        "tenant": {"name": "Tenant (optional)", "description": "Restrict the report to a single tenant slug."}
+        "start": {
+          "name": "Start (local)",
+          "description": "Local start of the reporting period."
+        },
+        "end": {
+          "name": "End (local)",
+          "description": "Local end of the reporting period."
+        },
+        "tenant": {
+          "name": "Tenant (optional)",
+          "description": "Restrict the report to a single tenant slug."
+        }
       }
     },
     "reset_battery_ledger": {
       "name": "Reset battery ledger",
       "description": "Reset the priced battery stock to the given values. Requires admin permissions.",
       "fields": {
-        "stock_kwh": {"name": "Stock (kWh)", "description": "New priced stock in kWh."},
-        "stock_cost": {"name": "Stock cost", "description": "Cost of the new priced stock in the configured currency."}
+        "stock_kwh": {
+          "name": "Stock (kWh)",
+          "description": "New priced stock in kWh."
+        },
+        "stock_cost": {
+          "name": "Stock cost",
+          "description": "Cost of the new priced stock in the configured currency."
+        }
       }
     }
   },

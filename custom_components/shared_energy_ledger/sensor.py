@@ -20,9 +20,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfEnergy
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfEnergy
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import price_unit
@@ -110,7 +109,6 @@ class TenantCostSensor(SharedEnergyLedgerEntity, SensorEntity):
         self,
         coordinator: SharedEnergyLedgerCoordinator,
         description: TenantCostDescription,
-        slug: str,
         tenant: Tenant,
         currency: str,
     ) -> None:
