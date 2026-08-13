@@ -5,12 +5,9 @@ accounting energy (kWh) for one interval. It applies the closed
 allocation-policy enum from :class:`~.models.AllocationPolicy` and enforces the
 fail-closed invariants I3 and I4 from :doc:`REQUIREMENTS`.
 
-Inputs are consumed as pre-validated floats (kWh over the interval). The
-coordinator and the report builder are responsible for producing them from raw
-counter history, applying unit checks and freshness/alignment windows. Missing
-or invalid inputs are passed as ``None`` and never coerced to ``0``. The engine
-is unit-agnostic: the same math priced instantaneous power in earlier
-revisions, but the accounting substrate is now energy per interval.
+Inputs are kWh deltas; ``None`` is never coerced to ``0``. The coordinator and
+the report builder produce them from raw counter history after unit checks and
+freshness/alignment windows.
 """
 
 from __future__ import annotations
@@ -162,7 +159,7 @@ def allocate(allocation_input: AllocationInput) -> tuple[AllocationResult, ...]:
     * If two or more tenants declare
       :attr:`AllocationPolicy.RESIDUAL_OF_TOTAL_MINUS_OTHERS`, the residual
       is under-determined; every affected tenant stays unavailable.
-    * ``share`` is computed against the sum of finite accounting powers; if
+    * ``share`` is computed against the sum of finite accounting energies; if
       the denominator is zero, ``share`` is ``0.0`` for every valid tenant.
     """
     tenants = tuple(allocation_input.tenants)

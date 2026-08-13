@@ -2,8 +2,7 @@
 
 The reporter takes per-tenant hourly rows (produced from validated Recorder
 history and priced by the same :mod:`.interval` engine the live coordinator
-uses) and emits a canonical JSON envelope. It never fetches data on its own,
-never mutates recorder state, and never invents numbers.
+uses) and emits a canonical JSON envelope.
 
 Currency and kWh amounts are emitted as fixed-point decimal strings to avoid
 float drift across Python and JavaScript. Seconds stay as integers. The report

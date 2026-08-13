@@ -240,7 +240,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             tenant_cost_raw = {}
             unpriced_total = 0.0
 
-        # ---- read current validated samples ----
         f = config.freshness
         grid_import = _read_energy(
             self.hass, config.grid.import_energy_entity, now, f.energy_max_age_s
@@ -296,7 +295,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 and battery_discharge is not None
             )
 
-        # ---- per-tenant deltas and allocation inputs ----
         tenant_deltas: dict[str, float | None] = {}
         tenant_inputs: list[TenantInput] = []
         borrowed_by_host: dict[str, float | None] = {t.slug: 0.0 for t in config.tenants}
@@ -362,7 +360,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         for r in results:
             tenant_deltas[r.slug] = r.accounting_energy
 
-        # ---- battery ledger state at interval start ----
         ledger_state = await self._ledger_state(config.battery)
         payload.ledger = ledger_state
         weighted = to_weighted_cost(ledger_state)
@@ -381,7 +378,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             else None
         )
 
-        # ---- price the interval ----
         result = price_interval(
             IntervalInputs(
                 tenant_energy=tenant_deltas,
