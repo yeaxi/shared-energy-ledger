@@ -20,7 +20,7 @@ All examples use generic tenant slugs (`flat-1`, `flat-2`, `house-a`,
 | `import_price_entity` | entity | **Required.** Grid import price sensor, `unit_of_measurement == "currency/kWh"` (for example `EUR/kWh`). |
 
 Rejected currencies yield the `invalid_currency` error. See
-[Pricing and currency](tariffs-and-currency.md) for how to build the price
+[Pricing and currency](pricing-and-currency.md) for how to build the price
 sensor.
 
 ### `optional` step

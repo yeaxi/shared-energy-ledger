@@ -21,10 +21,15 @@ epochs or start a new one.
 - One Lovelace report card (`shared-energy-ledger-report`) that calls
   `shared_energy_ledger.rebuild_period_report` over the Home Assistant
   connection.
-- Menu-driven options flow for tenants, shared loads, and per-data-class
-  freshness windows (including `price_max_age_s`).
+- Menu-driven options flow for tenants, shared loads (add/edit/remove/reassign
+  by stable `load_id`), and per-data-class freshness windows (including
+  `price_max_age_s` and `alignment_skew_s`).
+- Config-entry schema v3: optional non-battery power and grid export fields
+  removed; shared loads carry `load_id`; I4 residual alignment enforced at
+  coordinator and report boundaries.
 - Platinum-tier `quality_scale.yaml`, docs GitHub workflow, local brand
   images under `brand/`, and `scripts/check_brand_assets.py`.
+- Repository `CODEOWNERS` / manifest `codeowners` set to `@yeaxi`.
 
 ### Changed
 
@@ -35,6 +40,7 @@ epochs or start a new one.
   change so entity `unique_id`s stay stable.
 - CI pins Home Assistant 2026.8.1; that release is the minimum supported
   floor.
+- Docs rename: `tariffs-and-currency.md` → `pricing-and-currency.md`.
 
 ### Notes
 
@@ -66,10 +72,12 @@ Ten invariants (I1..I10) are locked in and enforced by tests and lints:
 
 ### Non-code (maintainer follow-up)
 
-The following are outside the scope of tagged code but required for a
-public HACS listing:
+Outside tagged code and intentionally out of scope for agents:
 
-- GitHub repository topics and description on the About page.
-- Addition PR to [`hacs/default`](https://github.com/hacs/default).
+- Addition PR to [`hacs/default`](https://github.com/hacs/default) (external
+  repository and credentials).
+- Real Home Assistant live staging (policy: no live HA access from agents).
+- Publishing a git tag / GitHub Release (maintainer step after the
+  verification gate and `scripts/live_probe.py`).
 
 [Unreleased]: https://github.com/yeaxi/shared-energy-ledger/commits/main
