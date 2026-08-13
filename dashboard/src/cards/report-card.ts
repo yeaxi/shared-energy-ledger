@@ -212,9 +212,9 @@ export class SharedEnergyLedgerReportCard extends HTMLElement {
         <div class="row" role="row">
           <span class="label">${escapeHtml(slug)}</span>
           <span class="value">${escapeHtml(section.known_cost)}</span>
-          <span class="value">${escapeHtml(section.grid_cost)}</span>
-          <span class="value">${escapeHtml(section.pv_cost)}</span>
-          <span class="value">${escapeHtml(section.battery_cost)}</span>
+          <span class="value">${escapeHtml(section.grid_cost)} / ${escapeHtml(section.grid_kwh)} kWh</span>
+          <span class="value">${escapeHtml(section.pv_cost)} / ${escapeHtml(section.pv_kwh)} kWh</span>
+          <span class="value">${escapeHtml(section.battery_cost)} / ${escapeHtml(section.battery_kwh)} kWh</span>
         </div>`,
       )
       .join("");

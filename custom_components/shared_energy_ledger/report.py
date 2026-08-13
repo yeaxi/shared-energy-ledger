@@ -5,10 +5,10 @@ history and priced by the same :mod:`.interval` engine the live coordinator
 uses) and emits a canonical JSON envelope. It never fetches data on its own,
 never mutates recorder state, and never invents numbers.
 
-Currency amounts are emitted as fixed-point decimal strings to avoid float
-drift; seconds and kWh are plain JSON numbers. The report never emits ``NaN``
-or ``Infinity``. Every tenant's cost is split by source (grid/PV/battery) so a
-reader can see not just how much is owed but why.
+Currency and kWh amounts are emitted as fixed-point decimal strings to avoid
+float drift across Python and JavaScript. Seconds stay as integers. The report
+never emits ``NaN`` or ``Infinity``. Every tenant's cost and energy is split by
+source (grid/PV/battery) so a reader can see not just how much is owed but why.
 """
 
 from __future__ import annotations
@@ -30,10 +30,13 @@ class ReportError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class HourlyRow:
-    """One hourly row of source-split cost for a single tenant."""
+    """One hourly row of source-split energy and cost for a single tenant."""
 
     tenant_slug: str
     hour_local: datetime
+    grid_kwh: Decimal
+    pv_kwh: Decimal
+    battery_kwh: Decimal
     grid_cost: Decimal
     pv_cost: Decimal
     battery_cost: Decimal
@@ -94,7 +97,7 @@ def _quantize_currency(value: Decimal) -> str:
     return format(quantized, "f")
 
 
-def _quantize_kwh(value: float) -> str:
+def _quantize_kwh(value: float | Decimal) -> str:
     """Return a kWh amount as a fixed 6-decimal string.
 
     kWh and reconciliation amounts are emitted as decimal strings (like
@@ -125,6 +128,9 @@ def _validate_row(row: HourlyRow, known: set[str], start: datetime, end: datetim
     if row.coverage_seconds < 0 or row.coverage_seconds > 3600:
         raise ReportError(f"Row coverage_seconds {row.coverage_seconds!r} not in [0, 3600]")
     for name, amount in (
+        ("grid_kwh", row.grid_kwh),
+        ("pv_kwh", row.pv_kwh),
+        ("battery_kwh", row.battery_kwh),
         ("grid_cost", row.grid_cost),
         ("pv_cost", row.pv_cost),
         ("battery_cost", row.battery_cost),
@@ -161,12 +167,18 @@ def build_report(inputs: ReportInputs) -> dict[str, Any]:
             if prev is not None and row.hour_local <= prev:
                 raise ReportError(f"Rows for tenant {slug!r} are not strictly sorted")
             prev = row.hour_local
+        grid_kwh_total = sum((r.grid_kwh for r in rows), start=Decimal("0"))
+        pv_kwh_total = sum((r.pv_kwh for r in rows), start=Decimal("0"))
+        battery_kwh_total = sum((r.battery_kwh for r in rows), start=Decimal("0"))
         grid_total = sum((r.grid_cost for r in rows), start=Decimal("0"))
         pv_total = sum((r.pv_cost for r in rows), start=Decimal("0"))
         battery_total = sum((r.battery_cost for r in rows), start=Decimal("0"))
         known_total = grid_total + pv_total + battery_total
         tenants_payload[slug] = {
             "known_cost": _quantize_currency(known_total),
+            "grid_kwh": _quantize_kwh(grid_kwh_total),
+            "pv_kwh": _quantize_kwh(pv_kwh_total),
+            "battery_kwh": _quantize_kwh(battery_kwh_total),
             "grid_cost": _quantize_currency(grid_total),
             "pv_cost": _quantize_currency(pv_total),
             "battery_cost": _quantize_currency(battery_total),
@@ -175,6 +187,9 @@ def build_report(inputs: ReportInputs) -> dict[str, Any]:
                 {
                     "hour_local": _to_iso_local(r.hour_local),
                     "cost": _quantize_currency(r.total_cost),
+                    "grid_kwh": _quantize_kwh(r.grid_kwh),
+                    "pv_kwh": _quantize_kwh(r.pv_kwh),
+                    "battery_kwh": _quantize_kwh(r.battery_kwh),
                     "grid_cost": _quantize_currency(r.grid_cost),
                     "pv_cost": _quantize_currency(r.pv_cost),
                     "battery_cost": _quantize_currency(r.battery_cost),

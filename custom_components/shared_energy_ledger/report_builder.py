@@ -351,6 +351,9 @@ async def async_rebuild_period_report(
                 HourlyRow(
                     tenant_slug=tsc.slug,
                     hour_local=hour_start,
+                    grid_kwh=Decimal(str(tsc.grid_kwh)),
+                    pv_kwh=Decimal(str(tsc.pv_kwh)),
+                    battery_kwh=Decimal(str(tsc.battery_kwh)),
                     grid_cost=Decimal(str(tsc.grid_cost)),
                     pv_cost=Decimal(str(tsc.pv_cost)),
                     battery_cost=Decimal(str(tsc.battery_cost)),
