@@ -112,9 +112,8 @@ handled by a separate rollout plan after the project is "done by definition".
 
 Every identity abides by these rules:
 
-- **No live Home Assistant access.** No SSH, no service calls, no direct
-  writes to `.storage/`, no calls to `turn_on`, `turn_off`, `toggle`, or any
-  service that mutates a real Home Assistant instance. All work is local
+- **No live Home Assistant access.** No SSH, no service calls, and no direct
+  writes to `.storage/` or any real Home Assistant instance. All work is local
   code, tests, and documentation.
 - **Synthetic fixtures only.** Every test and every example uses fully
   synthetic data. A repository-wide lint scans for a
