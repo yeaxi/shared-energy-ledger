@@ -18,7 +18,6 @@ dashboard/                                # companion Lovelace cards
 tests/                                    # pytest suite (unit + integration)
 docs/                                     # mkdocs documentation site
 scripts/                                  # dev helpers (lint, traceability, i18n)
-legacy/                                   # read-only pre-migration archive
 .cursor/skills/                           # reusable HA-development skills
 REQUIREMENTS.md                           # public specification (source of truth)
 ```
@@ -31,20 +30,27 @@ entities render.
 
 - `config_flow.py` / `configio.py` / `models.py` — the UI config and options
   flow, and the typed configuration model persisted on the config entry.
-- `coordinator.py` — a `DataUpdateCoordinator` that reads upstream states,
-  checks freshness, and builds the per-refresh snapshot.
-- `allocation.py` — splits shared energy across tenants according to the
-  selected allocation policy.
-- `tariff.py` — resolves the time-of-use rate for a given instant, DST-safe,
-  with historical intervals keeping their original rate.
+- `samples.py` — pure validators that turn raw states into typed floats,
+  enforcing unit, freshness, and finiteness (including the `<currency>/kWh`
+  price unit).
+- `coordinator.py` — a `DataUpdateCoordinator` that turns cumulative-meter
+  readings into interval deltas, prices each interval, and accrues restart-safe
+  per-tenant cost totals.
+- `allocation.py` — splits building consumption energy across tenants according
+  to the selected allocation policy.
+- `interval.py` — the pure per-interval engine that distributes the grid/PV/
+  battery source mix across tenants and prices each source at its own per-kWh
+  rate. Shared by the live coordinator and the report builder.
 - `ledger.py` / `ledger_store.py` — the weighted-cost battery ledger and its
   persistent store, keeping priced stock separate from raw kWh.
+- `cost_store.py` — persists counter anchors and the running per-source cost
+  totals so the cumulative-cost sensors are pure renderers.
 - `report.py` / `report_builder.py` — deterministic Recorder-based reports for
-  any timeframe.
-- `sensor.py` / `binary_sensor.py` / `number.py` / `select.py` / `entity.py` —
-  the entity platforms and their shared base.
+  any timeframe, recomputed from meter and price history via `interval.py`.
+- `sensor.py` / `binary_sensor.py` / `entity.py` — the entity platforms and
+  their shared base.
 - `services.py` / `services.yaml` — the exposed services (rebuild report, reset
-  battery ledger, set tariff rate).
+  battery ledger).
 - `diagnostics.py` / `issues.py` — redacted diagnostics and repair issues.
 - `const.py` — the integration domain and constants.
 
@@ -52,19 +58,19 @@ entities render.
 
 ```mermaid
 flowchart TD
-  Meters["Upstream HA entities (grid, PV, battery, tenant meters)"] --> Coordinator
-  Coordinator["DataUpdateCoordinator"] --> Freshness["Freshness gates"]
-  Coordinator --> Allocation["Allocation policy"]
-  Allocation --> Tariff["Tariff pricing"]
-  Tariff --> Ledger["Battery weighted-cost ledger"]
-  Ledger --> Snapshot["Per-refresh snapshot"]
-  Freshness --> Snapshot
-  Snapshot --> Entities["Cost / share / freshness entities"]
-  Recorder["Recorder history"] --> ReportBuilder["Report builder"]
-  Snapshot --> ReportBuilder
+  Meters["Cumulative meters (grid, PV, battery, tenant)"] --> Coordinator
+  Prices["Price sensors (grid, PV) in currency/kWh"] --> Coordinator
+  Coordinator["DataUpdateCoordinator (meter deltas)"] --> Allocation["Allocation policy"]
+  Allocation --> IntervalEngine["Interval engine: source split + pricing"]
+  Coordinator --> IntervalEngine
+  IntervalEngine --> Ledger["Battery weighted-cost ledger"]
+  IntervalEngine --> CostStore["Running per-source cost totals"]
+  CostStore --> Entities["Per-tenant cost / share / freshness entities"]
+  Ledger --> Entities
+  Recorder["Recorder history (meters + prices)"] --> ReportBuilder["Report builder"]
+  ReportBuilder --> IntervalEngine
   ReportBuilder --> Reports["Deterministic period reports"]
-  Entities --> Cards["Lovelace cards (dashboard/)"]
-  Reports --> Cards
+  Reports --> Card["Report card (calls the service)"]
 ```
 
 ## The fail-closed contract

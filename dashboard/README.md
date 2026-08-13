@@ -1,19 +1,21 @@
-# Shared Energy Ledger Lovelace cards
+# Shared Energy Ledger Lovelace card
 
-This folder ships the Lovelace card bundle that pairs with the
-`custom_components/shared_energy_ledger` Home Assistant integration. Three custom
-elements are published, each as its own IIFE bundle:
+This folder ships the Lovelace card that pairs with the
+`custom_components/shared_energy_ledger` Home Assistant integration. One custom
+element is published as an IIFE bundle:
 
-| Element                          | Purpose                                                                 |
-|----------------------------------|-------------------------------------------------------------------------|
-| `shared-energy-ledger-period-summary`    | Per-tenant known-cost tile for the selected accounting period.          |
-| `shared-energy-ledger-history-report`    | Detailed period report with coverage and transition-excluded segments.  |
-| `shared-energy-ledger-history-bridge`    | Data adapter that publishes the currently selected report to siblings.  |
+| Element | Purpose |
+|---|---|
+| `shared-energy-ledger-report` | Per-tenant cost for a period, split by grid, PV, and battery. |
 
-The card contract (fail-closed rendering, `unavailable` never treated as
-`0`, revision-hash verification, monotonic selection guard) is enforced in
-`src/report/` and covered by `tests/report.test.ts`. See
-`../REQUIREMENTS.md` invariants **I1**, **I7**, **I8**, and **I10**.
+The card calls the `shared_energy_ledger.rebuild_period_report` service over the
+Home Assistant connection and renders the response. There is no static report
+file to host and no cross-origin fetch.
+
+The card contract (fail-closed rendering, `unavailable` never treated as `0`,
+revision-hash verification, monotonic request-id guard) is enforced in
+`src/report/` and covered by `tests/report.test.ts`. See `../REQUIREMENTS.md`
+invariants **I1**, **I7**, **I8**, and **I10**.
 
 ## Build
 
@@ -26,90 +28,42 @@ npm test
 npm run build
 ```
 
-`npm run build` emits three files under `dist/`:
-
-- `dist/shared-energy-ledger-period-summary.js`
-- `dist/shared-energy-ledger-history-report.js`
-- `dist/shared-energy-ledger-history-bridge.js`
-
-Each file is a self-contained IIFE with an accompanying `.js.map` source
-map. Nothing is minified beyond what esbuild does by default; the source
-maps ship alongside the bundles so operators can debug in production.
+`npm run build` emits `dist/shared-energy-ledger-report.js` (a self-contained
+IIFE) and its `.js.map` source map.
 
 ## Install in Home Assistant
 
-HACS does not install these cards. Download the three JavaScript bundles from
-the matching tagged GitHub release, or build them from source.
+HACS does not install the card. Download the bundle from the matching tagged
+GitHub release, or build it from source.
 
-1. Copy the three JavaScript files to `config/www/shared_energy_ledger/`.
-2. Register the resources in Lovelace with a cache-busting `?v=<sha>` query.
-   For example, in `configuration.yaml` (or the Lovelace resources UI):
-
-   ```yaml
-   lovelace:
-     resources:
-       - url: /local/shared_energy_ledger/shared-energy-ledger-period-summary.js?v=1
-         type: module
-       - url: /local/shared_energy_ledger/shared-energy-ledger-history-report.js?v=1
-         type: module
-       - url: /local/shared_energy_ledger/shared-energy-ledger-history-bridge.js?v=1
-         type: module
-   ```
-
-3. Add cards to a dashboard. Minimal example configurations:
+1. Copy `shared-energy-ledger-report.js` to `config/www/shared_energy_ledger/`.
+2. Register it as a Lovelace resource (module) with a cache-busting `?v=<sha>`.
+3. Add the card to a dashboard:
 
    ```yaml
-   type: custom:shared-energy-ledger-period-summary
-   title: Period summary
-   expected_unit: EUR
-   display_unit: EUR
-   decimals: 2
-   entities:
-     tenant-a: sensor.shared_energy_ledger_tenant_a_cost_cumulative
-     tenant-b: sensor.shared_energy_ledger_tenant_b_cost_cumulative
+   type: custom:shared-energy-ledger-report
+   title: Who owes how much
+   period: this_month   # or today | this_year, or explicit start/end
+   # tenant: flat-1     # optional: restrict to one tenant
    ```
 
-   ```yaml
-   type: custom:shared-energy-ledger-history-report
-   title: Last 24 h report
-   url: /local/shared_energy_ledger/report.json
-   poll_interval_seconds: 300
-   ```
-
-   ```yaml
-   type: custom:shared-energy-ledger-history-bridge
-   id: primary
-   url: /local/shared_energy_ledger/report.json
-   poll_interval_seconds: 300
-   ```
-
-Every card exposes a static `getStubConfig()` method used by the Home
-Assistant card picker. Config keys and their invariants are documented in
-each card's TypeScript file.
+The card exposes a static `getStubConfig()` for the Home Assistant card picker.
 
 ## Fail-closed rendering
 
-The cards refuse to fabricate zeros:
-
-- An entity in state `unknown`, `unavailable`, `none`, an empty string, or
-  with a unit that does not match `expected_unit` renders as
-  `unavailable`.
-- A report whose `schema_version` is not `2`, whose `revision` does not
-  match the SHA-256 of the canonical body, or which contains a `NaN` or
+- A service response whose `schema_version` is not `3`, whose `revision` does
+  not match the SHA-256 of the canonical body, or which contains a `NaN` or
   `Infinity` renders as `unavailable`.
-- An older asynchronous response never overwrites a newer selection; the
-  selection guard is keyed on the report's `finalized_as_of` timestamp.
+- An older asynchronous response never overwrites a newer request; the card
+  keys on a local monotonic request id.
 
 See `.cursor/skills/energy-accounting-invariants/SKILL.md` for the full
 contract.
 
 ## Security posture
 
-- Cards only fetch from the Home Assistant frontend origin. Cross-origin
-  URLs are rejected before the network request is issued.
-- Cards never persist user identifiers, credentials, or tokens in
-  `localStorage` or `sessionStorage`. ESLint enforces this at lint time.
-- All user-visible strings are localized through `src/i18n.ts`. English is
-  the baseline; other locales fall back cleanly.
-- All colors come from Home Assistant CSS variables so cards render
-  correctly under both light and dark themes.
+- The card calls only the Home Assistant connection; it issues no cross-origin
+  network requests.
+- It never persists user identifiers, credentials, or tokens.
+- All user-visible strings are localized through `src/i18n.ts`.
+- All colors come from Home Assistant CSS variables for light and dark themes.

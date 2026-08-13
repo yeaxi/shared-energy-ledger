@@ -42,8 +42,8 @@ Shared Energy Ledger never invents a zero.
   config-flow and options-flow field.
 - [Allocation policies](allocation-policies.md) explains the three
   allocation policies with generic examples.
-- [Tariffs and currency](tariffs-and-currency.md) covers time-of-use
-  scheduling, the day/night preset, and the accounting-epoch rule.
+- [Pricing and currency](tariffs-and-currency.md) covers the grid and PV
+  price sensors and the currency accounting-epoch rule.
 - [Battery ledger](battery-ledger.md) explains the weighted-cost ledger
   and how to seed initial priced stock.
 - [Invariants](invariants.md) lists the ten non-functional invariants

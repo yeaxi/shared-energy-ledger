@@ -31,9 +31,11 @@ Agents editing this folder must follow, in this order of precedence:
 - The literal string `"unavailable"` (or the localized equivalent) is never
   treated as the number `0`. Cost tiles either show a value or the
   unavailability state; there is no third path.
-- Cards fetch report JSON with a cache-busting query parameter tied to the
-  report's `revision` hash. A newer selection must never be overwritten by an
-  older asynchronous result; each fetch carries a monotonic selection id.
+- The report card obtains report JSON by calling the
+  `shared_energy_ledger.rebuild_period_report` service over the Home Assistant
+  connection (with `return_response`). It does not fetch a static file. A newer
+  request must never be overwritten by an older asynchronous result; each call
+  carries a local monotonic request id and stale responses are discarded.
 - Every user-visible string is localized. English is the baseline; other
   locales fall back cleanly when missing.
 - Cards render correctly in both light and dark themes and remain readable at
@@ -48,8 +50,8 @@ Agents editing this folder must follow, in this order of precedence:
 - Hard-coding entity IDs from any private installation. All entities the
   card reads live under the `shared_energy_ledger.*` namespace and are supplied by
   the integration.
-- Sending network requests to hosts outside the Home Assistant frontend
-  origin.
+- Issuing any cross-origin network request, or fetching a static report file
+  instead of calling the integration service.
 - Storing user identifiers, credentials, or tokens in local storage.
 - Blocking the render thread on large computations. Use web workers for any
   work over a few milliseconds.

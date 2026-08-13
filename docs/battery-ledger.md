@@ -33,22 +33,25 @@ page) takes:
 | Signed DC power | `W` (negative on discharge) | Live rate accuracy and freshness gating |
 | Charge efficiency | `%` in `[50, 100]` | Fraction of charged energy that actually becomes stock |
 | Discharge efficiency | `%` in `[50, 100]` | Fraction of stored energy delivered to loads |
-| Initial stock (kWh) | `kWh` | Priced stock at first setup |
-| Initial stock cost | currency | Cost of the initial priced stock |
+
+The initial priced stock is seeded via the `reset_battery_ledger` service, not
+the config flow (see [Seeding the initial stock](#seeding-the-initial-stock)).
 
 ## PV vs grid pricing
 
-When the battery **charges**:
+When the battery **charges**, the interval engine measures how much of the
+charge came from each source and prices it accordingly:
 
-- Any share of the charge that comes from PV is priced at `0` per kWh
-  in the ledger. The energy is real; the cost of that energy has been
-  attributed to PV and therefore to the accounting loads at the moment
-  PV generated it.
-- Any share that comes from grid import is priced at the *current*
-  grid tariff at the moment of charge.
-- The ledger's weighted cost is recomputed as a mass-weighted average
-  of the existing stock and the incoming charge, after applying the
-  charge efficiency.
+- PV supplies the battery only after PV has served building consumption. That
+  PV-sourced charge is priced at the **PV price sensor** (or `0` when PV is
+  marked zero-cost).
+- The remainder of the charge is priced at the **grid import price sensor**
+  value for that interval.
+- The blended per-kWh charge cost feeds the ledger, and the weighted cost is
+  recomputed as a mass-weighted average of the existing stock and the incoming
+  charge, after applying the charge efficiency. If a charging source lacks a
+  valid price for the interval, the ledger is left unchanged rather than pricing
+  the charge at a fabricated zero (invariant I1/I6).
 
 When the battery **discharges**:
 
@@ -91,16 +94,10 @@ into `unavailable`. Subsequent battery cost rates evaluate to
 
 ## Seeding the initial stock
 
-Two paths are available:
-
-1. **Config flow** — enter `Initial priced stock (kWh)` and
-   `Initial priced stock cost (currency)` on the battery step. The
-   pair is validated as described above.
-2. **Service call** — invoke
-   `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This is a
-   journaled admin action. It refuses to run when the battery
-   data-fresh gate is off, and it enforces the boundary-pair coherence
-   rule.
+Invoke `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This
+is a journaled admin action that enforces the boundary-pair coherence rule. Use
+it to seed the priced stock present at first setup, or to correct the ledger
+after a counter reset.
 
 ### Example call (Developer Tools > Services)
 
@@ -117,13 +114,8 @@ The example above seeds `3.5 kWh` of priced stock costing a total of
 
 ## Reporting
 
-Every `shared_energy_ledger.rebuild_period_report` invocation returns:
-
-- `battery_charged_kwh`, `battery_discharged_kwh`,
-- `battery_priced_stock_start`, `battery_priced_stock_end`,
-- `battery_weighted_cost_start`, `battery_weighted_cost_end`,
-- `battery_unpriced_discharge_kwh` — reported separately from
-  `total_cost` per [invariant I7](invariants.md).
-
-Reports remain deterministic and revision-hashed regardless of how
-often the ledger status flapped during the period.
+`shared_energy_ledger.rebuild_period_report` prices battery-served energy per
+tenant in each tenant's `battery_cost` field, and reports
+`unpriced_battery_kwh` at the top level, separately from any tenant's cost, per
+[invariant I7](invariants.md). Reports remain deterministic and revision-hashed
+regardless of how often the ledger status flapped during the period.
