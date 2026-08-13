@@ -9,7 +9,8 @@ tariff.
 ## Prerequisites
 
 - A working Home Assistant installation with the HACS integration
-  installed and functional.
+  installed and functional. Shared Energy Ledger requires Home Assistant
+  2026.8.1 or newer.
 - The following Home Assistant entities already exist and are healthy:
     - A grid **import** energy sensor (`kWh`, monotonic
       total-increasing).
@@ -37,9 +38,11 @@ and no vendor-specific ID.
     ```
 
 4. In the *Category* field choose **Integration**.
-5. Click **Add**. HACS downloads the integration into
-   `custom_components/shared_energy_ledger/`.
-6. **Restart Home Assistant** so the new integration is picked up.
+5. Click **Add**. This registers the custom repository; it does not install
+   the integration.
+6. Return to **HACS** > **Integrations**, search for
+   **Shared Energy Ledger**, open it, and click **Download**.
+7. **Restart Home Assistant** so the new integration is picked up.
 
 ## Add the integration
 
@@ -133,3 +136,10 @@ Once the config flow finishes, Shared Energy Ledger creates:
 You can reopen the integration from **Settings** > **Devices &
 services** > **Shared Energy Ledger** > **Configure** to enter the options
 flow. See [Configuration reference](configuration.md).
+
+## Optional Lovelace cards
+
+HACS installs the integration, not the companion cards. Tagged GitHub releases
+attach the three JavaScript bundles. Download the bundles for the same release
+as the integration and follow the
+[manual card instructions](https://github.com/yeaxi/shared-energy-ledger/blob/main/dashboard/README.md).

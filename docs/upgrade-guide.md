@@ -99,6 +99,8 @@ description. The template below is copied into `CHANGELOG.md`.
    meters.
 3. Upgrade through HACS. HACS downloads the new release into
    `custom_components/shared_energy_ledger/`.
+   Update the optional Lovelace cards separately from the assets attached to
+   the same GitHub release.
 4. **Restart Home Assistant.** Do not use a "reload" shortcut for
    major upgrades: `async_migrate_entry` runs at load time and needs
    a clean start.
@@ -121,3 +123,15 @@ description. The template below is copied into `CHANGELOG.md`.
   config entry migrated by a newer version.
 - To recover from a failed downgrade, restore the backup taken before
   the upgrade.
+
+## Removing the integration
+
+1. Take a Home Assistant backup if you may need the historical configuration
+   or recorder data later.
+2. Open **Settings** > **Devices & services** > **Shared Energy Ledger** and
+   delete the config entry.
+3. Remove any Shared Energy Ledger cards and resources from Lovelace.
+4. Open HACS, remove Shared Energy Ledger, and restart Home Assistant.
+
+Removing the integration does not rewrite or delete recorder history. Home
+Assistant applies its normal recorder retention policy to historical states.

@@ -62,7 +62,8 @@ Agents editing this folder must follow:
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-report=term-missing --cov-fail-under=90 -W error
 ```
 
-CI runs the same command on every supported Home Assistant version.
+CI runs the same command against Home Assistant 2026.8.1, the supported floor
+declared in `hacs.json`.
 
 ## Fixture policy
 

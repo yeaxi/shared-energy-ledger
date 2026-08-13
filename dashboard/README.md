@@ -19,7 +19,7 @@ The card contract (fail-closed rendering, `unavailable` never treated as
 
 ```bash
 cd dashboard
-npm install
+npm ci
 npm run lint
 npm run typecheck
 npm test
@@ -37,6 +37,9 @@ map. Nothing is minified beyond what esbuild does by default; the source
 maps ship alongside the bundles so operators can debug in production.
 
 ## Install in Home Assistant
+
+HACS does not install these cards. Download the three JavaScript bundles from
+the matching tagged GitHub release, or build them from source.
 
 1. Copy the three JavaScript files to `config/www/shared_energy_ledger/`.
 2. Register the resources in Lovelace with a cache-busting `?v=<sha>` query.

@@ -12,12 +12,13 @@ Shared Energy Ledger is validated at three layers:
    [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component)
    and exercise the config flow, options flow, coordinator, sensor
    platforms, and services against the same runtime an operator installs.
-3. **Live smoke probe** at [`scripts/live_probe.py`](https://github.com/yeaxi/shared-energy-ledger/blob/main/scripts/live_probe.py)
+3. **Maintainer smoke probe** at [`scripts/live_probe.py`](https://github.com/yeaxi/shared-energy-ledger/blob/main/scripts/live_probe.py)
    boots the exact same Home Assistant runtime in-process, loads the
    integration from `custom_components/shared_energy_ledger`, and asserts every
    invariant against the real state machine, entity registry, coordinator,
    and service registrations. It is designed to be re-runnable by
-   maintainers before tagging a release.
+   maintainers before tagging a release. It does not connect to a live Home
+   Assistant installation and is intentionally outside hosted CI.
 
 ## Running the live probe
 
@@ -64,7 +65,7 @@ Rerun the probe:
 - When bumping the Home Assistant floor version in `manifest.json` or
   `hacs.json`.
 
-The probe is a strict superset of the CI matrix: it exercises entity
+The probe complements the CI suite: it exercises entity
 registration, coordinator refresh, service dispatch, and `Store`
 persistence in one process, which is closer to what an operator's live
 Home Assistant instance sees than the pytest integration tests alone.

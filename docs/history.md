@@ -46,9 +46,10 @@ for this project is that the invariants survived the migration.
   keys.
 - **Docs, CI, HACS.** The mkdocs site, CI workflows, diagnostics
   helper, and HACS metadata reached a shippable state.
-- **Public pre-releases.** `v0.x` tags began collecting community
-  feedback. Live-in-HA testing on real installations is governed by a
-  separate rollout plan and is out of scope for this repository.
+- **First release pending.** The release candidate is still tracked under
+  `Unreleased`; no public tag has been published. Live-in-HA testing on real
+  installations follows a separate rollout plan and is out of scope for this
+  repository.
 
 ## Acknowledgements
 

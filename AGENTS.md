@@ -80,12 +80,15 @@ python scripts/check_private_denylist.py
 python scripts/check_brand_assets.py custom_components/shared_energy_ledger
 python scripts/lint_no_silent_zero.py custom_components/shared_energy_ledger
 python scripts/check_requirements_traceability.py
-python scripts/live_probe.py                 # live smoke against the real HA runtime
-python -c "import json, pathlib; [json.loads(p.read_text()) for p in pathlib.Path('.').rglob('*.json') if 'node_modules' not in p.parts and 'legacy' not in p.parts]"
+python scripts/check_structured_data.py
+python scripts/check_ha_version_alignment.py
 git diff --check
 ```
 
-CI reruns the same gate on every supported Home Assistant version.
+CI runs these checks against the single supported floor, Home Assistant
+2026.8.1, and also runs HACS validation and the frontend gate. Maintainers run
+`python scripts/live_probe.py` as an in-process smoke check before a release;
+it does not connect to a live installation and is not part of hosted CI.
 
 ## Git and secret hygiene
 

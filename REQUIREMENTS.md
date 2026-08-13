@@ -212,6 +212,9 @@ cross-referencing from tests, docs, and the traceability matrix.
 
 ## A4. Platinum tier requirements
 
+Platinum is the target, not the current attestation. Until every rule below is
+audited, `manifest.json` and `quality_scale.yaml` remain at Silver.
+
 - Fully asynchronous. All I/O uses `async_add_executor_job` when a sync
   dependency is unavoidable. No `time.sleep`, no blocking HTTP, no blocking DB
   access in the event loop.
@@ -241,19 +244,21 @@ cross-referencing from tests, docs, and the traceability matrix.
     for pure-Python module invariants,
   - `test_config_flow.py`, `test_entities.py`, `test_services.py` for
     integration behavior booting a mock Home Assistant with fixtures.
-- CI matrix runs on every supported Home Assistant version declared in
-  `manifest.json`. It executes hassfest, HACS validate, mypy strict, ruff,
-  pytest with coverage, and JSON/YAML validation.
+- The supported floor tracks the latest stable Home Assistant release and is
+  declared in `hacs.json`. CI tests that exact release and fails if the HACS
+  declaration, installed package, and test harness diverge. It executes
+  hassfest, HACS validation, mypy strict, ruff, pytest with coverage, and
+  JSON/YAML validation.
 
 ## A5. Target repository layout
 
 ```
 custom_components/shared_energy_ledger/
   __init__.py  manifest.json  const.py  models.py  coordinator.py
-  config_flow.py  options_flow.py  diagnostics.py  services.yaml  services.py
+  config_flow.py  diagnostics.py  services.yaml  services.py
   sensor.py  binary_sensor.py  number.py  select.py
   ledger.py  allocation.py  tariff.py  report.py
-  translations/en.json  strategies/shared_energy_ledger.yaml
+  translations/en.json
   brand/{icon.png,icon@2x.png}
 dashboard/
   shared-energy-ledger-period-summary/
@@ -265,7 +270,7 @@ tests/
   fixtures/                     # fully synthetic recorder dumps; never real data
 scripts/                        # dev helpers (typing, release, hacs-validate)
 docs/                           # mkdocs site (quickstart, examples, invariants)
-.github/workflows/{ci,hassfest,hacs,release}.yml
+.github/workflows/{ci,docs,release}.yml
 hacs.json  info.md  README.md  LICENSE
 legacy/                         # optional archive of pre-migration artifacts
 ```

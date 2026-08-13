@@ -36,22 +36,26 @@ prior epochs or start a new one.
 - Slug immutability is now documented and enforced at the config-flow
   layer: after a tenant is created, only its display name can change so
   entity `unique_id`s stay stable across renames.
+- CI now pins its Home Assistant 2026.8.1 test runtime and GitHub Actions,
+  runs one reusable verification gate for pull requests and release tags,
+  and derives release notes from this changelog.
+- Home Assistant 2026.8.1 is the minimum supported release.
 
 ### Notes
 
 - No functional change to accounting math, ledger persistence, or the
   report v2 envelope. Existing sensors and services keep their contracts.
+- No GitHub release has been published yet. A maintainer must promote this
+  section to a versioned heading before creating the first tag.
 
-## [0.1.0] - 2026-08-11
+### Initial release candidate
 
-First release-candidate slice landed via
+The initial release-candidate code landed via
 [PR #3](https://github.com/yeaxi/shared-energy-ledger/pull/3) (scaffold +
 core integration + cards + docs + CI) and
 [PR #4](https://github.com/yeaxi/shared-energy-ledger/pull/4) (real
 battery ledger, mutating services, reconfigure flow, repairs, per-tenant
 `NumberEntity` / `SelectEntity`, grid-import-cost sensor, frontend CI).
-
-### Added
 
 - HACS-installable custom integration `shared_energy_ledger` for cooperative
   buildings sharing one grid connection, optional PV, and optional battery
@@ -107,5 +111,4 @@ public HACS listing:
 - GitHub repository topics and description on the About page.
 - Addition PR to [`hacs/default`](https://github.com/hacs/default).
 
-[Unreleased]: https://github.com/yeaxi/shared-energy-ledger/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yeaxi/shared-energy-ledger/releases/tag/v0.1.0
+[Unreleased]: https://github.com/yeaxi/shared-energy-ledger/commits/main

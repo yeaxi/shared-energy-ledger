@@ -54,8 +54,8 @@ handled by a separate rollout plan after the project is "done by definition".
 - May propose new fixture generator scripts under `scripts/` when the
   fixture is derived programmatically.
 - Bound by every rule in [`tests/AGENTS.md`](https://github.com/yeaxi/shared-energy-ledger/blob/main/tests/AGENTS.md).
-- Verification: `pytest -q --cov-fail-under=90 -W error` on every supported
-  HA version.
+- Verification: `pytest -q --cov-fail-under=90 -W error` against the supported
+  HA floor.
 
 ## `docs-writer`
 
@@ -86,9 +86,9 @@ handled by a separate rollout plan after the project is "done by definition".
 ## `release-manager`
 
 - Runs as a Cursor Cloud Agent.
-- Executes hassfest, HACS validate, mypy strict, ruff, and the pytest matrix
-  on the release commit. Drafts the release notes from the `CHANGELOG.md`
-  entry for the target version.
+- Executes hassfest, HACS validation, mypy strict, ruff, and pytest against
+  the supported HA floor on the release commit. Drafts release notes from the
+  `CHANGELOG.md` entry for the target version.
 - Tags the release only after all checks pass. Never force-pushes a tag.
 - Refreshes the brand images under
   `custom_components/shared_energy_ledger/brand/` when a brand change is part
