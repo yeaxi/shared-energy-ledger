@@ -92,7 +92,15 @@ function parseHourlyRow(raw: unknown, index: number, slug: string): Result<Hourl
   if (typeof hourLocal !== "string" || hourLocal.length === 0) {
     return err(`tenants.${slug}.hourly[${index}].hour_local must be a string`);
   }
-  for (const field of ["cost", "grid_cost", "pv_cost", "battery_cost"] as const) {
+  for (const field of [
+    "cost",
+    "grid_kwh",
+    "pv_kwh",
+    "battery_kwh",
+    "grid_cost",
+    "pv_cost",
+    "battery_cost",
+  ] as const) {
     if (!isNonNegativeDecimalString(raw[field])) {
       return err(`tenants.${slug}.hourly[${index}].${field} must be a non-negative decimal string`);
     }
@@ -104,6 +112,9 @@ function parseHourlyRow(raw: unknown, index: number, slug: string): Result<Hourl
   return ok({
     hour_local: hourLocal,
     cost: raw["cost"] as string,
+    grid_kwh: raw["grid_kwh"] as string,
+    pv_kwh: raw["pv_kwh"] as string,
+    battery_kwh: raw["battery_kwh"] as string,
     grid_cost: raw["grid_cost"] as string,
     pv_cost: raw["pv_cost"] as string,
     battery_cost: raw["battery_cost"] as string,
@@ -115,7 +126,15 @@ function parseTenantSection(raw: unknown, slug: string): Result<TenantSection> {
   if (!isPlainObject(raw)) {
     return err(`tenants.${slug} must be an object`);
   }
-  for (const field of ["known_cost", "grid_cost", "pv_cost", "battery_cost"] as const) {
+  for (const field of [
+    "known_cost",
+    "grid_kwh",
+    "pv_kwh",
+    "battery_kwh",
+    "grid_cost",
+    "pv_cost",
+    "battery_cost",
+  ] as const) {
     if (!isNonNegativeDecimalString(raw[field])) {
       return err(`tenants.${slug}.${field} must be a non-negative decimal string`);
     }
@@ -138,6 +157,9 @@ function parseTenantSection(raw: unknown, slug: string): Result<TenantSection> {
   }
   return ok({
     known_cost: raw["known_cost"] as string,
+    grid_kwh: raw["grid_kwh"] as string,
+    pv_kwh: raw["pv_kwh"] as string,
+    battery_kwh: raw["battery_kwh"] as string,
     grid_cost: raw["grid_cost"] as string,
     pv_cost: raw["pv_cost"] as string,
     battery_cost: raw["battery_cost"] as string,
@@ -254,6 +276,9 @@ export function canonicalBody(envelope: ReportEnvelope): CanonicalValue {
         slug,
         {
           known_cost: section.known_cost,
+          grid_kwh: section.grid_kwh,
+          pv_kwh: section.pv_kwh,
+          battery_kwh: section.battery_kwh,
           grid_cost: section.grid_cost,
           pv_cost: section.pv_cost,
           battery_cost: section.battery_cost,
@@ -261,6 +286,9 @@ export function canonicalBody(envelope: ReportEnvelope): CanonicalValue {
           hourly: section.hourly.map((row) => ({
             hour_local: row.hour_local,
             cost: row.cost,
+            grid_kwh: row.grid_kwh,
+            pv_kwh: row.pv_kwh,
+            battery_kwh: row.battery_kwh,
             grid_cost: row.grid_cost,
             pv_cost: row.pv_cost,
             battery_cost: row.battery_cost,

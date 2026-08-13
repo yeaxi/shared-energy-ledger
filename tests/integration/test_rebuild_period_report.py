@@ -120,6 +120,67 @@ async def test_report_scoped_to_single_tenant(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
+async def test_report_with_pv_battery_and_shared_load(hass: HomeAssistant) -> None:
+    data = _happy_entry_data()
+    data["pv"] = {"energy_entity": "sensor.pv_e", "zero_cost": True}
+    data["battery"] = {
+        "charge_energy_entity": "sensor.batt_c",
+        "discharge_energy_entity": "sensor.batt_d",
+        "power_entity": "sensor.batt_p",
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_stock_kwh": 10.0,
+        "initial_stock_cost": 1.0,
+    }
+    data["tenants"][0]["shared_loads"] = [
+        {
+            "label": "staircase",
+            "energy_entity": "sensor.stair_e",
+            "host_slug": "flat-2",
+        }
+    ]
+    entry = MockConfigEntry(domain=DOMAIN, data=data, version=CONFIG_ENTRY_VERSION)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    def _rich(entity_id: str) -> list[State]:
+        series = _series(entity_id)
+        if series:
+            return series
+        if entity_id == "sensor.pv_e":
+            return _cumulative(entity_id, ["0", "0", "0", "0", "0"], "kWh")
+        if entity_id == "sensor.batt_c":
+            return _cumulative(entity_id, ["0", "0", "0", "0", "0"], "kWh")
+        if entity_id == "sensor.batt_d":
+            return _cumulative(entity_id, ["0", "0", "0", "0", "0"], "kWh")
+        if entity_id == "sensor.stair_e":
+            return _cumulative(entity_id, ["0", "0", "0", "0", "0"], "kWh")
+        return []
+
+    with patch(
+        "custom_components.shared_energy_ledger.report_builder.history.get_significant_states",
+        side_effect=lambda *args, **kwargs: {
+            eid: _rich(eid) for eid in (kwargs.get("entity_ids") or [])
+        },
+    ):
+        response = await hass.services.async_call(
+            DOMAIN,
+            "rebuild_period_report",
+            {
+                "start": _BOUNDARIES[0].isoformat(),
+                "end": _BOUNDARIES[4].isoformat(),
+            },
+            blocking=True,
+            return_response=True,
+        )
+    assert response is not None
+    assert response["schema_version"] == 3
+    assert "grid_kwh" in response["tenants"]["flat-1"]
+    assert response["unpriced_battery_kwh"] == "0.000000"
+
+
+@pytest.mark.asyncio
 async def test_unknown_tenant_fails_closed(hass: HomeAssistant) -> None:
     await _setup(hass)
     with (

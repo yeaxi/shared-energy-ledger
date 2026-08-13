@@ -16,6 +16,9 @@ export const REPORT_SCHEMA_VERSION = 3 as const;
 export interface HourlyRow {
   readonly hour_local: string;
   readonly cost: string;
+  readonly grid_kwh: string;
+  readonly pv_kwh: string;
+  readonly battery_kwh: string;
   readonly grid_cost: string;
   readonly pv_cost: string;
   readonly battery_cost: string;
@@ -24,6 +27,9 @@ export interface HourlyRow {
 
 export interface TenantSection {
   readonly known_cost: string;
+  readonly grid_kwh: string;
+  readonly pv_kwh: string;
+  readonly battery_kwh: string;
   readonly grid_cost: string;
   readonly pv_cost: string;
   readonly battery_cost: string;
