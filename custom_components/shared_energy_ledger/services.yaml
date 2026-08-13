@@ -50,32 +50,3 @@ reset_battery_ledger:
           min: 0
           step: 0.01
           mode: box
-
-set_tariff_rate:
-  name: Set tariff rate
-  description: >-
-    Set the per-kWh rate for a named tariff slot from a given effective_from
-    timestamp forward. The change is journaled as a new accounting epoch;
-    historical intervals keep their original rate.
-  fields:
-    slot:
-      name: Slot
-      description: Name of the tariff slot (for example day or night).
-      required: true
-      selector:
-        text:
-    rate:
-      name: Rate
-      description: Per-kWh rate in the configured currency (>= 0).
-      required: true
-      selector:
-        number:
-          min: 0
-          step: 0.001
-          mode: box
-    effective_from:
-      name: Effective from
-      description: Timestamp from which the new rate applies.
-      required: true
-      selector:
-        datetime:
