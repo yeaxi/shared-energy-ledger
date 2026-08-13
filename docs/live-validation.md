@@ -52,7 +52,7 @@ Four scenarios plus two service-call checks, mapped to the
 | Grid unit switched to `kW` | Grid data-fresh gate flips `off` because `unit_of_measurement != "kWh"` (I5). |
 | Grid entity removed | Grid data-fresh gate stays `off`; dependent cost sensors do not fabricate a zero (I1, I10). |
 | `reset_battery_ledger` with incoherent boundary | Service rejects with `HomeAssistantError` (I6). |
-| `reset_battery_ledger` with valid boundary + `set_tariff_rate` | New stock persisted to `LedgerStore`; new tariff appended without overwriting the previous epoch (I6, I9). |
+| `reset_battery_ledger` with valid boundary | New stock persisted to `LedgerStore` (I6). Pricing stays on the operator-owned price sensors; there is no `set_tariff_rate` service (I9). |
 
 ## When to rerun
 
@@ -61,7 +61,7 @@ Rerun the probe:
 - Before tagging a new release.
 - After any change to `coordinator.py`, `sensor.py`, `binary_sensor.py`,
   `services.py`, `config_flow.py`, or the `ledger` / `allocation` /
-  `report` / `tariff` modules.
+  `report` / `interval` modules.
 - When bumping the Home Assistant floor version in `manifest.json` or
   `hacs.json`.
 

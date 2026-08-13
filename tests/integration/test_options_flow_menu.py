@@ -40,6 +40,7 @@ async def test_options_menu_lists_expected_actions(hass: HomeAssistant) -> None:
         "edit_tenant",
         "remove_tenant",
         "reorder",
+        "shared_load",
         "freshness",
     }
 
@@ -154,6 +155,35 @@ async def test_reorder_reverses_tenants(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     tenants = _tenants(hass, entry.entry_id)
     assert [t["slug"] for t in tenants] == ["flat-2", "flat-1"]
+
+
+@pytest.mark.asyncio
+async def test_shared_load_attaches_to_owner_with_host(hass: HomeAssistant) -> None:
+    entry = await _boot(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "shared_load"}
+    )
+    step = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"owner": "flat-1"}
+    )
+    assert step["step_id"] == "shared_load_details"
+    saved = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "label": "staircase",
+            "energy_entity": "sensor.staircase_e",
+            "host_slug": "flat-2",
+        },
+    )
+    assert saved["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    tenants = {t["slug"]: t for t in _tenants(hass, entry.entry_id)}
+    loads = tenants["flat-1"].get("shared_loads") or []
+    assert len(loads) == 1
+    assert loads[0]["label"] == "staircase"
+    assert loads[0]["energy_entity"] == "sensor.staircase_e"
+    assert loads[0]["host_slug"] == "flat-2"
 
 
 @pytest.mark.asyncio

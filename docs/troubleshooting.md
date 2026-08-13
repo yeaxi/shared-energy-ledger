@@ -88,18 +88,18 @@ Fix: check that every sibling tenant reports a fresh value, that
 shared-load sensors are wired to the correct tenants, and that no
 sensor is publishing at a much slower cadence than the boundary.
 
-### Tariff or currency mismatch after upgrade
+### Price sensor or currency mismatch after upgrade
 
-- Currency changes and tariff-schedule edits open a new **accounting
-  epoch**. Historical intervals keep their original rate and are not
-  re-priced.
+- Currency changes and price-sensor swaps open a new **accounting
+  epoch**. Historical intervals keep the prices recorded at the time
+  and are not silently re-priced from today's sensor.
 - If a live cost sensor shows `unavailable` immediately after an
-  upgrade, check that the current epoch has a valid rate for the
-  active tariff slot.
+  upgrade, check that the grid import price sensor (and the PV price
+  sensor, unless PV is marked zero-cost) reports a finite value in
+  `currency/kWh` matching the configured currency.
 
-Fix: open the options flow and confirm the tariff windows still
-partition the day exactly once per weekday. Rerun
-`shared_energy_ledger.set_tariff_rate` if a slot has no rate.
+Fix: open the reconfigure or options flow and confirm the price
+sensors are selected, available, and use the expected unit.
 
 ### Dashboard shows `unavailable`
 

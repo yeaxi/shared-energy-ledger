@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "scenario": "Explicit zero-cost PV covers the whole interval",
+    "invariants": ["I1", "I7"],
+    "requirement": "A3",
+    "hand_calculated": {
+      "flat-1_total_cost": 0.0,
+      "flat-1_pv_kwh": 10.0
+    }
+  },
+  "tenant_energy": {"flat-1": 10.0},
+  "grid_price": 0.3,
+  "pv_configured": true,
+  "pv_generation_kwh": 10.0,
+  "pv_price": 0.0,
+  "battery_configured": false
+}

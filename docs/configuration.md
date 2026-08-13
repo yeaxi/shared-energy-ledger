@@ -17,7 +17,7 @@ All examples use generic tenant slugs (`flat-1`, `flat-2`, `house-a`,
 | --- | --- | --- |
 | `currency` | ISO 4217 code | Unit of measurement for all monetary sensors and price sensors. |
 | `import_energy_entity` | entity | **Required.** Cumulative total-increasing grid import sensor, `unit_of_measurement == "kWh"`. |
-| `import_price_entity` | entity | **Required.** Grid import price sensor, `unit_of_measurement == "<currency>/kWh"`. |
+| `import_price_entity` | entity | **Required.** Grid import price sensor, `unit_of_measurement == "currency/kWh"` (for example `EUR/kWh`). |
 
 Rejected currencies yield the `invalid_currency` error. See
 [Pricing and currency](tariffs-and-currency.md) for how to build the price
@@ -34,7 +34,7 @@ Three checkboxes choose which optional sections follow: `include_pv`,
 | --- | --- | --- |
 | `energy_entity` | entity | **Required.** PV aggregate energy in `kWh`. |
 | `zero_cost` | boolean | When on, self-consumed PV is priced at `0` and no price sensor is needed. |
-| `price_entity` | entity | Required unless `zero_cost` is on. PV price in `<currency>/kWh`. |
+| `price_entity` | entity | Required unless `zero_cost` is on. PV price in `currency/kWh` (for example `EUR/kWh`). |
 | `power_entity` | entity | Optional; freshness and dashboards only. |
 
 Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
@@ -90,8 +90,10 @@ Entered from **Settings** > **Devices & services** > **Shared Energy Ledger** >
   `tenant_id` and entity `unique_id`s stay stable.
 - **Remove a tenant** — retires a tenant; at least two must remain.
 - **Reorder tenants** — set the display order.
-- **Freshness windows** — per-data-class maximum sample age, including the new
-  `price_max_age_s` window.
+- **Add a shared load** — attach a shared load to an owning tenant, with an
+  optional host tenant whose meter physically includes the load.
+- **Freshness windows** — per-data-class maximum sample age, including
+  `price_max_age_s` and `alignment_skew_s`.
 
 There is no tariff editor: change the price sensor instead.
 

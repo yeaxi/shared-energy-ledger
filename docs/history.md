@@ -37,7 +37,7 @@ for this project is that the invariants survived the migration.
 - **Migration scaffolded.** The `custom_components/shared_energy_ledger/`
   package was created with an empty config flow, a stub coordinator,
   and the N-tenant data model.
-- **Pure-Python modules landed.** `tariff.py`, `allocation.py`,
+- **Pure-Python modules landed.** `interval.py`, `allocation.py`,
   `ledger.py`, and `report.py` were implemented behind unit tests
   covering the invariants `I1` through `I10`.
 - **UI and services wired.** The coordinator, sensors, binary
