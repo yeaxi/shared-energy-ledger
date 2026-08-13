@@ -18,32 +18,26 @@ from custom_components.shared_energy_ledger.const import CONFIG_ENTRY_VERSION, D
 def _happy_entry_data() -> dict[str, Any]:
     return {
         "currency": "EUR",
-        "grid": {"import_energy_entity": "sensor.demo_grid_import"},
+        "grid": {
+            "import_energy_entity": "sensor.demo_grid_import",
+            "import_price_entity": "sensor.demo_grid_price",
+        },
         "tenants": [
             {
+                "tenant_id": "id-a",
                 "slug": "flat-1",
                 "name": "Flat 1",
                 "allocation_policy": "direct_meter",
                 "energy_entity": "sensor.demo_flat_1_energy",
             },
             {
+                "tenant_id": "id-b",
                 "slug": "flat-2",
                 "name": "Flat 2",
                 "allocation_policy": "direct_meter",
                 "energy_entity": "sensor.demo_flat_2_energy",
             },
         ],
-        "tariff_schedule": {
-            "slots": [
-                {"slot": "day", "rate": 0.30, "effective_from": "2020-01-01T00:00:00+00:00"},
-                {"slot": "night", "rate": 0.15, "effective_from": "2020-01-01T00:00:00+00:00"},
-            ],
-            "windows": [
-                {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "07:00", "end": "23:00", "slot": "day"},
-                {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "23:00", "end": "00:00", "slot": "night"},
-                {"weekdays": [0, 1, 2, 3, 4, 5, 6], "start": "00:00", "end": "07:00", "slot": "night"},
-            ],
-        },
     }
 
 
@@ -62,7 +56,7 @@ async def test_setup_and_unload(hass: HomeAssistant) -> None:
     services = hass.services.async_services().get(DOMAIN, {})
     assert "rebuild_period_report" in services
     assert "reset_battery_ledger" in services
-    assert "set_tariff_rate" in services
+    assert "set_tariff_rate" not in services
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
@@ -85,6 +79,27 @@ async def test_migrate_unknown_version_fails_closed(hass: HomeAssistant) -> None
 
 
 @pytest.mark.asyncio
+async def test_migrate_v1_assigns_tenant_id_and_drops_tariff(hass: HomeAssistant) -> None:
+    """I9: a v1 entry migrates structurally; price sensors then required."""
+    v1_data = {
+        "currency": "EUR",
+        "grid": {"import_energy_entity": "sensor.demo_grid_import"},
+        "tenants": [
+            {"slug": "flat-1", "name": "Flat 1", "allocation_policy": "direct_meter"},
+            {"slug": "flat-2", "name": "Flat 2", "allocation_policy": "direct_meter"},
+        ],
+        "tariff_schedule": {"slots": [], "windows": []},
+    }
+    entry = MockConfigEntry(domain=DOMAIN, data=v1_data, version=1)
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.version == CONFIG_ENTRY_VERSION
+    assert "tariff_schedule" not in entry.data
+    assert entry.data["tenants"][0]["tenant_id"] == "flat-1"
+
+
+@pytest.mark.asyncio
 async def test_entities_are_created_for_each_tenant(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION)
     entry.add_to_hass(hass)
@@ -97,6 +112,6 @@ async def test_entities_are_created_for_each_tenant(hass: HomeAssistant) -> None
     unique_ids = {
         entity_entry.unique_id for entity_entry in entity_registry.entities.values()
     }
-    for slug in ("flat-1", "flat-2"):
-        assert any(f":{slug}:tenant_total_cost" in uid for uid in unique_ids)
-        assert any(f":{slug}:tenant_accounting_power" in uid for uid in unique_ids)
+    for tenant_id in ("id-a", "id-b"):
+        assert any(f":{tenant_id}:tenant_total_cost" in uid for uid in unique_ids)
+        assert any(f":{tenant_id}:tenant_share" in uid for uid in unique_ids)

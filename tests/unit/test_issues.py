@@ -7,23 +7,23 @@ from unittest.mock import MagicMock, patch
 from custom_components.shared_energy_ledger import issues
 
 
-def test_raise_tariff_invalid_creates_error_issue() -> None:
+def test_raise_config_invalid_creates_error_issue() -> None:
     hass = MagicMock()
     with patch.object(issues.ir, "async_create_issue") as create:
-        issues.raise_tariff_schedule_invalid(hass, "entry-a", "gap on Monday")
+        issues.raise_config_invalid(hass, "entry-a", "missing grid price")
         create.assert_called_once()
         args, kwargs = create.call_args
         assert args[1] == "shared_energy_ledger"
-        assert args[2] == "entry-a:tariff_schedule_invalid"
+        assert args[2] == "entry-a:config_invalid"
         assert kwargs["severity"] == issues.ir.IssueSeverity.ERROR
-        assert kwargs["translation_placeholders"] == {"reason": "gap on Monday"}
+        assert kwargs["translation_placeholders"] == {"reason": "missing grid price"}
 
 
-def test_clear_tariff_invalid_deletes_issue() -> None:
+def test_clear_config_invalid_deletes_issue() -> None:
     hass = MagicMock()
     with patch.object(issues.ir, "async_delete_issue") as delete:
-        issues.clear_tariff_schedule_invalid(hass, "entry-a")
-        delete.assert_called_once_with(hass, "shared_energy_ledger", "entry-a:tariff_schedule_invalid")
+        issues.clear_config_invalid(hass, "entry-a")
+        delete.assert_called_once_with(hass, "shared_energy_ledger", "entry-a:config_invalid")
 
 
 def test_raise_ledger_incoherent_creates_warning_issue() -> None:

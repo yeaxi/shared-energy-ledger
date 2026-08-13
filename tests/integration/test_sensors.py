@@ -28,10 +28,10 @@ async def test_freshness_gate_off_when_no_upstream_i1(hass: HomeAssistant) -> No
 
 
 @pytest.mark.asyncio
-async def test_tenant_accounting_power_is_unavailable_without_upstream_i1(
+async def test_tenant_share_is_unavailable_without_upstream_i1(
     hass: HomeAssistant,
 ) -> None:
-    """I1: per-tenant accounting power stays unavailable, not 0."""
+    """I1: per-tenant share stays unavailable, not 0, without upstream meters."""
     entry = MockConfigEntry(
         domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION
     )
@@ -40,8 +40,8 @@ async def test_tenant_accounting_power_is_unavailable_without_upstream_i1(
     await hass.async_block_till_done()
 
     for entity_id in (
-        "sensor.mock_title_accounting_power",
-        "sensor.mock_title_accounting_power_2",
+        "sensor.mock_title_share",
+        "sensor.mock_title_share_2",
     ):
         state = hass.states.get(entity_id)
         assert state is not None
