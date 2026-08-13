@@ -3,77 +3,88 @@
     "step": {
       "user": {
         "title": "Shared Energy Ledger",
-        "description": "Configure the cooperative energy accounting for this Home Assistant install. You will be asked for currency, grid meter, optional PV and battery, and the list of tenants.",
+        "description": "Configure cooperative energy accounting. You will be asked for the currency, the shared grid import meter, its per-kWh price sensor, optional PV and battery, and one screen per tenant.",
         "data": {
-          "currency": "Currency (ISO 4217)"
+          "currency": "Currency (ISO 4217)",
+          "import_energy_entity": "Grid import energy (kWh, monotonic)",
+          "import_price_entity": "Grid import price sensor (<currency>/kWh)"
         },
         "data_description": {
-          "currency": "Three-letter currency code used as the unit of measurement for all monetary sensors."
+          "currency": "Three-letter currency code used as the unit of measurement for all monetary sensors.",
+          "import_energy_entity": "A cumulative total-increasing sensor with unit_of_measurement kWh.",
+          "import_price_entity": "A sensor reporting the effective grid import price per kWh in <currency>/kWh."
         }
       },
-      "grid": {
-        "title": "Grid",
+      "optional": {
+        "title": "Optional sections",
+        "description": "Choose which optional sources to configure. Each selected section adds one screen.",
         "data": {
-          "import_energy_entity": "Grid import energy (kWh, monotonic)",
-          "export_energy_entity": "Grid export energy (optional)",
-          "power_entity": "Grid power sensor (optional)"
-        },
-        "data_description": {
-          "import_energy_entity": "A cumulative total-increasing sensor with unit_of_measurement kWh.",
-          "export_energy_entity": "Optional; used only for reporting.",
-          "power_entity": "Optional; used only for freshness gating."
+          "include_pv": "Configure shared PV",
+          "include_battery": "Configure shared battery",
+          "include_whole_building": "Configure whole-building boundary meter"
         }
       },
       "pv": {
-        "title": "Photovoltaic (optional)",
+        "title": "Photovoltaic",
         "data": {
-          "power_entity": "PV aggregate power (W)",
-          "energy_entity": "PV aggregate energy (kWh)"
+          "energy_entity": "PV aggregate energy (kWh)",
+          "zero_cost": "Price self-consumed PV at zero cost",
+          "price_entity": "PV price sensor (<currency>/kWh)",
+          "power_entity": "PV aggregate power (optional)"
         },
         "data_description": {
-          "power_entity": "Optional. Enables live PV cost-rate accounting.",
-          "energy_entity": "Optional. Enables cumulative PV energy tracking."
+          "energy_entity": "Cumulative total-increasing kWh counter of PV generation.",
+          "zero_cost": "When enabled, self-consumed PV energy is priced at zero and no PV price sensor is needed.",
+          "price_entity": "Required unless zero-cost is selected. Reports the per-kWh value of self-consumed PV in <currency>/kWh.",
+          "power_entity": "Optional; used for freshness and dashboards only."
         }
       },
       "battery": {
-        "title": "Battery (optional)",
+        "title": "Battery",
         "data": {
           "charge_energy_entity": "Battery charge counter (kWh)",
           "discharge_energy_entity": "Battery discharge counter (kWh)",
           "power_entity": "Battery signed DC power (W, negative on discharge)",
           "charge_efficiency": "Charge efficiency (%)",
-          "discharge_efficiency": "Discharge efficiency (%)",
-          "initial_stock_kwh": "Initial priced stock (kWh)",
-          "initial_stock_cost": "Initial priced stock cost (currency)"
+          "discharge_efficiency": "Discharge efficiency (%)"
         },
         "data_description": {
           "charge_energy_entity": "Cumulative total-increasing kWh counter of energy charged into the battery.",
           "discharge_energy_entity": "Cumulative total-increasing kWh counter of energy discharged from the battery.",
           "power_entity": "Signed DC power in W. Negative values indicate discharge.",
           "charge_efficiency": "Round-trip charge efficiency. Values below 50 % or above 100 % are rejected.",
-          "discharge_efficiency": "Round-trip discharge efficiency. Values below 50 % or above 100 % are rejected.",
-          "initial_stock_kwh": "Priced stock present in the battery at first setup.",
-          "initial_stock_cost": "Cost of the initial priced stock in the chosen currency."
+          "discharge_efficiency": "Round-trip discharge efficiency. Values below 50 % or above 100 % are rejected."
         }
       },
       "whole_building": {
-        "title": "Whole-building AC boundary (optional)",
+        "title": "Whole-building boundary (optional)",
         "data": {
-          "power_entity": "Whole-building power (W)",
-          "energy_entity": "Whole-building energy (kWh)"
+          "energy_entity": "Whole-building energy (kWh)",
+          "power_entity": "Whole-building power (optional)"
         },
         "data_description": {
-          "power_entity": "Optional. Enables the residual_of_total_minus_others allocation policy for tenants without a direct meter.",
-          "energy_entity": "Optional. Reported alongside the power boundary."
+          "energy_entity": "Cumulative kWh boundary meter enabling the residual_of_total_minus_others allocation policy.",
+          "power_entity": "Optional; reported alongside the energy boundary."
         }
       },
-      "tenants": {
-        "title": "Tenants",
-        "description": "Add at least two tenants. Each tenant has a slug, a display name, an allocation policy, and optionally a direct energy or power meter plus shared loads."
-      },
-      "tariff": {
-        "title": "Time-of-use tariff",
-        "description": "Configure the tariff schedule. A single day/night preset is offered; you can define custom windows per weekday in the options flow."
+      "tenant": {
+        "title": "Add a tenant",
+        "description": "Tenant {count} added so far. Enter this tenant's details. Keep 'Add another' ticked until every tenant is entered (minimum two).",
+        "data": {
+          "slug": "Slug",
+          "name": "Display name",
+          "allocation_policy": "Allocation policy",
+          "energy_entity": "Direct energy meter (optional)",
+          "power_entity": "Direct power meter (optional)",
+          "add_another": "Add another tenant after this one"
+        },
+        "data_description": {
+          "slug": "Lowercase kebab-case label, e.g. flat-3. Editable later without breaking entities.",
+          "name": "Human-visible name shown on the dashboard.",
+          "allocation_policy": "How this tenant's accounting energy is computed.",
+          "energy_entity": "Cumulative energy sensor (kWh). Required for the direct-meter and proportional policies.",
+          "power_entity": "Optional instantaneous power sensor (W), used for freshness only."
+        }
       }
     },
     "error": {
@@ -83,7 +94,7 @@
       "invalid_entity": "The selected entity does not exist or has an incompatible device class.",
       "invalid_unit": "The selected entity's unit_of_measurement does not match the expected unit.",
       "invalid_efficiency": "Efficiency must be between 50 % and 100 %.",
-      "invalid_schedule": "Tariff windows must partition every configured weekday exactly once."
+      "pv_price_required": "Select a PV price sensor or tick 'Price self-consumed PV at zero cost'."
     },
     "abort": {
       "single_instance_allowed": "Only a single Shared Energy Ledger instance can be configured per Home Assistant install.",
@@ -95,18 +106,18 @@
     "step": {
       "init": {
         "title": "Shared Energy Ledger options",
-        "description": "Add, rename, or remove tenants, change tariffs and currency, or adjust freshness windows.",
+        "description": "Add, edit, remove, or reorder tenants, or adjust freshness windows.",
         "menu_options": {
           "add_tenant": "Add a tenant",
-          "rename_tenant": "Rename a tenant",
+          "edit_tenant": "Edit a tenant",
           "remove_tenant": "Remove a tenant",
-          "freshness": "Freshness windows",
-          "tariff_edit": "Edit tariff rate"
+          "reorder": "Reorder tenants",
+          "freshness": "Freshness windows"
         }
       },
       "add_tenant": {
         "title": "Add a tenant",
-        "description": "Add a new tenant to the cooperative. The slug is used in entity unique_ids and cannot be renamed later.",
+        "description": "Add a new tenant to the cooperative. A stable internal id is generated automatically; the slug is only a display label.",
         "data": {
           "slug": "Slug",
           "name": "Display name",
@@ -117,30 +128,35 @@
         "data_description": {
           "slug": "Lowercase kebab-case identifier, e.g. flat-3.",
           "name": "Human-visible name shown on the dashboard.",
-          "allocation_policy": "How this tenant's accounting load is computed.",
+          "allocation_policy": "How this tenant's accounting energy is computed.",
           "energy_entity": "Cumulative energy sensor (kWh).",
           "power_entity": "Instantaneous power sensor (W)."
         }
       },
-      "rename_tenant": {
-        "title": "Rename a tenant",
-        "description": "Pick a tenant to rename. Only the display name changes; the slug is immutable so entity unique_ids stay stable.",
+      "edit_tenant": {
+        "title": "Edit a tenant",
+        "description": "Pick a tenant to edit.",
         "data": {"slug": "Tenant"}
       },
-      "rename_tenant_confirm": {
-        "title": "Rename tenant {slug}",
-        "description": "Enter the new display name for tenant {slug}.",
-        "data": {"name": "New display name"}
+      "edit_tenant_details": {
+        "title": "Edit tenant {slug}",
+        "description": "Update the display name, allocation policy, or meters for tenant {slug}. The internal id and entity unique_ids stay stable.",
+        "data": {
+          "name": "Display name",
+          "allocation_policy": "Allocation policy",
+          "energy_entity": "Direct energy meter (optional)",
+          "power_entity": "Direct power meter (optional)"
+        }
       },
       "remove_tenant": {
         "title": "Remove a tenant",
         "description": "Pick a tenant to remove. At least two tenants must remain configured.",
         "data": {"slug": "Tenant"}
       },
-      "remove_tenant_confirm": {
-        "title": "Remove tenant {name}",
-        "description": "Confirm removal of tenant {name} ({slug}). This is destructive: the tenant's sensors will disappear on next reload.",
-        "data": {"confirm": "Yes, remove this tenant"}
+      "reorder": {
+        "title": "Reorder tenants",
+        "description": "Select every tenant in the desired display order.",
+        "data": {"order": "Tenant order"}
       },
       "freshness": {
         "title": "Freshness windows",
@@ -148,31 +164,30 @@
         "data": {
           "power_max_age_s": "Power sample max age (s)",
           "energy_max_age_s": "Energy sample max age (s)",
+          "price_max_age_s": "Price sample max age (s)",
           "battery_ledger_max_age_s": "Battery ledger max age (s)",
           "alignment_skew_s": "Alignment skew (s)"
-        }
-      },
-      "tariff_edit": {
-        "title": "Edit tariff rate",
-        "description": "Append a new rate for a named tariff slot with the current UTC time as effective_from. Historical intervals keep their original rate per invariant I9.",
-        "data": {
-          "slot": "Slot",
-          "rate": "New rate"
         }
       }
     },
     "error": {
       "invalid_slug": "Slugs must be lowercase, ASCII, and kebab-case.",
-      "duplicate_slug": "That slug is already in use.",
-      "invalid_policy": "That allocation policy is not recognised.",
-      "invalid_name": "Display name cannot be empty.",
-      "unknown_slot": "That tariff slot is not defined.",
-      "invalid_rate": "Rate must be a non-negative number."
+      "duplicate_slug": "That slug is already in use."
     },
     "abort": {
-      "no_tenants": "There are no tenants to rename.",
+      "no_tenants": "There are no tenants to edit.",
       "unknown_tenant": "That tenant no longer exists; the action was aborted.",
-      "minimum_tenants": "At least two tenants must remain; add a tenant before removing one."
+      "minimum_tenants": "At least two tenants must remain; add a tenant before removing one.",
+      "reorder_incomplete": "The reorder must include every tenant exactly once."
+    }
+  },
+  "selector": {
+    "allocation_policy": {
+      "options": {
+        "direct_meter": "Direct meter",
+        "residual_of_total_minus_others": "Residual of total minus others",
+        "proportional_by_direct_meters": "Proportional by direct meters"
+      }
     }
   },
   "entity": {
@@ -183,12 +198,14 @@
       "tenant_data_fresh": {"name": "Tenant data fresh"}
     },
     "sensor": {
-      "tenant_accounting_power": {"name": "Accounting power"},
       "tenant_share": {"name": "Share"},
-      "tenant_grid_cost_rate": {"name": "Grid cost rate"},
-      "tenant_battery_cost_rate": {"name": "Battery cost rate"},
-      "tenant_total_cost_rate": {"name": "Total cost rate"},
       "tenant_total_cost": {"name": "Total cost"},
+      "tenant_grid_cost": {"name": "Grid cost"},
+      "tenant_pv_cost": {"name": "PV cost"},
+      "tenant_battery_cost": {"name": "Battery cost"},
+      "grid_import_price": {"name": "Grid import price"},
+      "pv_price": {"name": "PV price"},
+      "grid_reconciliation": {"name": "Grid reconciliation"},
       "battery_stock_kwh": {"name": "Battery priced stock"},
       "battery_weighted_cost": {"name": "Battery weighted cost"},
       "battery_ledger_status": {
@@ -200,25 +217,13 @@
           "unavailable": "Unavailable"
         }
       },
-      "grid_import_cost_rate": {"name": "Grid import cost rate"},
-      "grid_import_cost_per_kwh": {"name": "Grid import cost per kWh"}
-    },
-    "number": {
-      "day_rate": {"name": "Day tariff rate"},
-      "night_rate": {"name": "Night tariff rate"},
-      "charge_efficiency": {"name": "Battery charge efficiency"},
-      "discharge_efficiency": {"name": "Battery discharge efficiency"},
-      "initial_stock_kwh": {"name": "Battery initial priced stock"},
-      "initial_stock_cost": {"name": "Battery initial priced stock cost"}
-    },
-    "select": {
-      "active_tariff_slot": {"name": "Active tariff slot"}
+      "unpriced_battery_kwh": {"name": "Unpriced battery energy"}
     }
   },
   "services": {
     "rebuild_period_report": {
       "name": "Rebuild period report",
-      "description": "Rebuild a deterministic Recorder-based JSON report for the given period.",
+      "description": "Rebuild a deterministic Recorder-based JSON report for the given period, recomputed from meter and price history.",
       "fields": {
         "start": {"name": "Start (local)", "description": "Local start of the reporting period."},
         "end": {"name": "End (local)", "description": "Local end of the reporting period."},
@@ -232,21 +237,12 @@
         "stock_kwh": {"name": "Stock (kWh)", "description": "New priced stock in kWh."},
         "stock_cost": {"name": "Stock cost", "description": "Cost of the new priced stock in the configured currency."}
       }
-    },
-    "set_tariff_rate": {
-      "name": "Set tariff rate",
-      "description": "Set the per-kWh rate for a named tariff slot from a given effective_from timestamp forward.",
-      "fields": {
-        "slot": {"name": "Slot", "description": "Name of the tariff slot (for example day or night)."},
-        "rate": {"name": "Rate", "description": "Per-kWh rate in the configured currency."},
-        "effective_from": {"name": "Effective from", "description": "Timestamp from which the new rate applies."}
-      }
     }
   },
   "issues": {
-    "tariff_schedule_invalid": {
-      "title": "Tariff schedule is invalid",
-      "description": "Shared Energy Ledger rejected the current tariff schedule: {reason}. Open the integration options to fix it. Until then, cost sensors will remain unavailable per invariant I1."
+    "config_invalid": {
+      "title": "Configuration is invalid",
+      "description": "Shared Energy Ledger rejected the current configuration: {reason}. Open the integration and reconfigure it. Until then, cost sensors remain unavailable per invariant I1."
     },
     "ledger_boundary_incoherent": {
       "title": "Battery ledger is incoherent",
