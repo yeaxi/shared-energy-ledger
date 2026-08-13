@@ -48,7 +48,6 @@ Run these locally before opening a pull request. CI reruns the same checks
 against the supported Home Assistant release.
 
 ```bash
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m mypy --strict custom_components/shared_energy_ledger
 python -m ruff check .
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error
@@ -61,6 +60,9 @@ python scripts/check_structured_data.py
 python scripts/check_ha_version_alignment.py
 git diff --check
 ```
+
+The pinned hassfest and HACS jobs run only in hosted CI. Home Assistant's PyPI
+package does not include the hassfest source-tree command.
 
 For the companion Lovelace cards:
 

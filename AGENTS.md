@@ -71,7 +71,6 @@ rules. Read those before editing files in that folder.
 Minimum local gate before commit:
 
 ```bash
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m mypy --strict custom_components/shared_energy_ledger
 python -m ruff check .
 python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fail-under=90 -W error
@@ -86,7 +85,9 @@ git diff --check
 ```
 
 CI runs these checks against the single supported floor, Home Assistant
-2026.8.1, and also runs HACS validation and the frontend gate. Maintainers run
+2026.8.1, and also runs pinned hassfest, HACS, and frontend jobs. Hassfest is
+not part of the Home Assistant PyPI package, so it has no local command.
+Maintainers run
 `python scripts/live_probe.py` as an in-process smoke check before a release;
 it does not connect to a live installation and is not part of hosted CI.
 

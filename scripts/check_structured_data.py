@@ -32,7 +32,10 @@ def main() -> int:
             if path.suffix == ".json":
                 json.loads(text)
             else:
-                yaml.safe_load(text)
+                # Syntax validation does not need typed scalar construction.
+                # BaseLoader also accepts MkDocs' ``!!python/name`` references
+                # without importing or executing them.
+                yaml.load(text, Loader=yaml.BaseLoader)
         except (OSError, UnicodeError, json.JSONDecodeError, yaml.YAMLError) as err:
             errors.append(f"{path}: {err}")
 

@@ -68,7 +68,6 @@ Agents editing this folder must follow, in this order of precedence:
 Before requesting review, the following must all pass locally:
 
 ```bash
-python -m homeassistant.scripts.hassfest --requirements --action validate
 python -m mypy --strict custom_components/shared_energy_ledger
 python -m ruff check custom_components/shared_energy_ledger
 python scripts/check_brand_assets.py custom_components/shared_energy_ledger
@@ -76,7 +75,8 @@ python -m pytest tests/ -q --cov=custom_components.shared_energy_ledger --cov-fa
 ```
 
 CI reruns the same commands against Home Assistant 2026.8.1, the supported
-floor declared in `hacs.json`.
+floor declared in `hacs.json`. A pinned CI action runs hassfest because the
+Home Assistant PyPI package does not include its source-tree scripts.
 
 ## Live Home Assistant policy
 

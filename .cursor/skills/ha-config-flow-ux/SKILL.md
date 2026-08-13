@@ -97,7 +97,6 @@ Invoke this skill when:
 
 - `pytest tests/test_config_flow.py -q` covers happy path, per-field error,
   reauth, reconfigure, options flow, migration from every prior version.
-- `python -m homeassistant.scripts.hassfest --action validate` accepts the
-  flow.
+- The pinned hassfest CI action accepts the flow.
 - Manual smoke test: every visible field renders with a localized label and
   description in `en.json`.
