@@ -27,6 +27,7 @@ commit sequence.
 - [ ] `python scripts/lint_no_silent_zero.py`
 - [ ] `python scripts/check_translations.py custom_components/shared_energy_ledger`
 - [ ] `python scripts/check_private_denylist.py`
+- [ ] `python scripts/check_brand_assets.py custom_components/shared_energy_ledger`
 - [ ] `python scripts/check_requirements_traceability.py`
 
 ## Screenshots
