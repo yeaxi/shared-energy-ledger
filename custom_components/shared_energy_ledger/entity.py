@@ -19,6 +19,14 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 
+def unique_id_for(entry_id: str, resource: str, key: str) -> str:
+    """Return the immutable entity unique_id.
+
+    ``resource`` is ``hub`` or the tenant's ``tenant_id``, never the editable slug.
+    """
+    return f"{entry_id}:{resource}:{key}"
+
+
 def object_id_for(key: str, tenant_slug: str | None = None) -> str:
     """Return the entity object_id for a hub or tenant resource.
 
@@ -26,8 +34,6 @@ def object_id_for(key: str, tenant_slug: str | None = None) -> str:
     specified in ``REQUIREMENTS.md`` A2.3 (for example
     ``shared_energy_ledger_tenant_flat_1_share``). Hyphens in the slug become
     underscores because Home Assistant object IDs cannot contain hyphens.
-    ``unique_id`` stays on the immutable ``tenant_id``; only the suggested
-    entity ID uses the slug.
     """
     if tenant_slug is None:
         return f"{DOMAIN}_{key}"
@@ -75,10 +81,8 @@ class SharedEnergyLedgerEntity(CoordinatorEntity[SharedEnergyLedgerCoordinator])
     ) -> None:
         super().__init__(coordinator)
         entry: ConfigEntry = coordinator.config_entry
-        self._entry_id = entry.entry_id
-        self._resource_slug = resource_slug
         self._attr_translation_key = translation_key
-        self._attr_unique_id = f"{entry.entry_id}:{resource_slug}:{translation_key}"
+        self._attr_unique_id = unique_id_for(entry.entry_id, resource_slug, translation_key)
         if tenant_slug is not None and tenant_name is not None:
             self._attr_device_info = tenant_device_info(entry, resource_slug, tenant_name)
         else:
@@ -91,4 +95,5 @@ __all__ = [
     "hub_device_info",
     "object_id_for",
     "tenant_device_info",
+    "unique_id_for",
 ]
