@@ -48,7 +48,7 @@ Four scenarios plus two service-call checks, mapped to the
 | Scenario | Invariants asserted |
 | --- | --- |
 | Cold boot, no upstream states set | Entities register cleanly; freshness gates start `off`; cost sensors start `unavailable` (I1, I2, I10). |
-| Fresh grid + PV + battery + tenants | All freshness gates flip `on`; per-tenant share and cumulative source costs match the inputs; ledger seeds to `initial_stock` (I2, I3, I6). |
+| Fresh grid + PV + battery + tenants | All freshness gates flip `on`; per-tenant share and cumulative source costs match the inputs; ledger weighted cost is the solar/grid charge mix, or the optional `initial_stock` override (I2, I3, I6). |
 | Grid unit switched to `kW` | Grid data-fresh gate flips `off` because `unit_of_measurement != "kWh"` (I5). |
 | Grid entity removed | Grid data-fresh gate stays `off`; dependent cost sensors do not fabricate a zero (I1, I10). |
 | `reset_battery_ledger` with incoherent boundary | Service rejects with `HomeAssistantError` (I6). |
