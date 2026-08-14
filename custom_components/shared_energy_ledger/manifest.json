@@ -1,7 +1,7 @@
 {
   "domain": "shared_energy_ledger",
   "name": "Shared Energy Ledger",
-  "after_dependencies": ["recorder"],
+  "after_dependencies": ["recorder", "lovelace"],
   "codeowners": ["@yeaxi"],
   "config_flow": true,
   "dependencies": [],
