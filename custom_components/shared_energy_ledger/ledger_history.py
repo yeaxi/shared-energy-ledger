@@ -1,23 +1,9 @@
 """Reconstruct the battery weighted-cost ledger from Recorder history.
 
-The live coordinator starts with an empty persist. Existing energy already in
-the battery is only priced when the charge mix that produced it can be
-observed. This module walks recent hourly meter and price history through the
-same :func:`~.interval.price_charge_mix` / :func:`~.ledger.update_ledger`
-engine the live path uses, so the weighted cost after setup is the solar/grid
-blend that actually charged the battery rather than an operator-invented seed.
-
-Requirements covered:
-
-* I1 — missing prices or energies skip that hour; nothing is priced at zero.
-* I2 — reconstruction does not need tenant meters; building load comes from
-  energy balance.
-* I5 — every history sample is unit-validated before it is consumed.
-* I6 — incoherent or unusable history leaves the ledger empty, never invented.
-
-Raw ``states`` are used for a bounded lookback (see
-:data:`HISTORY_LOOKBACK`). Longer horizons belong to hourly statistics and are
-out of scope here so this path never mixes the two sources.
+Walks a bounded lookback of raw ``states`` through
+:func:`~.interval.price_charge_mix` and :func:`~.ledger.update_ledger`.
+Longer horizons belong to hourly statistics and are out of scope so this path
+never mixes the two sources.
 """
 
 from __future__ import annotations
@@ -78,12 +64,7 @@ def replay_charge_mix_ledger(
     battery: BatteryConfig,
     intervals: Iterable[ChargeMixInterval],
 ) -> LedgerState:
-    """Advance ``previous`` through charge-mix intervals. Pure and total.
-
-    An interval with an unpriceable charge is skipped entirely (stock and cost
-    stay put) rather than pricing the charge at a fabricated zero. Discharge
-    without charge still depletes priced stock.
-    """
+    """Advance ``previous`` through charge-mix intervals. Pure and total."""
     state = previous
     for interval in intervals:
         if interval.charge_kwh is None or interval.discharge_kwh is None:
@@ -93,7 +74,9 @@ def replay_charge_mix_ledger(
         if charge <= 1e-9 and discharge <= 1e-9:
             continue
 
-        pv_generation = interval.pv_generation_kwh if interval.pv_configured else 0.0  # no-silent-zero: allow (PV not configured)
+        pv_generation: float | None = 0.0
+        if interval.pv_configured:
+            pv_generation = interval.pv_generation_kwh
         consumption = building_consumption_from_balance(
             interval.grid_import_kwh,
             pv_generation,
@@ -110,17 +93,18 @@ def replay_charge_mix_ledger(
                 grid_price=interval.grid_price,
             )
         )
-        if charge > 1e-9 and mix.charge_unit_cost is None:
-            continue
+        unit_cost = 0.0
+        if charge > 1e-9:
+            if mix.charge_unit_cost is None:
+                continue
+            unit_cost = mix.charge_unit_cost
 
         advanced = update_ledger(
             state,
             LedgerInputs(
                 delta_charge_kwh=charge,
                 delta_discharge_kwh=discharge,
-                charge_unit_cost=mix.charge_unit_cost
-                if mix.charge_unit_cost is not None
-                else 0.0,  # no-silent-zero: allow (no charge this interval)
+                charge_unit_cost=unit_cost,
                 charge_efficiency=battery.charge_efficiency,
                 discharge_efficiency=battery.discharge_efficiency,
             ),
@@ -249,7 +233,7 @@ def _intervals_from_history(
         if config.pv is not None:
             pv_delta = _delta(fetched.get(config.pv.energy_entity, []), start_utc, end_utc)
             if config.pv.zero_cost:
-                pv_price = 0.0  # no-silent-zero: allow (operator chose explicit zero-cost PV)
+                pv_price = 0.0
             elif config.pv.price_entity is not None:
                 pv_price = _price_at(
                     fetched.get(config.pv.price_entity, []), start_utc, price_uom
