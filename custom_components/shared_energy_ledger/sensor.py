@@ -82,7 +82,14 @@ class TenantShareSensor(SharedEnergyLedgerEntity, SensorEntity):
     _attr_translation_key = "tenant_share"
 
     def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant: Tenant) -> None:
-        super().__init__(coordinator, "tenant_share", tenant.tenant_id)
+        super().__init__(
+            coordinator,
+            "tenant_share",
+            tenant.tenant_id,
+            domain="sensor",
+            tenant_slug=tenant.slug,
+            tenant_name=tenant.name,
+        )
         self._slug = tenant.slug
 
     @property
@@ -113,7 +120,12 @@ class TenantCostSensor(SharedEnergyLedgerEntity, SensorEntity):
         currency: str,
     ) -> None:
         super().__init__(
-            coordinator, description.translation_key or description.key, tenant.tenant_id
+            coordinator,
+            description.translation_key or description.key,
+            tenant.tenant_id,
+            domain="sensor",
+            tenant_slug=tenant.slug,
+            tenant_name=tenant.name,
         )
         self.entity_description = description
         self._slug = tenant.slug
@@ -145,7 +157,12 @@ class HubSensor(SharedEnergyLedgerEntity, SensorEntity):
         description: HubSensorDescription,
         unit: str | None = None,
     ) -> None:
-        super().__init__(coordinator, description.translation_key or description.key, "hub")
+        super().__init__(
+            coordinator,
+            description.translation_key or description.key,
+            "hub",
+            domain="sensor",
+        )
         self.entity_description = description
         if unit is not None:
             self._attr_native_unit_of_measurement = unit

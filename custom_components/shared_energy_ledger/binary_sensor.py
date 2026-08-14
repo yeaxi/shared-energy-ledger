@@ -22,6 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import CoordinatorPayload, SharedEnergyLedgerCoordinator
 from .entity import SharedEnergyLedgerEntity
+from .models import Tenant
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -61,7 +62,7 @@ class FreshnessBinarySensor(SharedEnergyLedgerEntity, BinarySensorEntity):
         coordinator: SharedEnergyLedgerCoordinator,
         description: FreshnessDescription,
     ) -> None:
-        super().__init__(coordinator, description.translation_key or description.key, "hub")
+        super().__init__(coordinator, description.translation_key or description.key, "hub", domain="binary_sensor")
         self.entity_description = description
 
     @property
@@ -74,9 +75,16 @@ class TenantFreshnessBinarySensor(SharedEnergyLedgerEntity, BinarySensorEntity):
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
-    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant_id: str, slug: str) -> None:
-        super().__init__(coordinator, "tenant_data_fresh", tenant_id)
-        self._slug = slug
+    def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant: Tenant) -> None:
+        super().__init__(
+            coordinator,
+            "tenant_data_fresh",
+            tenant.tenant_id,
+            domain="binary_sensor",
+            tenant_slug=tenant.slug,
+            tenant_name=tenant.name,
+        )
+        self._slug = tenant.slug
 
     @property
     def is_on(self) -> bool:
@@ -100,9 +108,7 @@ async def async_setup_entry(
     if config.battery is not None:
         entities.append(FreshnessBinarySensor(coordinator, BATTERY_DATA_FRESH))
     for tenant in config.tenants:
-        entities.append(
-            TenantFreshnessBinarySensor(coordinator, tenant.tenant_id, tenant.slug)
-        )
+        entities.append(TenantFreshnessBinarySensor(coordinator, tenant))
     async_add_entities(entities)
 
 
