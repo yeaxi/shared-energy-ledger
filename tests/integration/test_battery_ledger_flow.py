@@ -30,7 +30,6 @@ HISTORY_PATH = (
 
 @pytest.fixture(autouse=True)
 def _empty_ledger_history() -> Generator[None]:
-    """Keep existing tests deterministic: no Recorder mix unless a test patches it."""
     with patch(HISTORY_PATH, return_value={}):
         yield
 
@@ -251,8 +250,6 @@ async def test_ledger_advances_from_mix_when_tenants_unavailable_i2(
     assert coordinator.data.ledger is not None
     assert coordinator.data.ledger.status == "empty"
 
-    # Charge +4 kWh: PV +5, grid +1, no discharge. C = 1+5+0-4 = 2.
-    # PV surplus 3, grid to battery 1, zero-cost PV → unit cost 0.075.
     hass.states.async_set("sensor.grid_import", "1001.0", {"unit_of_measurement": "kWh"})
     hass.states.async_set("sensor.pv_e", "105.0", {"unit_of_measurement": "kWh"})
     hass.states.async_set("sensor.batt_charge", "104.0", {"unit_of_measurement": "kWh"})
@@ -263,12 +260,13 @@ async def test_ledger_advances_from_mix_when_tenants_unavailable_i2(
     assert coordinator.data.interval_available is False
     updated = coordinator.data.ledger
     assert updated is not None
+    expected_unit_cost = 0.075
     assert updated.status == "active"
     assert updated.stock_kwh == pytest.approx(4.0)
-    assert updated.weighted_cost_per_kwh == pytest.approx(0.075 / 0.9)
+    assert updated.weighted_cost_per_kwh == pytest.approx(expected_unit_cost / 0.9)
     weighted = hass.states.get("sensor.shared_energy_ledger_battery_weighted_cost")
     assert weighted is not None
-    assert float(weighted.state) == pytest.approx(round(0.075 / 0.9, 6))
+    assert float(weighted.state) == pytest.approx(round(expected_unit_cost / 0.9, 6))
 
 
 @pytest.mark.asyncio
@@ -295,8 +293,14 @@ async def test_weighted_cost_bootstraps_from_charge_mix_history(
             last_updated=when,
         )
 
-    def _fake_get(*args, **kwargs):  # type: ignore[no-untyped-def]
-        entity_ids = kwargs.get("entity_ids") or []
+    def _fake_get(
+        _hass: object,
+        _start: datetime,
+        _end: datetime | None = None,
+        entity_ids: list[str] | None = None,
+        **_kwargs: object,
+    ) -> dict[str, list[State]]:
+        requested = entity_ids or []
         t0 = now - (3 * hour)
         t1 = now - (2 * hour)
         series = {
@@ -318,7 +322,7 @@ async def test_weighted_cost_bootstraps_from_charge_mix_history(
             ],
             "sensor.grid_price": [_price("sensor.grid_price", "0.30", t0 - hour)],
         }
-        return {eid: series.get(eid, []) for eid in entity_ids}
+        return {eid: series.get(eid, []) for eid in requested}
 
     data = _entry_with_battery()
     data["battery"]["initial_stock_kwh"] = 0.0

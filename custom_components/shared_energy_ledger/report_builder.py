@@ -336,27 +336,30 @@ async def async_rebuild_period_report(
         else:
             reconciliation_total += result.reconciliation_kwh
 
-        # Advance the report-local ledger so battery discharge in later hours is
-        # priced from the same weighted stock the live path would compute.
         if (
             config.battery is not None
             and charge_delta is not None
             and discharge_delta is not None
-            and not (charge_delta > 1e-9 and result.charge_unit_cost is None)
         ):
-            advanced = update_ledger(
-                ledger,
-                LedgerInputs(
-                    delta_charge_kwh=charge_delta,
-                    delta_discharge_kwh=discharge_delta,
-                    charge_unit_cost=result.charge_unit_cost
-                    if result.charge_unit_cost is not None
-                    else 0.0,  # no-silent-zero: allow (no charge this hour)
-                    charge_efficiency=config.battery.charge_efficiency,
-                    discharge_efficiency=config.battery.discharge_efficiency,
-                ),
-            )
-            ledger = empty_state() if advanced.status == "unavailable" else advanced
+            unit_cost = 0.0
+            skip_ledger = False
+            if charge_delta > 1e-9:
+                if result.charge_unit_cost is None:
+                    skip_ledger = True
+                else:
+                    unit_cost = result.charge_unit_cost
+            if not skip_ledger:
+                advanced = update_ledger(
+                    ledger,
+                    LedgerInputs(
+                        delta_charge_kwh=charge_delta,
+                        delta_discharge_kwh=discharge_delta,
+                        charge_unit_cost=unit_cost,
+                        charge_efficiency=config.battery.charge_efficiency,
+                        discharge_efficiency=config.battery.discharge_efficiency,
+                    ),
+                )
+                ledger = empty_state() if advanced.status == "unavailable" else advanced
 
         for tsc in result.tenants:
             if tsc.slug not in included_slugs:
