@@ -23,7 +23,7 @@ from .test_setup import _happy_entry_data
 
 
 def test_build_dashboard_config_includes_tenant_views() -> None:
-    """Generated dashboard has an overview plus one view per tenant."""
+    """Overview plus one view per tenant, in display order."""
     config = build_dashboard_config(
         title="Shared Energy Ledger (EUR)",
         freshness_ids=["binary_sensor.shared_energy_ledger_grid_data_fresh"],
@@ -75,7 +75,7 @@ def test_should_overwrite_only_managed_dashboards() -> None:
 
 @pytest.mark.asyncio
 async def test_setup_without_lovelace_still_loads(hass: HomeAssistant) -> None:
-    """Missing Lovelace must not fail setup; entities still register."""
+    """Setup succeeds when Lovelace is absent. Entities still register."""
     entry = MockConfigEntry(
         domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION
     )
@@ -86,7 +86,6 @@ async def test_setup_without_lovelace_still_loads(hass: HomeAssistant) -> None:
 
 
 class _FakeDashboardStore:
-    """Minimal Lovelace storage stand-in for setup tests."""
 
     def __init__(self) -> None:
         self.config: dict[str, str] = {"url_path": DASHBOARD_URL_PATH}
@@ -106,7 +105,7 @@ class _FakeLovelace:
 
 @pytest.mark.asyncio
 async def test_setup_provisions_managed_dashboard(hass: HomeAssistant) -> None:
-    """When Lovelace storage is present, setup writes a managed dashboard."""
+    """Setup writes a managed Lovelace dashboard when storage is present."""
     store = _FakeDashboardStore()
     hass.data[LOVELACE_DATA] = _FakeLovelace(store)
     entry = MockConfigEntry(
@@ -182,7 +181,19 @@ async def test_setup_dashboard_includes_pv_and_battery_entities(
     assert saved is not None
     overview = next(view for view in saved["views"] if view["path"] == "overview")
     titles = [card.get("title") for card in overview["cards"]]
+    assert "Grid" in titles
     assert "Battery ledger" in titles
+    grid_card = next(card for card in overview["cards"] if card.get("title") == "Grid")
+    assert any(
+        entity_id.endswith("grid_reconciliation") for entity_id in grid_card["entities"]
+    )
+    battery_card = next(
+        card for card in overview["cards"] if card.get("title") == "Battery ledger"
+    )
+    assert not any(
+        entity_id.endswith("grid_reconciliation")
+        for entity_id in battery_card["entities"]
+    )
     tenant_view = next(view for view in saved["views"] if view["path"] == "flat-1")
     assert any(
         entity_id.endswith("tenant_flat_1_battery_cost")
