@@ -1,13 +1,7 @@
 """Provision a Lovelace dashboard that visualises this config entry.
 
-The integration is a read-only accounting layer at runtime: this module only
-writes Lovelace storage during setup so the operator has a sidebar dashboard
-immediately after the config flow. It never calls side-effecting Home Assistant
-services and never mutates recorder state.
-
-The generated dashboard uses built-in cards only (markdown, entities). The
-optional companion report card is not embedded here because HACS does not
-install the frontend bundle.
+Built-in markdown and entities cards only. The companion report card is not
+embedded because HACS does not install the frontend bundle.
 """
 
 from __future__ import annotations
@@ -25,6 +19,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import SharedEnergyLedgerCoordinator
+from .entity import unique_id_for
 from .models import SharedEnergyLedgerConfig, Tenant
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,12 +27,6 @@ _LOGGER = logging.getLogger(__name__)
 DASHBOARD_URL_PATH = "shared-energy-ledger"
 DASHBOARD_ICON = "mdi:transmission-tower"
 MANAGED_FLAG = "shared_energy_ledger_managed"
-
-_TENANT_BINARY = ("tenant_data_fresh",)
-
-
-def _unique_id(entry_id: str, resource: str, key: str) -> str:
-    return f"{entry_id}:{resource}:{key}"
 
 
 def _existing_ids(
@@ -50,7 +39,7 @@ def _existing_ids(
     found: list[str] = []
     for key in keys:
         entity_id = registry.async_get_entity_id(
-            domain, DOMAIN, _unique_id(entry_id, resource, key)
+            domain, DOMAIN, unique_id_for(entry_id, resource, key)
         )
         if entity_id is not None:
             found.append(entity_id)
@@ -71,11 +60,11 @@ def build_dashboard_config(
     price_ids: list[str],
     battery_ids: list[str],
     tenants: tuple[tuple[str, str, list[str]], ...],
+    grid_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return a Lovelace storage config for the ledger entities.
 
     ``tenants`` is ``(slug, display_name, entity_ids)`` in display order.
-    Missing entity IDs are omitted so a partial install still renders.
     """
     overview_cards: list[dict[str, Any]] = [
         {
@@ -95,6 +84,10 @@ def build_dashboard_config(
     if price_ids:
         overview_cards.append(
             {"type": "entities", "title": "Prices", "entities": price_ids}
+        )
+    if grid_ids:
+        overview_cards.append(
+            {"type": "entities", "title": "Grid", "entities": grid_ids}
         )
     if battery_ids:
         overview_cards.append(
@@ -126,7 +119,7 @@ def build_dashboard_config(
     return {MANAGED_FLAG: True, "views": views}
 
 
-def _collect(
+def _dashboard_from_registry(
     hass: HomeAssistant, entry: ConfigEntry, config: SharedEnergyLedgerConfig
 ) -> dict[str, Any]:
     registry = er.async_get(hass)
@@ -143,6 +136,9 @@ def _collect(
     if config.pv is not None:
         price_keys.append("pv_price")
     price_ids = _existing_ids(registry, entry_id, "hub", tuple(price_keys), "sensor")
+    grid_ids = _existing_ids(
+        registry, entry_id, "hub", ("grid_reconciliation",), "sensor"
+    )
     battery_ids: list[str] = []
     if config.battery is not None:
         battery_ids = _existing_ids(
@@ -154,7 +150,6 @@ def _collect(
                 "battery_weighted_cost",
                 "battery_ledger_status",
                 "unpriced_battery_kwh",
-                "grid_reconciliation",
             ),
             "sensor",
         )
@@ -167,6 +162,7 @@ def _collect(
         price_ids=price_ids,
         battery_ids=battery_ids,
         tenants=tuple(tenant_views),
+        grid_ids=grid_ids,
     )
 
 
@@ -177,7 +173,7 @@ def _tenant_entities(
     config: SharedEnergyLedgerConfig,
 ) -> tuple[str, str, list[str]]:
     binary = _existing_ids(
-        registry, entry_id, tenant.tenant_id, _TENANT_BINARY, "binary_sensor"
+        registry, entry_id, tenant.tenant_id, ("tenant_data_fresh",), "binary_sensor"
     )
     sensor_keys = ["tenant_share", "tenant_total_cost", "tenant_grid_cost"]
     if config.pv is not None:
@@ -229,7 +225,7 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry) -> None
     except HomeAssistantError:
         existing = None
 
-    generated = _collect(hass, entry, config)
+    generated = _dashboard_from_registry(hass, entry, config)
     if should_overwrite(existing):
         await store.async_save(generated)
 
