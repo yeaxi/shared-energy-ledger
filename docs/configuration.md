@@ -61,7 +61,7 @@ gets a stable internal `tenant_id` used in entity `unique_id`s.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `slug` | string | Lowercase kebab-case ASCII. Editable later without breaking entities. Rejected slugs yield `invalid_slug` or `duplicate_slug`. |
+| `slug` | string | Lowercase kebab-case ASCII. Used as the prefix in entity IDs (`sensor.shared_energy_ledger_tenant_<slug>_…`). Hyphens become underscores in the object ID. Editable later without breaking `unique_id`s. Rejected slugs yield `invalid_slug` or `duplicate_slug`. |
 | `name` | string | Display name; translatable. |
 | `allocation_policy` | enum | One of `direct_meter`, `residual_of_total_minus_others`, `proportional_by_direct_meters`. |
 | `energy_entity` | entity | Optional. `kWh` monotonic. Required for the direct-meter and proportional policies. |
