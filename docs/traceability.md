@@ -12,11 +12,11 @@ this matrix, or when this matrix cites a test module that no longer exists.
 | Invariant | Description (short) | Test modules |
 | --- | --- | --- |
 | `I1` | No silent zero. | `tests/unit/test_interval.py`, `tests/unit/test_allocation.py`, `tests/unit/test_ledger.py`, `tests/unit/test_samples.py`, `tests/integration/test_sensors.py` |
-| `I2` | Per-data-class freshness. | `tests/unit/test_samples.py`, `tests/integration/test_coordinator.py` |
+| `I2` | Per-data-class freshness. | `tests/unit/test_samples.py`, `tests/unit/test_interval.py`, `tests/unit/test_ledger_history.py`, `tests/integration/test_coordinator.py`, `tests/integration/test_battery_ledger_flow.py` |
 | `I3` | Closed allocation enum. | `tests/unit/test_allocation.py`, `tests/unit/test_allocation_exhaustive.py` |
 | `I4` | Residual fallback rules. | `tests/unit/test_allocation.py` |
 | `I5` | Recorder unit metadata is validated. | `tests/unit/test_samples.py`, `tests/integration/test_coordinator.py` |
-| `I6` | Battery ledger safety. | `tests/unit/test_ledger.py`, `tests/unit/test_ledger_store.py`, `tests/integration/test_battery_ledger_flow.py` |
+| `I6` | Battery ledger safety. | `tests/unit/test_ledger.py`, `tests/unit/test_ledger_store.py`, `tests/unit/test_ledger_history.py`, `tests/integration/test_battery_ledger_flow.py` |
 | `I7` | Report source-split contract and unpriced battery energy. | `tests/unit/test_report.py`, `tests/unit/test_interval.py`, `tests/integration/test_rebuild_period_report.py` |
 | `I8` | Async selection ordering (monotonic request id). | `tests/unit/test_report.py`, `dashboard/tests/report.test.ts` |
 | `I9` | Config-entry migration and stable identity. | `tests/integration/test_setup.py`, `tests/unit/test_configio.py`, `tests/integration/test_options_flow_menu.py` |
