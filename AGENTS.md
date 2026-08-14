@@ -92,3 +92,33 @@ it does not connect to a live installation and is not part of hosted CI.
 Do not commit secrets, private keys, `.env`, Home Assistant auth stores,
 databases, logs, or machine-specific caches. Use Git revert or a verified
 backup for rollback; never force-push or `reset --hard` a shared branch.
+
+## Cursor Cloud specific instructions
+
+The startup update script provisions everything below, so a fresh agent only
+needs to activate the tools and run the checks; do not reinstall from scratch.
+
+- **Python runtime.** The integration requires Python 3.14 (see
+  `pyproject.toml` / `requires-python`). The system `python3` is 3.12, which is
+  too old. A 3.14 virtualenv lives at `/workspace/.venv` (managed by `uv`).
+  Activate it with `source .venv/bin/activate` before running any Python check,
+  or the wrong interpreter is used and imports of `homeassistant` fail.
+- **Node runtime.** The `dashboard/` cards target Node 24 to match CI
+  (installed via `nvm`); the ambient `npm` already resolves to it. Node 22 also
+  builds the cards, but prefer 24 for parity with the `frontend` CI job.
+- **Verification commands** are already written down and unchanged: the
+  integration gate is in the root `## Verification gate` section above and
+  `CONTRIBUTING.md`; the dashboard gate is in `dashboard/AGENTS.md`. Run them
+  from the repo root with the venv active (Python) and via `npm --prefix
+  dashboard ...` (cards).
+- **`scripts/live_probe.py` gotcha.** Run standalone under the pinned
+  `pytest-homeassistant-custom-component`, it aborts with
+  `RuntimeError: Frame helper not set up` because it calls
+  `async_test_home_assistant` directly without initializing the HA frame
+  helper (the pytest `hass` fixture normally does this). The supported way to
+  boot the integration in-process is the `tests/integration/` suite. To eyeball
+  the live per-entity dump anyway, call
+  `homeassistant.helpers.frame.async_setup(hass)` (synchronous) right after the
+  runtime is created before the coordinator is constructed.
+- **hassfest / HACS** run only in hosted CI; there is no local hassfest command
+  (already noted in the verification gate section).
