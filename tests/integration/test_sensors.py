@@ -10,6 +10,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.shared_energy_ledger.const import CONFIG_ENTRY_VERSION, DOMAIN
+from custom_components.shared_energy_ledger.entity import unique_id_for
 
 from .test_setup import _happy_entry_data
 
@@ -54,7 +55,7 @@ async def test_tenant_share_is_unavailable_without_upstream_i1(
 async def test_tenant_slug_prefixes_entity_ids_and_device_names(
     hass: HomeAssistant,
 ) -> None:
-    """Tenant slug is the entity-id prefix; display name is the device name."""
+    """A2.3: suggested entity IDs use the slug; unique_id stays on tenant_id."""
     entry = MockConfigEntry(
         domain=DOMAIN, data=_happy_entry_data(), version=CONFIG_ENTRY_VERSION
     )
@@ -67,7 +68,7 @@ async def test_tenant_slug_prefixes_entity_ids_and_device_names(
 
     share = entity_registry.async_get("sensor.shared_energy_ledger_tenant_flat_1_share")
     assert share is not None
-    assert share.unique_id.endswith(":id-a:tenant_share")
+    assert share.unique_id == unique_id_for(entry.entry_id, "id-a", "tenant_share")
     assert share.has_entity_name is True
 
     fresh = hass.states.get("binary_sensor.shared_energy_ledger_tenant_flat_1_data_fresh")
