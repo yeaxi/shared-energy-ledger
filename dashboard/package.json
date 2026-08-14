@@ -13,7 +13,7 @@
     "build:report": "CARD_ENTRY=shared-energy-ledger-report vite build"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
+    "typescript": "~6.0.3",
     "vite": "^8.2.1",
     "eslint": "^10.8.1",
     "@typescript-eslint/parser": "^8.6.0",
