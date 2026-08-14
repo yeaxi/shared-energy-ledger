@@ -37,17 +37,16 @@ export default defineConfig({
     emptyOutDir: process.env["CARD_KEEP_DIST"] !== "1",
     target: "es2022",
     sourcemap: true,
-    minify: "esbuild",
+    minify: true,
     lib: {
       entry: card.entry,
       name: card.globalName,
       formats: ["iife"],
       fileName: () => `${card.fileName}.js`,
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         extend: true,
-        inlineDynamicImports: true,
       },
     },
   },

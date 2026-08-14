@@ -26,3 +26,9 @@ updates:
       dashboard-tooling:
         patterns:
           - "*"
+    # typescript-eslint still requires typescript <6.1.0 (no TS 7
+    # programmatic API until 7.1). Drop this ignore when that peer
+    # range admits a 7.x compiler.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
