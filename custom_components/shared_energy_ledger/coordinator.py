@@ -225,11 +225,11 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=f"{DOMAIN}:{entry.entry_id}",
             update_interval=UPDATE_INTERVAL,
             always_update=True,
         )
-        self.config_entry = entry
         self._energy_config = None
         self._ledger_store = ledger_store or LedgerStore(hass, entry.entry_id)
         self._accounting_store = accounting_store or AccountingStore(hass, entry.entry_id)
