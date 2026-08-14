@@ -14,9 +14,9 @@ The model, in one interval:
   1. PV serves consumption first.
   2. Remaining consumption is served by battery discharge.
   3. Any remaining consumption is served by the grid.
-* PV energy left after serving consumption charges the battery first; any grid
-  energy needed beyond consumption charges the battery too. The blended charge
-  price feeds the weighted-cost ledger.
+* PV energy left after serving tenant consumption charges the battery first;
+  the rest of the charge is grid. The blended charge price uses building load
+  from energy balance ``C = G + PV + D - Ch``, not from tenant allocation.
 * Each source's load energy is split across tenants in proportion to their
   accounting energy, and priced at that source's per-kWh price.
 
