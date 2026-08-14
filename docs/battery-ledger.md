@@ -33,29 +33,44 @@ page) takes:
 | Signed DC power | `W` (negative on discharge) | Live rate accuracy and freshness gating |
 | Charge efficiency | `%` in `[50, 100]` | Fraction of charged energy that actually becomes stock |
 | Discharge efficiency | `%` in `[50, 100]` | Fraction of stored energy delivered to loads |
-| Initial priced stock | `kWh` | Energy already in the battery at first setup. Default `0`. |
-| Initial priced stock cost | currency | Cost of that stock. Must be `0` when stock is `0`. |
+| Initial priced stock | `kWh` | Optional override for energy already in the battery at first setup. Leave at `0` to reconstruct the mix from Recorder history and live charges. |
+| Initial priced stock cost | currency | Optional override for the cost of that stock. Must be `0` when stock is `0`. |
 
-The ledger is seeded from those initial-stock fields on the first coordinator
-tick, so the battery diagnostic sensors are populated immediately after setup.
-Use `reset_battery_ledger` later to correct the pair (see
+The ledger is filled from the **solar and grid mix that charged the battery**.
+On first setup it replays recent Recorder history of the charge, discharge,
+PV, grid, and price sensors through the same mix engine the live path uses.
+After that, every live tick updates the weighted cost from the mix of that
+tick's charge — including when tenant allocation is unavailable (invariant
+I2). Leave the initial-stock fields at `0` unless you need to override that
+reconstruction. Use `reset_battery_ledger` later to correct the pair (see
 [Seeding the initial stock](#seeding-the-initial-stock)).
 
-## PV vs grid pricing
+## How the weighted cost is filled
 
-When the battery **charges**, the interval engine measures how much of the
-charge came from each source and prices it accordingly:
+The charge mix is measured, not typed in:
 
 - PV supplies the battery only after PV has served building consumption. That
   PV-sourced charge is priced at the **PV price sensor** (or `0` when PV is
   marked zero-cost).
 - The remainder of the charge is priced at the **grid import price sensor**
   value for that interval.
-- The blended per-kWh charge cost feeds the ledger, and the weighted cost is
-  recomputed as a mass-weighted average of the existing stock and the incoming
-  charge, after applying the charge efficiency. If a charging source lacks a
-  valid price for the interval, the ledger is left unchanged rather than pricing
-  the charge at a fabricated zero (invariant I1/I6).
+- Building consumption for this mix is the energy balance
+  `grid import + PV generation + discharge - charge`, so the ledger does not
+  wait on tenant meters (invariant I2). If that balance cannot be computed,
+  the ledger is left unchanged (invariant I1).
+
+Immediately after setup, the same mix is replayed over the last seven days of
+Recorder history (raw states, unit-validated). Energy that was in the battery
+before that window, or before those sensors were recorded, is not invented:
+the ledger stays `empty` / `unknown` until a priced charge is observed. A
+non-zero initial-stock pair is an operator override and is not overwritten by
+history.
+
+The blended per-kWh charge cost feeds the ledger, and the weighted cost is
+recomputed as a mass-weighted average of the existing stock and the incoming
+charge, after applying the charge efficiency. If a charging source lacks a
+valid price for the interval, the ledger is left unchanged rather than pricing
+the charge at a fabricated zero (invariant I1/I6).
 
 When the battery **discharges**:
 
@@ -93,16 +108,16 @@ until the operator resolves the underlying issue.
 | --- | --- |
 | `active` | The ledger has priced stock and the counters are healthy. Discharge is priced at the weighted cost. |
 | `priced` | The ledger has a weighted cost but no stock right now (for example immediately after being fully drained). Charges will re-populate the stock. |
-| `empty` | Stock is zero and there is no weighted cost. This is the state right after installation when the initial stock was left at `0`, or after the battery has been fully drained with no remaining cost. The weighted-cost diagnostic is `unknown`, not a fabricated `0`. |
+| `empty` | Stock is zero and there is no weighted cost. This is the state right after installation when history has no priced charge yet (or the initial stock was left at `0` and the battery has not charged since), or after the battery has been fully drained with no remaining cost. The weighted-cost diagnostic is `unknown`, not a fabricated `0`. |
 | `unavailable` | A safety rule failed or the battery data-fresh gate is off. |
 
 ## Seeding the initial stock
 
-Enter **Initial priced stock** and **Initial priced stock cost** on the battery
-step of the config flow. The pair is validated immediately (both non-negative;
-zero stock requires zero cost) and the ledger is seeded on the first
-coordinator tick, so the weighted-cost diagnostic is available as soon as setup
-finishes when the stock is greater than zero.
+Leave **Initial priced stock** and **Initial priced stock cost** at `0` unless
+you need to override the automatic mix. The ledger reconstructs priced stock
+from Recorder history of the solar/grid charge mix, then keeps updating from
+live charges. The optional pair is validated immediately (both non-negative;
+zero stock requires zero cost) and used only when it is greater than zero.
 
 To correct the pair later, invoke
 `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This is a

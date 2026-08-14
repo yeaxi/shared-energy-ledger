@@ -47,8 +47,8 @@ Selecting neither a price sensor nor zero-cost yields `pv_price_required`.
 | `power_entity` | entity | Signed DC power in `W`. Negative on discharge. |
 | `charge_efficiency` | number | Percent in the range 50 to 100. |
 | `discharge_efficiency` | number | Percent in the range 50 to 100. |
-| `initial_stock_kwh` | number | Priced stock already in the battery at first setup, in `kWh`. Default `0`. |
-| `initial_stock_cost` | number | Cost of that priced stock in the configured currency. Default `0`. Must be `0` when stock is `0`. |
+| `initial_stock_kwh` | number | Optional override for priced stock already in the battery at first setup, in `kWh`. Default `0` — the ledger reconstructs the solar/grid mix from Recorder history and live charges. |
+| `initial_stock_cost` | number | Optional override for the cost of that priced stock in the configured currency. Default `0`. Must be `0` when stock is `0`. |
 
 ### `whole_building` step
 

@@ -29,6 +29,11 @@ Fail-closed rules (requirement I1):
   paper over a missing input.
 * Battery discharge served from empty priced stock is reported as
   ``unpriced_battery_kwh`` and never folded into any tenant's cost.
+
+The charge mix used by the battery ledger is also exposed as
+:func:`price_charge_mix`, which does not require tenant energy. Building load
+for that mix can come from tenant allocation or from
+:func:`building_consumption_from_balance` (requirement I2).
 """
 
 from __future__ import annotations
@@ -102,8 +107,110 @@ class IntervalResult:
     reconciliation_kwh: float | None
 
 
+@dataclass(frozen=True, slots=True)
+class ChargeMixInputs:
+    """Inputs for the battery charge mix, independent of tenant allocation.
+
+    ``consumption_kwh`` is building load for the same interval as ``charge_kwh``.
+    The live ledger supplies it from energy balance so the mix does not depend
+    on tenant allocation (requirement I2). ``None`` means the mix cannot be known.
+    """
+
+    consumption_kwh: float | None
+    charge_kwh: float | None
+    pv_configured: bool = False
+    pv_generation_kwh: float | None = None
+    pv_price: float | None = None
+    grid_price: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ChargeMixResult:
+    """Blended charge price and the PV/grid split that produced it.
+
+    ``charge_unit_cost`` is ``None`` when there was no charge, or when a
+    charging source lacks a price, or when consumption (needed for PV surplus)
+    is unknown. The caller then leaves the ledger unchanged (I1/I6).
+    """
+
+    charge_unit_cost: float | None
+    grid_to_battery_kwh: float
+    pv_to_battery_kwh: float
+    reason: str | None
+
+
 def _is_finite_non_negative(value: float | None) -> bool:
     return value is not None and isfinite(value) and value >= 0
+
+
+def building_consumption_from_balance(
+    grid_import_kwh: float | None,
+    pv_generation_kwh: float | None,
+    battery_discharge_kwh: float | None,
+    battery_charge_kwh: float | None,
+) -> float | None:
+    """Return building load from energy balance, or ``None`` when unusable.
+
+    ``C = G + PV + D - Ch``. Any missing, non-finite, or negative input, or a
+    negative residual, fails closed so the charge mix is never invented.
+    """
+    if not _is_finite_non_negative(grid_import_kwh):
+        return None
+    if not _is_finite_non_negative(pv_generation_kwh):
+        return None
+    if not _is_finite_non_negative(battery_discharge_kwh):
+        return None
+    if not _is_finite_non_negative(battery_charge_kwh):
+        return None
+    consumption = (
+        float(grid_import_kwh)  # type: ignore[arg-type]
+        + float(pv_generation_kwh)  # type: ignore[arg-type]
+        + float(battery_discharge_kwh)  # type: ignore[arg-type]
+        - float(battery_charge_kwh)  # type: ignore[arg-type]
+    )
+    if not isfinite(consumption) or consumption < 0:
+        return None
+    return consumption
+
+
+def price_charge_mix(inputs: ChargeMixInputs) -> ChargeMixResult:
+    """Price battery charge from the PV-surplus-then-grid mix. Pure and total.
+
+    Does not require per-tenant energy. PV surplus is generation minus
+    building consumption; the remainder of the charge is grid.
+    """
+    if not _is_finite_non_negative(inputs.charge_kwh):
+        return ChargeMixResult(None, 0.0, 0.0, "battery_charge_unavailable")
+    charge = float(inputs.charge_kwh)  # type: ignore[arg-type]
+    if charge <= _EPS:
+        return ChargeMixResult(None, 0.0, 0.0, None)
+
+    if inputs.pv_configured:
+        if not _is_finite_non_negative(inputs.pv_generation_kwh):
+            return ChargeMixResult(None, 0.0, 0.0, "pv_generation_unavailable")
+        pv_gen = float(inputs.pv_generation_kwh)  # type: ignore[arg-type]
+    else:
+        pv_gen = 0.0
+
+    if not _is_finite_non_negative(inputs.consumption_kwh):
+        return ChargeMixResult(None, 0.0, 0.0, "consumption_unavailable")
+    consumption = float(inputs.consumption_kwh)  # type: ignore[arg-type]
+
+    pv_to_load = min(pv_gen, consumption)
+    pv_surplus = max(pv_gen - pv_to_load, 0.0)
+    pv_to_battery = min(pv_surplus, charge)
+    grid_to_battery = max(charge - pv_to_battery, 0.0)
+
+    blocked = (grid_to_battery > _EPS and not _is_finite_non_negative(inputs.grid_price)) or (
+        pv_to_battery > _EPS and not _is_finite_non_negative(inputs.pv_price)
+    )
+    if blocked:
+        return ChargeMixResult(None, grid_to_battery, pv_to_battery, "charge_price_unavailable")
+
+    grid_price = float(inputs.grid_price) if inputs.grid_price is not None else 0.0  # no-silent-zero: allow
+    pv_price = float(inputs.pv_price) if inputs.pv_price is not None else 0.0  # no-silent-zero: allow
+    charge_cost = grid_to_battery * grid_price + pv_to_battery * pv_price
+    return ChargeMixResult(charge_cost / charge, grid_to_battery, pv_to_battery, None)
 
 
 def _unavailable(reason: str) -> IntervalResult:
@@ -154,10 +261,18 @@ def price_interval(inputs: IntervalInputs) -> IntervalResult:
     remaining -= battery_to_load
     grid_to_load = max(remaining, 0.0)
 
-    # Surplus PV charges the battery first; the grid covers the rest.
-    pv_surplus = max(pv_gen - pv_to_load, 0.0)
-    pv_to_battery = min(pv_surplus, charge)
-    grid_to_battery = max(charge - pv_to_battery, 0.0)
+    mix = price_charge_mix(
+        ChargeMixInputs(
+            consumption_kwh=consumption,
+            charge_kwh=charge,
+            pv_configured=inputs.pv_configured,
+            pv_generation_kwh=pv_gen if inputs.pv_configured else 0.0,  # no-silent-zero: allow (PV not configured)
+            pv_price=inputs.pv_price,
+            grid_price=inputs.grid_price,
+        )
+    )
+    pv_to_battery = mix.pv_to_battery_kwh
+    grid_to_battery = mix.grid_to_battery_kwh
 
     # Battery discharge is priced from the weighted stock; discharge served
     # while the priced stock is empty is unpriced and reported separately.
@@ -205,18 +320,7 @@ def price_interval(inputs: IntervalInputs) -> IntervalResult:
 
     # Blended charge price for the ledger. Left unpriced when a charging source
     # lacks a price, so the caller leaves the ledger unchanged (fail-closed).
-    charge_unit_cost: float | None
-    if charge <= _EPS:
-        charge_unit_cost = None
-    else:
-        blocked = (grid_to_battery > _EPS and not _is_finite_non_negative(inputs.grid_price)) or (
-            pv_to_battery > _EPS and not _is_finite_non_negative(inputs.pv_price)
-        )
-        if blocked:
-            charge_unit_cost = None
-        else:
-            charge_cost = grid_to_battery * grid_price + pv_to_battery * pv_price
-            charge_unit_cost = charge_cost / charge
+    charge_unit_cost = mix.charge_unit_cost
 
     reconciliation: float | None = None
     if inputs.grid_import_kwh is not None and _is_finite_non_negative(inputs.grid_import_kwh):
@@ -234,8 +338,12 @@ def price_interval(inputs: IntervalInputs) -> IntervalResult:
 
 
 __all__ = [
+    "ChargeMixInputs",
+    "ChargeMixResult",
     "IntervalInputs",
     "IntervalResult",
     "TenantSourceCost",
+    "building_consumption_from_balance",
+    "price_charge_mix",
     "price_interval",
 ]

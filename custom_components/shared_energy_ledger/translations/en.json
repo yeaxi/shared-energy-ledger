@@ -54,8 +54,8 @@
           "power_entity": "Signed DC power in W. Negative values indicate discharge.",
           "charge_efficiency": "Round-trip charge efficiency. Values below 50 % or above 100 % are rejected.",
           "discharge_efficiency": "Round-trip discharge efficiency. Values below 50 % or above 100 % are rejected.",
-          "initial_stock_kwh": "Priced energy already in the battery at first setup. Leave at 0 if the battery is empty or the mix is unknown. Must be 0 when the cost is 0.",
-          "initial_stock_cost": "Cost of that priced stock in the chosen currency. A positive cost with zero stock is rejected."
+          "initial_stock_kwh": "Optional. Priced energy already in the battery at first setup. Leave at 0 to fill the weighted cost from the solar and grid mix that charged the battery. Must be 0 when the cost is 0.",
+          "initial_stock_cost": "Optional override for the cost of that priced stock in the chosen currency. Leave at 0 unless you are overriding the automatic mix. A positive cost with zero stock is rejected."
         }
       },
       "whole_building": {

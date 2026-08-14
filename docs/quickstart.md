@@ -85,9 +85,9 @@ and no vendor-specific ID.
 - **Signed DC power** (`W`, negative on discharge).
 - **Charge efficiency** and **discharge efficiency** (`%`), each in the
   range 50 % to 100 %.
-- **Initial priced stock (kWh)** and **initial priced stock cost**
-  (in the chosen currency). Both fields are validated together as a
-  coherent boundary pair. See [Battery ledger](battery-ledger.md).
+- **Initial priced stock** is optional. Leave it at `0` — the weighted cost
+  fills from the solar and grid mix that charged the battery (Recorder
+  history, then live ticks). See [Battery ledger](battery-ledger.md).
 
 ### Step 5: Whole-building boundary (optional)
 

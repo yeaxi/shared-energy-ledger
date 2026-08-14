@@ -78,16 +78,18 @@ values immediately after a manual reconciliation.
 
 ### Battery weighted cost is `unknown` right after setup
 
-- An empty ledger (initial stock left at `0`) has no weighted cost yet.
-  The diagnostic stays `unknown` rather than reporting a fabricated `0`.
+- The weighted cost is the solar/grid mix that charged the battery. It stays
+  `unknown` until a priced charge is observed in Recorder history or live.
 - Ledger status should read `empty`. If it reads `unavailable`, a safety
   rule failed; check the battery freshness gate and the charge/discharge
   counter units.
+- History replay uses the last seven days of raw Recorder states. Energy that
+  was in the battery before that window is not invented.
 
-Fix: enter a coherent initial stock on the battery config-flow step, or
-call `reset_battery_ledger` with the priced stock currently in the
-battery. Weighted cost becomes a number as soon as `stock_kwh` is above
-the empty threshold.
+Fix: confirm the charge, discharge, PV, grid import, and price sensors have
+Recorder history and valid `kWh` / `currency/kWh` units. The diagnostic
+becomes a number on the first mix that can be priced. Use
+`reset_battery_ledger` only when you need to override that mix.
 
 ### Residual allocation preconditions
 

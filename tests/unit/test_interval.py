@@ -7,7 +7,13 @@ pricing and unpriced discharge (I6/I7), and cross-tenant reconciliation.
 
 from __future__ import annotations
 
-from custom_components.shared_energy_ledger.interval import IntervalInputs, price_interval
+from custom_components.shared_energy_ledger.interval import (
+    ChargeMixInputs,
+    IntervalInputs,
+    building_consumption_from_balance,
+    price_charge_mix,
+    price_interval,
+)
 
 
 def _by_slug(result):
@@ -203,3 +209,44 @@ def test_zero_consumption_yields_zero_cost() -> None:
     tenants = _by_slug(result)
     assert tenants["a"].total_cost == 0.0
     assert tenants["b"].total_cost == 0.0
+
+
+def test_building_consumption_from_balance_is_energy_conservation() -> None:
+    """C = G + PV + D - Ch. Missing or negative residual fails closed (I1/I2)."""
+    assert building_consumption_from_balance(1.0, 4.0, 0.0, 4.0) == 1.0
+    assert building_consumption_from_balance(None, 4.0, 0.0, 4.0) is None
+    assert building_consumption_from_balance(1.0, 1.0, 0.0, 4.0) is None
+
+
+def test_price_charge_mix_does_not_need_tenants() -> None:
+    """I2: solar/grid charge mix is independent of tenant allocation."""
+    mix = price_charge_mix(
+        ChargeMixInputs(
+            consumption_kwh=2.0,
+            charge_kwh=4.0,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            grid_price=0.30,
+        )
+    )
+    assert mix.pv_to_battery_kwh == 3.0
+    assert mix.grid_to_battery_kwh == 1.0
+    assert mix.charge_unit_cost is not None
+    assert abs(mix.charge_unit_cost - 0.1125) < 1e-9
+
+
+def test_price_charge_mix_fails_closed_without_consumption() -> None:
+    """I1: a charge with unknown building load is not priced at an invented mix."""
+    mix = price_charge_mix(
+        ChargeMixInputs(
+            consumption_kwh=None,
+            charge_kwh=4.0,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            grid_price=0.30,
+        )
+    )
+    assert mix.charge_unit_cost is None
+    assert mix.reason == "consumption_unavailable"
