@@ -214,8 +214,6 @@ def test_interval_battery_discharge_unavailable_and_blocked_charge() -> None:
         )
     )
     assert missing_discharge.tenants is None
-    # Charge is fully PV-sourced, so a missing grid price does not block the
-    # blended charge unit cost; only a missing PV price would.
     priced_charge = price_interval(
         IntervalInputs(
             tenant_energy={"a": 1.0},
@@ -227,6 +225,7 @@ def test_interval_battery_discharge_unavailable_and_blocked_charge() -> None:
             battery_discharge_kwh=0.0,
             battery_charge_kwh=2.0,
             battery_weighted_cost=None,
+            grid_import_kwh=0.0,
         )
     )
     assert priced_charge.charge_unit_cost == pytest.approx(0.05)

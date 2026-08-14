@@ -38,13 +38,11 @@ def test_replay_blends_pv_surplus_and_grid_i2() -> None:
         )
     ]
     state = replay_charge_mix_ledger(empty_state(), _battery(), intervals)
-    # C = 1+5+0-4 = 2; PV to load 2; surplus 3; grid to battery 1.
-    # unit cost = (3*0.05 + 1*0.30)/4 = 0.1125
-    # stock_cost = 4 * 0.1125 / 0.9
+    expected_unit_cost = 0.1125
     assert state.status == "active"
     assert abs(state.stock_kwh - 4.0) < 1e-9
     assert state.weighted_cost_per_kwh is not None
-    assert abs(state.weighted_cost_per_kwh - (0.1125 / 0.9)) < 1e-9
+    assert abs(state.weighted_cost_per_kwh - (expected_unit_cost / 0.9)) < 1e-9
 
 
 def test_replay_skips_unpriceable_charge_i1() -> None:
