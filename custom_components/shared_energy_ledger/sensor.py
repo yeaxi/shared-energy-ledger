@@ -42,6 +42,7 @@ class HubSensorDescription(SensorEntityDescription):
     """Description for a hub-level sensor."""
 
     value_fn: Callable[[CoordinatorPayload], float | str | None]
+    available_fn: Callable[[CoordinatorPayload], bool] | None = None
 
 
 TENANT_TOTAL_COST = TenantCostDescription(
@@ -82,7 +83,14 @@ class TenantShareSensor(SharedEnergyLedgerEntity, SensorEntity):
     _attr_translation_key = "tenant_share"
 
     def __init__(self, coordinator: SharedEnergyLedgerCoordinator, tenant: Tenant) -> None:
-        super().__init__(coordinator, "tenant_share", tenant.tenant_id)
+        super().__init__(
+            coordinator,
+            "tenant_share",
+            tenant.tenant_id,
+            domain="sensor",
+            tenant_slug=tenant.slug,
+            tenant_name=tenant.name,
+        )
         self._slug = tenant.slug
 
     @property
@@ -113,7 +121,12 @@ class TenantCostSensor(SharedEnergyLedgerEntity, SensorEntity):
         currency: str,
     ) -> None:
         super().__init__(
-            coordinator, description.translation_key or description.key, tenant.tenant_id
+            coordinator,
+            description.translation_key or description.key,
+            tenant.tenant_id,
+            domain="sensor",
+            tenant_slug=tenant.slug,
+            tenant_name=tenant.name,
         )
         self.entity_description = description
         self._slug = tenant.slug
@@ -145,7 +158,12 @@ class HubSensor(SharedEnergyLedgerEntity, SensorEntity):
         description: HubSensorDescription,
         unit: str | None = None,
     ) -> None:
-        super().__init__(coordinator, description.translation_key or description.key, "hub")
+        super().__init__(
+            coordinator,
+            description.translation_key or description.key,
+            "hub",
+            domain="sensor",
+        )
         self.entity_description = description
         if unit is not None:
             self._attr_native_unit_of_measurement = unit
@@ -154,6 +172,8 @@ class HubSensor(SharedEnergyLedgerEntity, SensorEntity):
     def available(self) -> bool:
         if not super().available:
             return False
+        if self.entity_description.available_fn is not None:
+            return self.entity_description.available_fn(self.coordinator.data)
         return self.entity_description.value_fn(self.coordinator.data) is not None
 
     @property
@@ -180,6 +200,17 @@ def _battery_weighted(payload: CoordinatorPayload) -> float | None:
         return None
     weighted = payload.ledger.weighted_cost_per_kwh
     return round(weighted, 6) if weighted is not None else None
+
+
+def _battery_weighted_available(payload: CoordinatorPayload) -> bool:
+    """The diagnostic is live whenever the ledger exists and is coherent.
+
+    An empty ledger has no weighted cost yet (native value ``None`` →
+    ``unknown``), which is distinct from the entity being ``unavailable``
+    because the ledger itself failed closed.
+    """
+    ledger = payload.ledger
+    return ledger is not None and ledger.status != "unavailable"
 
 
 def _battery_status(payload: CoordinatorPayload) -> str | None:
@@ -267,6 +298,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                         entity_category=EntityCategory.DIAGNOSTIC,
                         value_fn=_battery_weighted,
+                        available_fn=_battery_weighted_available,
                     ),
                     unit=price_unit(currency),
                 ),

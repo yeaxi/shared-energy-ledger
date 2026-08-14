@@ -44,14 +44,18 @@
           "discharge_energy_entity": "Battery discharge counter (kWh)",
           "power_entity": "Battery signed DC power (W, negative on discharge)",
           "charge_efficiency": "Charge efficiency (%)",
-          "discharge_efficiency": "Discharge efficiency (%)"
+          "discharge_efficiency": "Discharge efficiency (%)",
+          "initial_stock_kwh": "Initial priced stock (kWh)",
+          "initial_stock_cost": "Initial priced stock cost"
         },
         "data_description": {
           "charge_energy_entity": "Cumulative total-increasing kWh counter of energy charged into the battery.",
           "discharge_energy_entity": "Cumulative total-increasing kWh counter of energy discharged from the battery.",
           "power_entity": "Signed DC power in W. Negative values indicate discharge.",
           "charge_efficiency": "Round-trip charge efficiency. Values below 50 % or above 100 % are rejected.",
-          "discharge_efficiency": "Round-trip discharge efficiency. Values below 50 % or above 100 % are rejected."
+          "discharge_efficiency": "Round-trip discharge efficiency. Values below 50 % or above 100 % are rejected.",
+          "initial_stock_kwh": "Priced energy already in the battery at first setup. Leave at 0 if the battery is empty or the mix is unknown. Must be 0 when the cost is 0.",
+          "initial_stock_cost": "Cost of that priced stock in the chosen currency. A positive cost with zero stock is rejected."
         }
       },
       "whole_building": {
@@ -74,7 +78,7 @@
           "add_another": "Add another tenant after this one"
         },
         "data_description": {
-          "slug": "Lowercase kebab-case label, e.g. flat-3. Editable later without breaking entities.",
+          "slug": "Lowercase kebab-case label, e.g. flat-3. Used as the prefix in entity IDs. Editable later without breaking unique_ids.",
           "name": "Human-visible name shown on the dashboard.",
           "allocation_policy": "How this tenant's accounting energy is computed.",
           "energy_entity": "Cumulative energy sensor (kWh). Required for the direct-meter and proportional policies."
@@ -88,7 +92,8 @@
       "invalid_entity": "The selected entity does not exist or has an incompatible device class.",
       "invalid_unit": "The selected entity's unit_of_measurement does not match the expected unit.",
       "invalid_efficiency": "Efficiency must be between 50 % and 100 %.",
-      "pv_price_required": "Select a PV price sensor or tick 'Price self-consumed PV at zero cost'."
+      "pv_price_required": "Select a PV price sensor or tick 'Price self-consumed PV at zero cost'.",
+      "invalid_ledger_boundary": "Initial priced stock and cost must be a coherent pair: both non-negative, and a zero stock requires a zero cost."
     },
     "abort": {
       "single_instance_allowed": "Only a single Shared Energy Ledger instance can be configured per Home Assistant install.",
@@ -274,7 +279,7 @@
         "name": "Battery data fresh"
       },
       "tenant_data_fresh": {
-        "name": "Tenant data fresh"
+        "name": "Data fresh"
       }
     },
     "sensor": {

@@ -33,9 +33,13 @@ page) takes:
 | Signed DC power | `W` (negative on discharge) | Live rate accuracy and freshness gating |
 | Charge efficiency | `%` in `[50, 100]` | Fraction of charged energy that actually becomes stock |
 | Discharge efficiency | `%` in `[50, 100]` | Fraction of stored energy delivered to loads |
+| Initial priced stock | `kWh` | Energy already in the battery at first setup. Default `0`. |
+| Initial priced stock cost | currency | Cost of that stock. Must be `0` when stock is `0`. |
 
-The initial priced stock is seeded via the `reset_battery_ledger` service, not
-the config flow (see [Seeding the initial stock](#seeding-the-initial-stock)).
+The ledger is seeded from those initial-stock fields on the first coordinator
+tick, so the battery diagnostic sensors are populated immediately after setup.
+Use `reset_battery_ledger` later to correct the pair (see
+[Seeding the initial stock](#seeding-the-initial-stock)).
 
 ## PV vs grid pricing
 
@@ -89,15 +93,21 @@ until the operator resolves the underlying issue.
 | --- | --- |
 | `active` | The ledger has priced stock and the counters are healthy. Discharge is priced at the weighted cost. |
 | `priced` | The ledger has a weighted cost but no stock right now (for example immediately after being fully drained). Charges will re-populate the stock. |
-| `empty` | Stock is zero and there is no weighted cost. This is the state right after installation before any charge has happened. |
+| `empty` | Stock is zero and there is no weighted cost. This is the state right after installation when the initial stock was left at `0`, or after the battery has been fully drained with no remaining cost. The weighted-cost diagnostic is `unknown`, not a fabricated `0`. |
 | `unavailable` | A safety rule failed or the battery data-fresh gate is off. |
 
 ## Seeding the initial stock
 
-Invoke `shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This
-is a journaled admin action that enforces the boundary-pair coherence rule. Use
-it to seed the priced stock present at first setup, or to correct the ledger
-after a counter reset.
+Enter **Initial priced stock** and **Initial priced stock cost** on the battery
+step of the config flow. The pair is validated immediately (both non-negative;
+zero stock requires zero cost) and the ledger is seeded on the first
+coordinator tick, so the weighted-cost diagnostic is available as soon as setup
+finishes when the stock is greater than zero.
+
+To correct the pair later, invoke
+`shared_energy_ledger.reset_battery_ledger(stock_kwh, stock_cost)`. This is a
+journaled admin action that enforces the same boundary-pair coherence rule.
+Use it after a counter reset or a manual reconciliation.
 
 ### Example call (Developer Tools > Services)
 

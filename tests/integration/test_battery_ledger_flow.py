@@ -8,6 +8,7 @@ stock is free while the ledger persists across refreshes (I6/I7).
 from __future__ import annotations
 
 import pytest
+from homeassistant.const import STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -80,6 +81,9 @@ async def test_battery_ledger_seeds_and_pv_charge_is_free(hass: HomeAssistant) -
     assert ledger is not None
     assert ledger.stock_kwh == pytest.approx(5.0)
     assert ledger.stock_cost == pytest.approx(20.0)
+    weighted = hass.states.get("sensor.shared_energy_ledger_battery_weighted_cost")
+    assert weighted is not None
+    assert float(weighted.state) == pytest.approx(4.0)
 
     # Charge +1 kWh entirely from PV surplus (no consumption): free stock.
     hass.states.async_set("sensor.pv_e", "101.0", {"unit_of_measurement": "kWh"})
@@ -92,6 +96,32 @@ async def test_battery_ledger_seeds_and_pv_charge_is_free(hass: HomeAssistant) -
     assert updated is not None
     assert updated.stock_kwh == pytest.approx(6.0)
     assert updated.stock_cost == pytest.approx(20.0)
+
+
+@pytest.mark.asyncio
+async def test_empty_seed_makes_weighted_cost_unknown_not_unavailable(
+    hass: HomeAssistant,
+) -> None:
+    """Immediately after setup with zero seed, weighted cost is unknown (I6)."""
+    data = _entry_with_battery()
+    data["battery"]["initial_stock_kwh"] = 0.0
+    data["battery"]["initial_stock_cost"] = 0.0
+    entry = MockConfigEntry(domain=DOMAIN, data=data, version=CONFIG_ENTRY_VERSION)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    coordinator = entry.runtime_data
+    ledger = coordinator.data.ledger
+    assert ledger is not None
+    assert ledger.status == "empty"
+    assert ledger.weighted_cost_per_kwh is None
+    weighted = hass.states.get("sensor.shared_energy_ledger_battery_weighted_cost")
+    assert weighted is not None
+    assert weighted.state == STATE_UNKNOWN
+    status = hass.states.get("sensor.shared_energy_ledger_battery_ledger_status")
+    assert status is not None
+    assert status.state == "empty"
 
 
 @pytest.mark.asyncio

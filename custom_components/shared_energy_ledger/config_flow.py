@@ -38,6 +38,8 @@ from .const import (
     CONF_ENERGY,
     CONF_IMPORT_ENERGY,
     CONF_IMPORT_PRICE,
+    CONF_INITIAL_STOCK_COST,
+    CONF_INITIAL_STOCK_KWH,
     CONF_LOAD_ID,
     CONF_POWER,
     CONF_PV_PRICE,
@@ -51,6 +53,7 @@ from .const import (
     DEFAULT_DISCHARGE_EFFICIENCY,
     DOMAIN,
 )
+from .ledger import validate_boundary
 from .models import (
     AllocationPolicy,
     BatteryConfig,
@@ -202,16 +205,24 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_battery(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Collect the battery counters and efficiencies."""
+        """Collect the battery counters, efficiencies, and initial priced stock."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._battery = BatteryConfig(
-                charge_energy_entity=str(user_input[CONF_CHARGE_ENERGY]),
-                discharge_energy_entity=str(user_input[CONF_DISCHARGE_ENERGY]),
-                power_entity=str(user_input[CONF_POWER]),
-                charge_efficiency=float(user_input[CONF_CHARGE_EFFICIENCY]) / 100.0,
-                discharge_efficiency=float(user_input[CONF_DISCHARGE_EFFICIENCY]) / 100.0,
-            )
-            return await self._advance_optional()
+            stock_kwh = float(user_input[CONF_INITIAL_STOCK_KWH])
+            stock_cost = float(user_input[CONF_INITIAL_STOCK_COST])
+            if not validate_boundary(stock_kwh, stock_cost):
+                errors["base"] = "invalid_ledger_boundary"
+            else:
+                self._battery = BatteryConfig(
+                    charge_energy_entity=str(user_input[CONF_CHARGE_ENERGY]),
+                    discharge_energy_entity=str(user_input[CONF_DISCHARGE_ENERGY]),
+                    power_entity=str(user_input[CONF_POWER]),
+                    charge_efficiency=float(user_input[CONF_CHARGE_EFFICIENCY]) / 100.0,
+                    discharge_efficiency=float(user_input[CONF_DISCHARGE_EFFICIENCY]) / 100.0,
+                    initial_stock_kwh=stock_kwh,
+                    initial_stock_cost=stock_cost,
+                )
+                return await self._advance_optional()
         schema = vol.Schema(
             {
                 vol.Required(CONF_CHARGE_ENERGY): _energy_selector(),
@@ -231,9 +242,19 @@ class SharedEnergyLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
                         min=50, max=100, step=1, mode=selector.NumberSelectorMode.SLIDER
                     )
                 ),
+                vol.Required(CONF_INITIAL_STOCK_KWH, default=0): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.001, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(CONF_INITIAL_STOCK_COST, default=0): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.01, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
             }
         )
-        return self.async_show_form(step_id="battery", data_schema=schema)
+        return self.async_show_form(step_id="battery", data_schema=schema, errors=errors)
 
     async def async_step_whole_building(
         self, user_input: dict[str, Any] | None = None

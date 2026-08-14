@@ -117,12 +117,19 @@ ticked until every tenant is entered. A minimal generic configuration:
 
 Once the config flow finishes, Shared Energy Ledger creates:
 
+- Per-tenant devices named after each tenant's display name. Entity IDs use
+  the tenant slug as a prefix, for example
+  `sensor.shared_energy_ledger_tenant_flat_1_share` and
+  `binary_sensor.shared_energy_ledger_tenant_flat_1_data_fresh`.
 - Per-tenant sensors for share and cumulative cost, split into total,
   grid, PV (if configured), and battery (if configured).
 - Hub sensors for the grid and PV price, grid reconciliation, and the
   battery ledger (priced stock, weighted cost, status, unpriced energy).
 - Freshness `binary_sensor` gates for grid, PV, battery, and each
   tenant meter.
+- A Lovelace sidebar dashboard titled **Shared Energy Ledger** with an
+  overview plus one view per tenant. Built-in cards only; customize it in
+  the UI or remove the managed flag if you take over the dashboard.
 
 You can reopen the integration from **Settings** > **Devices &
 services** > **Shared Energy Ledger** > **Configure** to enter the options

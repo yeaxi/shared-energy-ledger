@@ -535,7 +535,17 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
             return None
         persisted = await self._ledger_store.async_load()
         if persisted is None:
-            return None
+            seeded: LedgerPersisted = {
+                "stock_kwh": float(config.initial_stock_kwh),
+                "stock_cost": float(config.initial_stock_cost),
+            }
+            if not validate_boundary(seeded["stock_kwh"], seeded["stock_cost"]):
+                raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
+                return unavailable_state()
+            await self._ledger_store.async_save(seeded)
+            persisted = await self._ledger_store.async_load()
+            if persisted is None:
+                return empty_state()
         state = to_ledger_state(persisted)
         if state is None or not validate_boundary(state.stock_kwh, state.stock_cost):
             raise_ledger_incoherent(self.hass, self.config_entry.entry_id)

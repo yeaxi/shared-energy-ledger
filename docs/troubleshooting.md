@@ -70,11 +70,24 @@ resettable one.
 - The `(stock_kwh, stock_cost)` pair must be coherent, per
   [invariant I6](invariants.md).
 - Common violations: setting a positive `stock_cost` while
-  `stock_kwh == 0`, or vice versa.
+  `stock_kwh == 0`.
 
 Fix: call `shared_energy_ledger.reset_battery_ledger` with a coherent pair,
 for example `(0, 0)` to declare the battery empty, or the true stock
 values immediately after a manual reconciliation.
+
+### Battery weighted cost is `unknown` right after setup
+
+- An empty ledger (initial stock left at `0`) has no weighted cost yet.
+  The diagnostic stays `unknown` rather than reporting a fabricated `0`.
+- Ledger status should read `empty`. If it reads `unavailable`, a safety
+  rule failed; check the battery freshness gate and the charge/discharge
+  counter units.
+
+Fix: enter a coherent initial stock on the battery config-flow step, or
+call `reset_battery_ledger` with the priced stock currently in the
+battery. Weighted cost becomes a number as soon as `stock_kwh` is above
+the empty threshold.
 
 ### Residual allocation preconditions
 
