@@ -8,6 +8,9 @@ cumulative-cost sensors) it persists:
   next tick's delta is ``current - anchor``. Using counter deltas means a
   missed coordinator tick never loses metered energy: the following delta spans
   the gap.
+* ``ledger_anchors`` — independent charge/discharge/grid/PV counters for the
+  battery weighted-cost mix, so the ledger can advance when tenant allocation
+  is unavailable (requirement I2).
 * ``tenant_costs`` — per-tenant cumulative cost split by source
   (``grid``/``pv``/``battery``/``total``) in the configured currency.
 * ``unpriced_battery_kwh`` — cumulative battery discharge that was served from
@@ -39,6 +42,7 @@ class AccountingPersisted(TypedDict, total=False):
     """Shape of the JSON payload persisted per config entry."""
 
     anchors: dict[str, float]
+    ledger_anchors: dict[str, float]
     tenant_costs: dict[str, dict[str, float]]
     unpriced_battery_kwh: float
     currency: str
