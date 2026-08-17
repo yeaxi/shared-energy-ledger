@@ -38,6 +38,7 @@ class LedgerPersisted(TypedDict, total=False):
     stock_kwh: float
     stock_cost: float
     updated_at: str
+    history_replayed: bool
 
 
 class LedgerStore:
@@ -60,10 +61,16 @@ class LedgerStore:
         return self._cache
 
     async def async_save(self, payload: LedgerPersisted) -> None:
-        """Persist state, updating the local cache atomically."""
-        payload = {**payload, "updated_at": datetime.now(UTC).isoformat()}
-        self._cache = payload
-        await self._store.async_save(payload)
+        """Persist state, updating the local cache atomically.
+
+        Extra keys already in the cache (for example ``history_replayed``) are
+        kept unless the caller overwrites them, so a live tick cannot drop the
+        one-shot history-replay flag.
+        """
+        merged: LedgerPersisted = {**(self._cache or {}), **payload}
+        merged["updated_at"] = datetime.now(UTC).isoformat()
+        self._cache = merged
+        await self._store.async_save(merged)
 
     async def async_clear(self) -> None:
         """Delete stored state; used by ``reset_battery_ledger``."""

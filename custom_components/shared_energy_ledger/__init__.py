@@ -24,6 +24,7 @@ from .const import (
 )
 from .coordinator import SharedEnergyLedgerCoordinator
 from .cost_store import AccountingStore
+from .dashboard import async_setup_dashboard
 from .ledger_store import LedgerStore
 from .services import async_register_services, async_unregister_services
 
@@ -43,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, list(PLATFORMS))
+    await async_setup_dashboard(hass, entry)
     await async_register_services(hass)
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))

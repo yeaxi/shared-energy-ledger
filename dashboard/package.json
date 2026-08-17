@@ -1,6 +1,6 @@
 {
   "name": "shared-energy-ledger",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Companion Lovelace card bundle for the shared_energy_ledger Home Assistant custom integration.",

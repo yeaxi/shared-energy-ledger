@@ -7,7 +7,13 @@ pricing and unpriced discharge (I6/I7), and cross-tenant reconciliation.
 
 from __future__ import annotations
 
-from custom_components.shared_energy_ledger.interval import IntervalInputs, price_interval
+from custom_components.shared_energy_ledger.interval import (
+    ChargeMixInputs,
+    IntervalInputs,
+    building_consumption_from_balance,
+    price_charge_mix,
+    price_interval,
+)
 
 
 def _by_slug(result):
@@ -145,19 +151,63 @@ def test_charge_unit_cost_blends_pv_surplus_and_grid() -> None:
             tenant_energy={"a": 2.0},
             grid_price=0.30,
             pv_configured=True,
-            pv_generation_kwh=5.0,  # 2 to load, 3 surplus
+            pv_generation_kwh=5.0,
             pv_price=0.05,
             battery_configured=True,
             battery_discharge_kwh=0.0,
-            battery_charge_kwh=4.0,  # 3 from pv surplus, 1 from grid
+            battery_charge_kwh=4.0,
+            battery_weighted_cost=None,
+            grid_import_kwh=1.0,
+        )
+    )
+    expected_unit_cost = 0.1125
+    assert result.charge_unit_cost is not None
+    assert abs(result.charge_unit_cost - expected_unit_cost) < 1e-9
+    assert abs(result.pv_to_battery_kwh - 3.0) < 1e-9
+    assert abs(result.grid_to_battery_kwh - 1.0) < 1e-9
+
+
+def test_charge_mix_uses_energy_balance_not_tenant_c_i2() -> None:
+    """I2: charge mix is G+PV+D-Ch even when tenant allocation disagrees."""
+    result = price_interval(
+        IntervalInputs(
+            tenant_energy={"a": 6.0},
+            grid_price=0.30,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            battery_configured=True,
+            battery_discharge_kwh=0.0,
+            battery_charge_kwh=4.0,
+            battery_weighted_cost=None,
+            grid_import_kwh=1.0,
+        )
+    )
+    assert result.tenants is not None
+    expected_unit_cost = 0.1125
+    assert result.charge_unit_cost is not None
+    assert abs(result.charge_unit_cost - expected_unit_cost) < 1e-9
+    assert abs(result.pv_to_battery_kwh - 3.0) < 1e-9
+    assert abs(result.grid_to_battery_kwh - 1.0) < 1e-9
+
+
+def test_charge_mix_fails_closed_without_grid_import_i1() -> None:
+    """I1: a charge is left unpriced when energy-balance C cannot be known."""
+    result = price_interval(
+        IntervalInputs(
+            tenant_energy={"a": 2.0},
+            grid_price=0.30,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            battery_configured=True,
+            battery_discharge_kwh=0.0,
+            battery_charge_kwh=4.0,
             battery_weighted_cost=None,
         )
     )
-    # charge cost = 3*0.05 + 1*0.30 = 0.45 ; unit = 0.45/4
-    assert result.charge_unit_cost is not None
-    assert abs(result.charge_unit_cost - 0.1125) < 1e-9
-    assert abs(result.pv_to_battery_kwh - 3.0) < 1e-9
-    assert abs(result.grid_to_battery_kwh - 1.0) < 1e-9
+    assert result.tenants is not None
+    assert result.charge_unit_cost is None
 
 
 def test_reconciliation_difference_is_reported() -> None:
@@ -203,3 +253,44 @@ def test_zero_consumption_yields_zero_cost() -> None:
     tenants = _by_slug(result)
     assert tenants["a"].total_cost == 0.0
     assert tenants["b"].total_cost == 0.0
+
+
+def test_building_consumption_from_balance_is_energy_conservation() -> None:
+    """I1/I2: C = G + PV + D - Ch. Missing or negative residual is None."""
+    assert building_consumption_from_balance(1.0, 4.0, 0.0, 4.0) == 1.0
+    assert building_consumption_from_balance(None, 4.0, 0.0, 4.0) is None
+    assert building_consumption_from_balance(1.0, 1.0, 0.0, 4.0) is None
+
+
+def test_price_charge_mix_does_not_need_tenants() -> None:
+    """I2: solar/grid charge mix does not take tenant energy."""
+    mix = price_charge_mix(
+        ChargeMixInputs(
+            consumption_kwh=2.0,
+            charge_kwh=4.0,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            grid_price=0.30,
+        )
+    )
+    assert mix.pv_to_battery_kwh == 3.0
+    assert mix.grid_to_battery_kwh == 1.0
+    assert mix.charge_unit_cost is not None
+    assert abs(mix.charge_unit_cost - 0.1125) < 1e-9
+
+
+def test_price_charge_mix_fails_closed_without_consumption() -> None:
+    """I1: unknown building load leaves the charge unpriced."""
+    mix = price_charge_mix(
+        ChargeMixInputs(
+            consumption_kwh=None,
+            charge_kwh=4.0,
+            pv_configured=True,
+            pv_generation_kwh=5.0,
+            pv_price=0.05,
+            grid_price=0.30,
+        )
+    )
+    assert mix.charge_unit_cost is None
+    assert mix.reason == "consumption_unavailable"

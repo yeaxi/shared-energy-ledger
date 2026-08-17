@@ -70,11 +70,26 @@ resettable one.
 - The `(stock_kwh, stock_cost)` pair must be coherent, per
   [invariant I6](invariants.md).
 - Common violations: setting a positive `stock_cost` while
-  `stock_kwh == 0`, or vice versa.
+  `stock_kwh == 0`.
 
 Fix: call `shared_energy_ledger.reset_battery_ledger` with a coherent pair,
 for example `(0, 0)` to declare the battery empty, or the true stock
 values immediately after a manual reconciliation.
+
+### Battery weighted cost is `unknown` right after setup
+
+- The weighted cost is the solar/grid mix that charged the battery. It stays
+  `unknown` until a priced charge is observed in Recorder history or live.
+- Ledger status should read `empty`. If it reads `unavailable`, a safety
+  rule failed; check the battery freshness gate and the charge/discharge
+  counter units.
+- History replay uses the last seven days of raw Recorder states. Energy that
+  was in the battery before that window is not invented.
+
+Fix: confirm the charge, discharge, PV, grid import, and price sensors have
+Recorder history and valid `kWh` / `currency/kWh` units. The diagnostic
+becomes a number on the first mix that can be priced. Use
+`reset_battery_ledger` only when you need to override that mix.
 
 ### Residual allocation preconditions
 

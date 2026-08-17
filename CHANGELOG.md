@@ -11,6 +11,76 @@ epochs or start a new one.
 
 ## [Unreleased]
 
+### Notes
+
+- Addition PR to [`hacs/default`](https://github.com/hacs/default) remains a
+  maintainer step (external repository and credentials).
+- Real Home Assistant live staging remains out of scope for agents.
+
+## [0.2.0] - 2026-08-14
+
+First follow-up after `v0.1.0`. Reload is enough. Entity `unique_id`s are
+unchanged, so registry IDs and history stay.
+
+### Added
+
+- Suggested entity IDs use the tenant slug from config (requirement A2.3).
+  Each tenant is a via-hub device named after the display name.
+- A managed Lovelace dashboard at `shared-energy-ledger` after setup when
+  Lovelace is loaded. Lookup is by `unique_id`. A dashboard without
+  `shared_energy_ledger_managed` is left alone.
+- Battery weighted cost from the PV-surplus-then-grid mix that charged the
+  pack. First empty persist replays seven days of Recorder history.
+
+### Changed
+
+- Building load for the charge mix is energy balance
+  `C = G + PV + D - Ch`, not tenant allocation (I2). Live ticks, reports, and
+  history replay share that mix.
+- Empty weighted cost is `unknown`, not a fabricated `0` (I1/I6). Non-zero
+  initial stock remains an optional override.
+- Missing prices leave the ledger unchanged. Live ticks keep updating even
+  when tenant allocation fails.
+
+### Fixed
+
+- The coordinator now receives the config entry explicitly, so setup no
+  longer depends on a Home Assistant ContextVar.
+
+### Upgrade notes for v0.2.0
+
+#### Highlights
+
+- Slug-prefixed entity IDs on new installs, a sidebar dashboard, and a
+  battery price filled from how the pack was charged.
+
+#### Breaking changes
+
+- None. `unique_id`s are stable. Existing entity IDs are not rewritten.
+
+#### Config-entry migration
+
+- Config-entry version stays 3. No schema migration.
+- Actions: reload the integration (a full restart is also fine).
+- Rollback: downgrade to `v0.1.0` is safe for the config entry. The managed
+  dashboard remains in Lovelace storage until you delete it.
+
+#### New features
+
+- [Quickstart](docs/quickstart.md) covers slug entity IDs and the managed
+  dashboard.
+- [Battery ledger](docs/battery-ledger.md) covers mix pricing and history
+  replay.
+
+#### Known issues
+
+- Existing installs keep their current entity IDs. Only new installs (or
+  entities created after this release) get the slug prefix.
+
+## [0.1.0] - 2026-08-14
+
+Initial public tag. Source-cost accounting from operator price sensors.
+
 ### Added
 
 - Source-cost accounting from cumulative meter deltas and operator grid/PV
@@ -42,19 +112,6 @@ epochs or start a new one.
   floor.
 - Docs rename: `tariffs-and-currency.md` → `pricing-and-currency.md`.
 
-### Notes
-
-- No GitHub release has been published yet. A maintainer must promote this
-  section to a versioned heading before creating the first tag.
-
-### Initial release candidate
-
-The initial release-candidate code landed via
-[PR #3](https://github.com/yeaxi/shared-energy-ledger/pull/3) and
-[PR #4](https://github.com/yeaxi/shared-energy-ledger/pull/4). Later work on
-this branch replaced the tariff schedule with source-cost accounting and
-collapsed the companion cards to the single report card above.
-
 ### Invariants
 
 Ten invariants (I1..I10) are locked in and enforced by tests and lints:
@@ -70,14 +127,6 @@ Ten invariants (I1..I10) are locked in and enforced by tests and lints:
 - I9  Config-entry migration and accounting-epoch preservation.
 - I10 Dashboards fail closed.
 
-### Non-code (maintainer follow-up)
-
-Outside tagged code and intentionally out of scope for agents:
-
-- Addition PR to [`hacs/default`](https://github.com/hacs/default) (external
-  repository and credentials).
-- Real Home Assistant live staging (policy: no live HA access from agents).
-- Publishing a git tag / GitHub Release (maintainer step after the
-  verification gate and `scripts/live_probe.py`).
-
-[Unreleased]: https://github.com/yeaxi/shared-energy-ledger/commits/main
+[Unreleased]: https://github.com/yeaxi/shared-energy-ledger/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/yeaxi/shared-energy-ledger/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/yeaxi/shared-energy-ledger/releases/tag/v0.1.0

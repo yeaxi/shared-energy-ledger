@@ -1,7 +1,7 @@
 {
   "domain": "shared_energy_ledger",
   "name": "Shared Energy Ledger",
-  "after_dependencies": ["recorder"],
+  "after_dependencies": ["recorder", "lovelace"],
   "codeowners": ["@yeaxi"],
   "config_flow": true,
   "dependencies": [],
@@ -11,5 +11,5 @@
   "issue_tracker": "https://github.com/yeaxi/shared-energy-ledger/issues",
   "quality_scale": "silver",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

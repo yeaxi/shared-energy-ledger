@@ -9,8 +9,8 @@ from instantaneous power samples. On each tick it:
 3. allocates tenant consumption energy (:mod:`.allocation`);
 4. distributes the grid/PV/battery source mix across tenants and prices each
    source at its own per-kWh rate (:mod:`.interval`);
-5. advances the weighted-cost battery ledger with the measured blended charge
-   cost (:mod:`.ledger`); and
+5. advances the weighted-cost battery ledger from the solar/grid charge mix
+   (:mod:`.ledger`); and
 6. accrues each tenant's per-source cost into a restart-safe running total
    (:mod:`.cost_store`).
 
@@ -35,7 +35,13 @@ from .allocation import AllocationInput, AllocationResult, TenantInput, allocate
 from .configio import ConfigError, config_from_entry
 from .const import DOMAIN, price_unit
 from .cost_store import AccountingStore, empty_tenant_costs
-from .interval import IntervalInputs, price_interval
+from .interval import (
+    ChargeMixInputs,
+    IntervalInputs,
+    building_consumption_from_balance,
+    price_charge_mix,
+    price_interval,
+)
 from .issues import (
     clear_config_invalid,
     clear_ledger_incoherent,
@@ -48,9 +54,15 @@ from .ledger import (
     empty_state,
     to_weighted_cost,
     unavailable_state,
-    unpriced_discharge_kwh,
     update_ledger,
     validate_boundary,
+)
+from .ledger_history import (
+    LEDGER_ANCHOR_CHARGE,
+    LEDGER_ANCHOR_DISCHARGE,
+    LEDGER_ANCHOR_GRID,
+    LEDGER_ANCHOR_PV,
+    async_reconstruct_ledger_from_history,
 )
 from .ledger_store import LedgerPersisted, LedgerStore, to_ledger_state
 from .models import (
@@ -213,11 +225,11 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=f"{DOMAIN}:{entry.entry_id}",
             update_interval=UPDATE_INTERVAL,
             always_update=True,
         )
-        self.config_entry = entry
         self._energy_config = None
         self._ledger_store = ledger_store or LedgerStore(hass, entry.entry_id)
         self._accounting_store = accounting_store or AccountingStore(hass, entry.entry_id)
@@ -267,7 +279,9 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         payload = CoordinatorPayload(currency=config.currency)
 
         persisted = await self._accounting_store.async_load()
-        anchors: dict[str, float] = dict(persisted.get("anchors", {}))
+        committed_anchors: dict[str, float] = dict(persisted.get("anchors", {}))
+        anchors: dict[str, float] = dict(committed_anchors)
+        ledger_anchors: dict[str, float] = dict(persisted.get("ledger_anchors", {}))
         stored_currency = persisted.get("currency")
         tenant_cost_raw: dict[str, dict[str, float]] = dict(persisted.get("tenant_costs", {}))
         unpriced_total = float(persisted.get("unpriced_battery_kwh", 0.0))  # no-silent-zero: allow (persisted running total, not upstream sample)
@@ -409,9 +423,11 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         for r in results:
             tenant_deltas[r.slug] = r.accounting_energy
 
-        ledger_state = await self._ledger_state(config.battery)
+        ledger_state, bootstrap_anchors = await self._ledger_state(config)
         payload.ledger = ledger_state
         weighted = to_weighted_cost(ledger_state)
+        for key, value in bootstrap_anchors.items():
+            ledger_anchors.setdefault(key, value)
 
         grid_import_delta = self._delta(
             anchors, current_samples, "grid_import", grid_import
@@ -455,21 +471,38 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                 totals.battery += tsc.battery_cost
                 totals.total += tsc.total_cost
             unpriced_total += result.unpriced_battery_kwh
-            new_ledger = await self._advance_ledger(
-                config.battery,
-                ledger_state,
-                battery_charge_delta,
-                battery_discharge_delta,
-                result.charge_unit_cost,
-            )
-            if new_ledger is not None:
-                payload.ledger = new_ledger
-            # Commit anchors only for a priced interval so an unavailable tick
-            # never loses metered energy.
-            anchors.update(current_samples)
+            committed_anchors = {**committed_anchors, **current_samples}
+
+        new_ledger, commit_ledger_anchors = await self._async_tick_ledger(
+            config,
+            ledger_anchors,
+            ledger_state,
+            grid_import=grid_import,
+            pv_gen=pv_gen,
+            battery_charge=battery_charge,
+            battery_discharge=battery_discharge,
+            grid_price=grid_price,
+            pv_price=pv_price,
+        )
+        if new_ledger is not None:
+            payload.ledger = new_ledger
+
+        persist_accounting = result.tenants is not None or commit_ledger_anchors
+        if result.tenants is None:
+            reset_anchors = {
+                key: current_samples[key]
+                for key in self._reset_keys
+                if key in current_samples
+            }
+            if reset_anchors:
+                committed_anchors = {**committed_anchors, **reset_anchors}
+                persist_accounting = True
+
+        if persist_accounting:
             await self._accounting_store.async_save(
                 {
-                    "anchors": anchors,
+                    "anchors": committed_anchors,
+                    "ledger_anchors": ledger_anchors,
                     "tenant_costs": {
                         slug: _dump_totals(t) for slug, t in tenant_costs.items()
                     },
@@ -477,25 +510,6 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
                     "currency": config.currency,
                 }
             )
-        else:
-            # Re-anchor only meters that reset, so we do not loop on a reset,
-            # but keep the pre-reset anchor for everything else.
-            reset_anchors = {
-                key: current_samples[key]
-                for key in self._reset_keys
-            }
-            if reset_anchors:
-                anchors.update(reset_anchors)
-                await self._accounting_store.async_save(
-                    {
-                        "anchors": anchors,
-                        "tenant_costs": {
-                            slug: _dump_totals(t) for slug, t in tenant_costs.items()
-                        },
-                        "unpriced_battery_kwh": unpriced_total,
-                        "currency": config.currency,
-                    }
-                )
 
         payload.tenant_costs = tenant_costs
         payload.unpriced_battery_kwh = unpriced_total
@@ -508,91 +522,180 @@ class SharedEnergyLedgerCoordinator(DataUpdateCoordinator[CoordinatorPayload]):
         current: dict[str, float],
         key: str,
         sample: float | None,
+        reset_keys: set[str] | None = None,
     ) -> float | None:
         """Return the interval delta for one meter, or ``None`` when unusable.
 
         Records the current sample in ``current`` for a later commit. A counter
         that dropped below its anchor is treated as a reset: the anchor is
-        re-set immediately (tracked in ``_reset_keys``) and the interval delta
-        is ``None`` so the tick fails closed.
+        re-set immediately (tracked in ``reset_keys`` or ``_reset_keys``) and
+        the interval delta is ``None`` so the tick fails closed.
         """
         if sample is None:
             return None
         current[key] = sample
         anchor = anchors.get(key)
         if anchor is None:
-            # First observation: anchor now, no interval yet.
             anchors[key] = sample
-            return 0.0  # no-silent-zero: allow (first anchor, no interval elapsed)
+            return 0.0
         if sample < anchor:
             anchors[key] = sample
-            self._reset_keys = {*self._reset_keys, key}
+            if reset_keys is not None:
+                reset_keys.add(key)
+            else:
+                self._reset_keys = {*self._reset_keys, key}
             return None
         return sample - anchor
 
-    async def _ledger_state(self, config: BatteryConfig | None) -> LedgerState | None:
-        if config is None:
-            return None
+    async def _async_tick_ledger(
+        self,
+        config: SharedEnergyLedgerConfig,
+        ledger_anchors: dict[str, float],
+        ledger_state: LedgerState | None,
+        *,
+        grid_import: float | None,
+        pv_gen: float | None,
+        battery_charge: float | None,
+        battery_discharge: float | None,
+        grid_price: float | None,
+        pv_price: float | None,
+    ) -> tuple[LedgerState | None, bool]:
+        """Advance the charge-mix ledger. Returns (state, whether to save anchors)."""
+        if config.battery is None:
+            return ledger_state, False
+        current: dict[str, float] = {}
+        resets: set[str] = set()
+        charge = self._delta(
+            ledger_anchors, current, LEDGER_ANCHOR_CHARGE, battery_charge, resets
+        )
+        discharge = self._delta(
+            ledger_anchors, current, LEDGER_ANCHOR_DISCHARGE, battery_discharge, resets
+        )
+        grid = self._delta(
+            ledger_anchors, current, LEDGER_ANCHOR_GRID, grid_import, resets
+        )
+        if config.pv is not None:
+            pv = self._delta(ledger_anchors, current, LEDGER_ANCHOR_PV, pv_gen, resets)
+        else:
+            pv = 0.0
+        mix = price_charge_mix(
+            ChargeMixInputs(
+                consumption_kwh=building_consumption_from_balance(
+                    grid, pv, discharge, charge
+                ),
+                charge_kwh=charge,
+                pv_configured=config.pv is not None,
+                pv_generation_kwh=pv,
+                pv_price=pv_price,
+                grid_price=grid_price,
+            )
+        )
+        unpriceable = charge is not None and charge > 1e-9 and mix.charge_unit_cost is None
+        new_state = await self._advance_ledger(
+            config.battery, ledger_state, charge, discharge, mix.charge_unit_cost
+        )
+        commit = bool(current) and (not unpriceable or bool(resets))
+        if commit and not unpriceable:
+            ledger_anchors.update(current)
+        return new_state, commit
+
+    async def _ledger_state(
+        self, config: SharedEnergyLedgerConfig
+    ) -> tuple[LedgerState | None, dict[str, float]]:
+        battery = config.battery
+        if battery is None:
+            return None, {}
         persisted = await self._ledger_store.async_load()
-        if persisted is None:
-            return None
+        if persisted is not None:
+            state = self._coherent_ledger(persisted)
+            if state is None:
+                return unavailable_state(), {}
+            if (
+                not persisted.get("history_replayed")
+                and state.status == "empty"
+                and battery.initial_stock_kwh == 0
+                and battery.initial_stock_cost == 0
+            ):
+                return await self._async_replay_history(config)
+            return state, {}
+
+        if battery.initial_stock_kwh > 0 or battery.initial_stock_cost > 0:
+            seeded: LedgerPersisted = {
+                "stock_kwh": float(battery.initial_stock_kwh),
+                "stock_cost": float(battery.initial_stock_cost),
+                "history_replayed": True,
+            }
+            if not validate_boundary(seeded["stock_kwh"], seeded["stock_cost"]):
+                raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
+                return unavailable_state(), {}
+            await self._ledger_store.async_save(seeded)
+            state = self._coherent_ledger(seeded)
+            if state is None:
+                return unavailable_state(), {}
+            return state, {}
+
+        return await self._async_replay_history(config)
+
+    def _coherent_ledger(self, persisted: LedgerPersisted) -> LedgerState | None:
         state = to_ledger_state(persisted)
         if state is None or not validate_boundary(state.stock_kwh, state.stock_cost):
             raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
-            return unavailable_state()
+            return None
         clear_ledger_incoherent(self.hass, self.config_entry.entry_id)
         return state
 
+    async def _async_replay_history(
+        self, config: SharedEnergyLedgerConfig
+    ) -> tuple[LedgerState, dict[str, float]]:
+        replay = await async_reconstruct_ledger_from_history(self.hass, config)
+        if replay is None:
+            return empty_state(), {}
+        payload: LedgerPersisted = {
+            "stock_kwh": replay.state.stock_kwh,
+            "stock_cost": replay.state.stock_cost,
+            "history_replayed": True,
+        }
+        if not validate_boundary(payload["stock_kwh"], payload["stock_cost"]):
+            raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
+            return unavailable_state(), {}
+        await self._ledger_store.async_save(payload)
+        state = self._coherent_ledger(payload)
+        if state is None:
+            return unavailable_state(), {}
+        return state, replay.anchors
+
     async def _advance_ledger(
         self,
-        config: BatteryConfig | None,
+        config: BatteryConfig,
         previous: LedgerState | None,
         charge_delta: float | None,
         discharge_delta: float | None,
         charge_unit_cost: float | None,
     ) -> LedgerState | None:
-        """Advance the battery ledger for a priced interval.
-
-        Fails closed: if a charge occurred this interval but its blended cost
-        could not be determined, the ledger is left unchanged rather than
-        pricing the charge at a fabricated zero (requirement I1/I6).
-        """
-        if config is None:
-            return None
         if charge_delta is None or discharge_delta is None:
             return previous
-
-        if previous is None:
-            seeded: LedgerPersisted = {
-                "stock_kwh": float(config.initial_stock_kwh),
-                "stock_cost": float(config.initial_stock_cost),
-            }
-            if not validate_boundary(seeded["stock_kwh"], seeded["stock_cost"]):
-                raise_ledger_incoherent(self.hass, self.config_entry.entry_id)
-                return unavailable_state()
-            previous = to_ledger_state(seeded) or empty_state()
-            await self._ledger_store.async_save(seeded)
-
-        if charge_delta > 1e-9 and charge_unit_cost is None:
-            # Charge happened but is unpriceable this interval: leave stock
-            # untouched instead of inventing a zero-cost charge.
+        if charge_delta <= 1e-9 and discharge_delta <= 1e-9:
             return previous
-
+        if previous is None:
+            previous = empty_state()
+        unit_cost = 0.0
+        if charge_delta > 1e-9:
+            if charge_unit_cost is None:
+                return previous
+            unit_cost = charge_unit_cost
         inputs = LedgerInputs(
             delta_charge_kwh=charge_delta,
             delta_discharge_kwh=discharge_delta,
-            charge_unit_cost=charge_unit_cost if charge_unit_cost is not None else 0.0,  # no-silent-zero: allow (no charge this interval)
+            charge_unit_cost=unit_cost,
             charge_efficiency=config.charge_efficiency,
             discharge_efficiency=config.discharge_efficiency,
         )
         new_state = update_ledger(previous, inputs)
         if new_state.status == "unavailable":
             return new_state
-        unpriced = unpriced_discharge_kwh(previous, inputs)
         await self._ledger_store.async_save(
             {"stock_kwh": new_state.stock_kwh, "stock_cost": new_state.stock_cost}
         )
-        _LOGGER.debug("Ledger advanced; unpriced discharge this tick: %s", unpriced)
         return new_state
 
 

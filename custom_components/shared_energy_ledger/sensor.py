@@ -42,6 +42,7 @@ class HubSensorDescription(SensorEntityDescription):
     """Description for a hub-level sensor."""
 
     value_fn: Callable[[CoordinatorPayload], float | str | None]
+    available_fn: Callable[[CoordinatorPayload], bool] | None = None
 
 
 TENANT_TOTAL_COST = TenantCostDescription(
@@ -171,6 +172,8 @@ class HubSensor(SharedEnergyLedgerEntity, SensorEntity):
     def available(self) -> bool:
         if not super().available:
             return False
+        if self.entity_description.available_fn is not None:
+            return self.entity_description.available_fn(self.coordinator.data)
         return self.entity_description.value_fn(self.coordinator.data) is not None
 
     @property
@@ -197,6 +200,12 @@ def _battery_weighted(payload: CoordinatorPayload) -> float | None:
         return None
     weighted = payload.ledger.weighted_cost_per_kwh
     return round(weighted, 6) if weighted is not None else None
+
+
+def _battery_weighted_available(payload: CoordinatorPayload) -> bool:
+    """True when the ledger exists and is coherent. Empty stock is ``unknown``, not ``unavailable``."""
+    ledger = payload.ledger
+    return ledger is not None and ledger.status != "unavailable"
 
 
 def _battery_status(payload: CoordinatorPayload) -> str | None:
@@ -284,6 +293,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                         entity_category=EntityCategory.DIAGNOSTIC,
                         value_fn=_battery_weighted,
+                        available_fn=_battery_weighted_available,
                     ),
                     unit=price_unit(currency),
                 ),

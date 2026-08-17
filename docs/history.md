@@ -44,10 +44,10 @@ for this project is that the invariants survived the migration.
   UX gained entity selectors and translation keys.
 - **Docs, CI, HACS.** The mkdocs site, CI workflows, diagnostics
   helper, and HACS metadata reached a shippable state.
-- **First release pending.** The release candidate is still tracked under
-  `Unreleased`; no public tag has been published. Live-in-HA testing on real
-  installations follows a separate rollout plan and is out of scope for this
-  repository.
+- **First public tag.** `v0.1.0` is the initial GitHub release. `v0.2.0`
+  adds slug-prefixed entity IDs, a managed Lovelace dashboard, and
+  mix-priced battery stock. Live-in-HA testing on real installations
+  follows a separate rollout plan and is out of scope for this repository.
 
 ## Acknowledgements
 

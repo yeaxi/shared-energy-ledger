@@ -30,6 +30,14 @@ Pre-1.0 releases (`0.x.y`) are considered *initial development*. The
 project treats every `MINOR` bump before `1.0.0` as potentially
 breaking and calls out breaking changes explicitly.
 
+## Upgrade notes for v0.2.0
+
+Reload is enough. Entity `unique_id`s do not change. New installs get
+slug-prefixed entity IDs and a managed Lovelace dashboard. Battery weighted
+cost is filled from the solar/grid mix that charged the pack, including a
+seven-day Recorder replay on first empty persist. Empty stock stays
+`unknown`, not `0`. The repository changelog lists every item.
+
 ## Breaking change: schema v1 to v2 (source-cost pricing)
 
 Version 2 replaces the built-in day/night tariff schedule with
