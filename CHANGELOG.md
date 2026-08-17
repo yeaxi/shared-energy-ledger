@@ -17,6 +17,44 @@ epochs or start a new one.
   maintainer step (external repository and credentials).
 - Real Home Assistant live staging remains out of scope for agents.
 
+## [0.3.0] - 2026-08-17
+
+Follow-up so a tagged release can finish after the Release workflow fix.
+Reload is enough. Entity `unique_id`s are unchanged.
+
+### Fixed
+
+- Release no longer calls the Docs reusable workflow. Tag pushes failed at
+  parse time because Docs' Pages deploy job requests `pages: write` and
+  `id-token: write` while Release only grants `contents: read`. Release now
+  runs `mkdocs build --strict` inline.
+
+### Changed
+
+- Align `pyproject.toml` package version with the integration and dashboard
+  versions.
+
+### Upgrade notes for v0.3.0
+
+#### Highlights
+
+- Tagged releases can publish again after the Release workflow permissions
+  fix.
+
+#### Breaking changes
+
+- None. `unique_id`s are stable.
+
+#### Config-entry migration
+
+- Config-entry version stays 3. No schema migration.
+- Actions: reload the integration (a full restart is also fine).
+- Rollback: downgrade to `v0.2.0` is safe for the config entry.
+
+#### Known issues
+
+- None new.
+
 ## [0.2.0] - 2026-08-14
 
 First follow-up after `v0.1.0`. Reload is enough. Entity `unique_id`s are

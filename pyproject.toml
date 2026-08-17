@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shared-energy-ledger"
-version = "0.1.0"
+version = "0.3.0"
 description = "Home Assistant custom integration for cooperative energy accounting"
 readme = "README.md"
 requires-python = ">=3.14.2"
