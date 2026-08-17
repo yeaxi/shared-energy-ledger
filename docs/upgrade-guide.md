@@ -30,6 +30,12 @@ Pre-1.0 releases (`0.x.y`) are considered *initial development*. The
 project treats every `MINOR` bump before `1.0.0` as potentially
 breaking and calls out breaking changes explicitly.
 
+## Upgrade notes for v0.3.0
+
+Reload is enough. Entity `unique_id`s do not change. This release is the
+first taggable follow-up after the Release workflow fix so GitHub can publish
+from a tag again. The repository changelog lists every item.
+
 ## Upgrade notes for v0.2.0
 
 Reload is enough. Entity `unique_id`s do not change. New installs get
