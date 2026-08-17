@@ -15,7 +15,6 @@ on:
       - "requirements_docs.txt"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read
