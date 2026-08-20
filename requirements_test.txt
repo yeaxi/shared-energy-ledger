@@ -1,7 +1,7 @@
 # Top-level test and static-analysis dependencies. The Home Assistant test
 # harness pins its transitive dependencies, including Home Assistant itself.
 
-pytest-homeassistant-custom-component==0.13.355
+pytest-homeassistant-custom-component==0.13.356
 freezegun==1.5.5
-mypy==2.3.0
-ruff==0.16.2
+mypy==2.3.1
+ruff==0.16.3
